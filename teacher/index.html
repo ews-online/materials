@@ -285,7 +285,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v2.1 — roster JP names + error handling fixes</div>
+      <div class="version-tag">v2.2 — cache-busting on every request</div>
     </div>
   </div>
 
@@ -485,7 +485,11 @@ function xhrGet(url) {
 }
 async function api(engine, params) {
   const base = engine === 'quiz' ? QUIZ_ENGINE_URL : FORUM_ENGINE_URL;
-  const allParams = Object.assign({}, params, { token: authToken });
+  // _ts guarantees a unique URL on every single call, so no caching layer —
+  // browser, extension, proxy, or Google's own edge — can ever serve a
+  // stale response for an identical (action, classId, token) combination,
+  // which is exactly the situation repeated testing creates.
+  const allParams = Object.assign({}, params, { token: authToken, _ts: Date.now() + '' + Math.random() });
   const url = base + '?' + new URLSearchParams(allParams).toString();
   showLoading(loadingTextForAction(params.action));
   try {
