@@ -306,8 +306,14 @@ function doLogout() {
 // ════════════════════════════════════════════════════════
 //  TILES
 // ════════════════════════════════════════════════════════
-function tileUrl(base) {
-  return base + '?token=' + encodeURIComponent(session.token);
+function tileUrl(base, extra) {
+  const params = new URLSearchParams({
+    token: session.token, studentNumber: session.studentNumber || '', classId: session.classId || '',
+    classLabel: session.classLabel || '', nameEng: session.nameEng || '', nameJP: session.nameJP || '',
+    profilePicURL: session.profilePicURL || ''
+  });
+  if (extra) Object.keys(extra).forEach(function(k) { params.set(k, extra[k]); });
+  return base + '?' + params.toString();
 }
 
 function showTiles() {
@@ -345,6 +351,21 @@ function showTiles() {
     });
   } else {
     tiles.push({ icon: 'clipboard-text', iconColor: '#c9a227', title: 'Grammar Quiz', desc: 'Not available yet.', url: null });
+  }
+
+  // Jumps straight to this class's current grammar-selection cycle (the
+  // colour-coded feedback + choose-your-unit screen) rather than the
+  // forum's own dashboard — same shortcut the old all-in-one dashboard's
+  // "Blog Grammar Analysis" tile provided, just routed dynamically via
+  // getCurrentGrammarCycle instead of a fixed URL.
+  if (isToolEnabled('forum')) {
+    tiles.push({
+      icon: 'search', iconColor: '#534ab7', title: 'Grammar Analysis',
+      desc: 'View feedback on your latest blog entry and choose your next unit.',
+      url: tileUrl(TOOL_URLS.forum, { goto: 'grammar' })
+    });
+  } else {
+    tiles.push({ icon: 'search', iconColor: '#534ab7', title: 'Grammar Analysis', desc: 'Not available yet.', url: null });
   }
 
   const container = document.getElementById('tiles-container');

@@ -109,10 +109,10 @@
   .back-btn { background: none; border: none; color: var(--ink-mute); font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
   .back-btn:hover { color: var(--accent); }
   .panel-header h2 { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; }
-  .subpanel-nav { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .subpanel-nav { display: flex; gap: 5px; margin-bottom: 20px; flex-wrap: wrap; }
   .subpanel-nav button {
-    background: var(--paper-2); border: 1px solid var(--rule); border-radius: 8px; padding: 7px 14px;
-    font-size: 12px; font-weight: 600; color: var(--ink-soft); cursor: pointer;
+    background: var(--paper-2); border: 1px solid var(--rule); border-radius: 8px; padding: 6px 9px;
+    font-size: 11.5px; font-weight: 600; color: var(--ink-soft); cursor: pointer; white-space: nowrap;
   }
   .subpanel-nav button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
   .card { background: #fff; border: 1px solid var(--rule); border-radius: 14px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px; }
@@ -242,7 +242,7 @@
 
 <div class="loading-overlay" id="loading-overlay">
   <div class="loading-spinner-lg"></div>
-  <div class="loading-text">Saving…</div>
+  <div class="loading-text">Loading…</div>
 </div>
 
 <div class="modal-overlay" id="studentSearchModal">
@@ -454,8 +454,8 @@
 // ════════════════════════════════════════════════════════
 //  CONFIG — stamped in automatically by Genesis, see Decision Log §9
 // ════════════════════════════════════════════════════════
-const FORUM_ENGINE_URL = 'https://script.google.com/macros/s/AKfycbw5J9WRH-wsUVkFLaTI18MBMnjv3K8WHdF3l7_GwtXTADyHPheHDxHt8E4sqbGxXz8M/exec';
-const QUIZ_ENGINE_URL  = 'https://script.google.com/macros/s/AKfycbzvcDXQzrmVl_2EFheKCnTeke4Cd06jm7HzpNrwB6jk1G1v0ZmOFFmbBYDZ37GS1ww3vg/exec';
+const FORUM_ENGINE_URL = 'https://script.google.com/macros/s/AKfycbw327NKjwb_rJwnwGlLnIzhYL_tBxFomEluyAFp9sHli6LKgJE5OT2pJA6WBaPhM0JoDw/exec';
+const QUIZ_ENGINE_URL  = 'https://script.google.com/macros/s/AKfycbzirSLXaqEV1StW4Abc3J4wiOpIwRNT6dx-hXES0TgO7Y7yU_Vs5cCvD76H6jchD6DD/exec';
 
 // ════════════════════════════════════════════════════════
 //  STATE
@@ -487,7 +487,7 @@ async function api(engine, params) {
   const base = engine === 'quiz' ? QUIZ_ENGINE_URL : FORUM_ENGINE_URL;
   const allParams = Object.assign({}, params, { token: authToken });
   const url = base + '?' + new URLSearchParams(allParams).toString();
-  showLoading();
+  showLoading(loadingTextForAction(params.action));
   try {
     const data = await xhrGet(url);
     if (!data.ok && !data.requiresPassword) throw new Error(data.error || 'Request failed');
@@ -496,9 +496,16 @@ async function api(engine, params) {
     hideLoading();
   }
 }
+function loadingTextForAction(action) {
+  if (action === 'login' || action === 'teacherLogin') return 'Logging in…';
+  // Read-only lookups (get*/list*) are "Loading…"; everything else
+  // creates, updates, or writes something, so it's "Saving…".
+  if (/^(get|list)/.test(action || '')) return 'Loading…';
+  return 'Saving…';
+}
 function showLoading(text) {
   const overlay = document.getElementById('loading-overlay');
-  overlay.querySelector('.loading-text').textContent = text || 'Saving…';
+  overlay.querySelector('.loading-text').textContent = text || 'Loading…';
   overlay.classList.add('show');
 }
 function hideLoading() {
@@ -743,12 +750,27 @@ async function loadRosterPanel() {
   }
 }
 
+async function readTextFileAutoEncoding(file) {
+  const buf = await file.arrayBuffer();
+  try {
+    // Strict UTF-8 decode — throws if the bytes aren't valid UTF-8, rather
+    // than silently replacing bad bytes with U+FFFD (which is what a plain
+    // file.text() does, and is exactly how Shift-JIS roster exports were
+    // getting silently mangled before this fix).
+    return new TextDecoder('utf-8', { fatal: true }).decode(buf);
+  } catch (e) {
+    // Shift-JIS is the standard encoding for Japanese Windows/Excel exports
+    // (this school's roster CSVs included) — fall back to it automatically.
+    return new TextDecoder('shift_jis').decode(buf);
+  }
+}
+
 async function importRosterCsv() {
   const fileInput = document.getElementById('roster-csv-file');
   const file = fileInput.files[0];
   if (!file) { alert('Choose a CSV file first.'); return; }
 
-  const csv = await file.text();
+  const csv = await readTextFileAutoEncoding(file);
   const data = await api('forum', { action: 'importRosterCsv', classId: currentClassId, csv: csv });
   fileInput.value = '';
   alert('Added ' + data.added + ' student(s).');
