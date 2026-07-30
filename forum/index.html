@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EWS Weekly Forum</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1a2e; --ink-soft: #4a4a6a; --ink-mute: #8888aa;
+    --paper: #faf9f6; --paper-2: #f2f0eb; --paper-3: #e8e5de;
+    --accent: #2e5ba8; --accent-lt: #dde7f7;
+    --rule: rgba(26,26,46,0.10); --shadow: 0 2px 16px rgba(26,26,46,0.08);
+    /* CCF colour scale — Decision Log §6 / CCF handover: frozen snapshot
+       colours, never recomputed after being written. */
+    --ccf-green: #d7ecdd; --ccf-yellow: #f7ecc4; --ccf-orange: #f5d9b8; --ccf-red: #f3caca;
+    --ccf-purple: #E6DEF7; --ccf-grey: #e2e2e2;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--paper); color: var(--ink); min-height: 100vh; line-height: 1.6; }
+  header { background: var(--ink); padding: 22px 32px; display: flex; align-items: center; justify-content: space-between; }
+  .header-text h1 { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; color: #fff; }
+  .header-text p { font-size: 10px; color: rgba(255,255,255,0.45); letter-spacing: 0.05em; text-transform: uppercase; margin-top: 2px; }
+  .header-btn { font-size: 12px; color: rgba(255,255,255,0.65); background: none; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 14px; cursor: pointer; }
+
+  main { max-width: 680px; margin: 0 auto; padding: 32px 20px 80px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+  .tabs button {
+    background: var(--paper-2); border: 1px solid var(--rule); border-radius: 20px; padding: 8px 16px;
+    font-size: 13px; font-weight: 600; color: var(--ink-soft); cursor: pointer;
+  }
+  .tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .card { background: #fff; border: 1px solid var(--rule); border-radius: 16px; padding: 24px; box-shadow: var(--shadow); margin-bottom: 16px; }
+  .card h3 { font-family: 'Fraunces', serif; font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .card .meta { font-size: 12px; color: var(--ink-mute); margin-bottom: 14px; }
+
+  textarea, .text-input {
+    width: 100%; border: 1.5px solid var(--paper-3); border-radius: 9px; padding: 12px 14px;
+    font-family: 'DM Sans', sans-serif; font-size: 15px; color: var(--ink); background: var(--paper); outline: none;
+  }
+  textarea { min-height: 140px; resize: vertical; }
+  textarea:focus, .text-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-lt); }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 20px;
+    background: var(--accent); color: #fff; border: none; border-radius: 9px;
+    font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 12px;
+  }
+  .btn:hover { background: #1f4690; }
+  .btn-ghost { background: none; border: 1.5px solid var(--paper-3); color: var(--ink-soft); }
+
+  .post-text { font-size: 15px; line-height: 1.9; }
+  .annotated-error { border-radius: 3px; padding: 1px 3px; cursor: help; border-bottom: 2px solid; }
+  .annotated-error.green  { background: var(--ccf-green); border-color: var(--green, #2a7a4e); }
+  .annotated-error.yellow { background: var(--ccf-yellow); border-color: var(--gold, #c9a227); }
+  .annotated-error.orange { background: var(--ccf-orange); border-color: #c9782a; }
+  .annotated-error.red    { background: var(--ccf-red); border-color: var(--red, #b03030); }
+  .annotated-error.purple { background: var(--ccf-purple); border-color: #8b6fc9; }
+  .annotated-error.grey   { background: var(--ccf-grey); border-color: #999; }
+  .annotated-error .unit-tag { font-size: 10px; vertical-align: super; color: var(--ink-mute); }
+
+  .legend { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; font-size: 11px; }
+  .legend span { display: inline-flex; align-items: center; gap: 4px; }
+  .legend .swatch { width: 10px; height: 10px; border-radius: 3px; }
+
+  .comment { padding: 10px 0; border-top: 1px solid var(--rule); font-size: 13px; }
+  .comment .author { font-weight: 600; }
+
+  .msg { padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-top: 12px; display: none; }
+  .msg.error { background: #fce8e8; color: #b03030; display: block; }
+  .msg.ok { background: #e3f3ea; color: #2a7a4e; display: block; }
+  .empty-note { font-size: 13px; color: var(--ink-mute); padding: 20px; text-align: center; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-text"><h1>Weekly Forum</h1><p>English Writing Skills</p></div>
+</header>
+
+<main>
+  <div class="tabs">
+    <button class="active" onclick="showTab('write')" id="tab-write">Write</button>
+    <button onclick="showTab('feedback')" id="tab-feedback">Feedback</button>
+    <button onclick="showTab('browse')" id="tab-browse">Class Posts</button>
+  </div>
+
+  <!-- WRITE -->
+  <div class="tab-content active" id="content-write">
+    <div class="card">
+      <h3>This week's entry</h3>
+      <p class="meta" id="write-status">Loading…</p>
+      <textarea id="post-text" placeholder="Write your blog entry for this week…"></textarea>
+      <button class="btn" onclick="submitPost()">Post →</button>
+      <div class="msg" id="write-msg"></div>
+    </div>
+  </div>
+
+  <!-- FEEDBACK (CCF colour-annotated) -->
+  <div class="tab-content" id="content-feedback">
+    <div class="legend">
+      <span><span class="swatch" style="background:var(--ccf-green)"></span>Unstudied / fresh</span>
+      <span><span class="swatch" style="background:var(--ccf-yellow)"></span>Recurring 1–2x</span>
+      <span><span class="swatch" style="background:var(--ccf-orange)"></span>Recurring 3–4x</span>
+      <span><span class="swatch" style="background:var(--ccf-red)"></span>Recurring 5+</span>
+      <span><span class="swatch" style="background:var(--ccf-purple)"></span>Spelling/punctuation</span>
+    </div>
+    <div class="card" id="feedback-card"><div class="empty-note">Loading…</div></div>
+  </div>
+
+  <!-- BROWSE CLASS POSTS -->
+  <div class="tab-content" id="content-browse">
+    <div id="browse-list"><div class="empty-note">Loading…</div></div>
+  </div>
+</main>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  CONFIG — stamped in automatically by Genesis
+// ════════════════════════════════════════════════════════
+const FORUM_ENGINE_URL = 'https://script.google.com/macros/s/AKfycbzEc7ZRrnBOQDgKcYwwQXKCg98lr2rEbM55Q9tB696TpQUTRO5f_Hwp1l8r46KGEhHBew/exec';
+
+// ════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════
+const authToken = new URLSearchParams(window.location.search).get('token') || '';
+
+function xhrGet(url) {
+  return new Promise(function(resolve, reject) {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.onload = function() { try { resolve(JSON.parse(xhr.responseText)); } catch (e) { reject(new Error('Invalid response')); } };
+    xhr.onerror = function() { reject(new Error('Network error')); };
+    xhr.send();
+  });
+}
+async function api(params) {
+  const allParams = Object.assign({}, params, { token: authToken });
+  return xhrGet(FORUM_ENGINE_URL + '?' + new URLSearchParams(allParams).toString());
+}
+function esc(s) { return s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function showTab(name) {
+  ['write', 'feedback', 'browse'].forEach(function(n) {
+    document.getElementById('content-' + n).classList.toggle('active', n === name);
+    document.getElementById('tab-' + n).classList.toggle('active', n === name);
+  });
+  if (name === 'feedback') loadFeedback();
+  if (name === 'browse') loadBrowse();
+}
+
+// ════════════════════════════════════════════════════════
+//  WRITE
+// ════════════════════════════════════════════════════════
+async function loadWriteStatus() {
+  try {
+    const data = await api({ action: 'getPosts' });
+    const posts = data.posts || [];
+    const thisWeek = String(getIsoWeek());
+    const existing = posts.find(function(p) { return String(p.Week) === thisWeek; });
+    if (existing) {
+      document.getElementById('write-status').textContent = 'You already posted this week — posting again will add a new entry, not edit this one.';
+      document.getElementById('post-text').value = existing.Text || '';
+    } else {
+      document.getElementById('write-status').textContent = 'Nothing posted yet for this week.';
+    }
+  } catch (e) {
+    document.getElementById('write-status').textContent = 'Connection error.';
+  }
+}
+function getIsoWeek() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 1);
+  return Math.ceil((((now - start) / 86400000) + start.getDay() + 1) / 7);
+}
+async function submitPost() {
+  const text = document.getElementById('post-text').value.trim();
+  const msg = document.getElementById('write-msg');
+  msg.className = 'msg';
+  if (!text) { msg.textContent = 'Write something first.'; msg.className = 'msg error'; return; }
+  try {
+    await api({ action: 'submitPost', week: getIsoWeek(), text: text });
+    msg.textContent = 'Posted!'; msg.className = 'msg ok';
+  } catch (e) {
+    msg.textContent = 'Connection error.'; msg.className = 'msg error';
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  FEEDBACK — CCF colour-annotated view
+// ════════════════════════════════════════════════════════
+// Renders each studied unit as a coloured chip showing its current
+// recurrence-clock status — the frozen-snapshot colours from
+// getColourAnnotations, never recomputed client-side (CCF handover).
+async function loadFeedback() {
+  const card = document.getElementById('feedback-card');
+  try {
+    const week = String(getIsoWeek());
+    const data = await api({ action: 'getColourAnnotations', week: week });
+    const annotations = data.annotations || [];
+    if (!annotations.length) {
+      card.innerHTML = '<div class="empty-note">No studied units yet — feedback appears here once you\'ve submitted a grammar unit and posted a blog entry.</div>';
+      return;
+    }
+    card.innerHTML = '<h3 style="margin-bottom:14px">Your grammar points this cycle</h3>' +
+      annotations.map(function(a) {
+        return '<div class="annotated-error ' + esc(a.Colour) + '" style="display:block;margin-bottom:8px;padding:10px 14px">' +
+          'Unit ' + esc(a.Unit) + ' <span class="unit-tag">' + esc(a.Colour) + '</span></div>';
+      }).join('');
+  } catch (e) {
+    card.innerHTML = '<div class="empty-note">Connection error.</div>';
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  BROWSE CLASS POSTS
+// ════════════════════════════════════════════════════════
+async function loadBrowse() {
+  const list = document.getElementById('browse-list');
+  try {
+    const data = await api({ action: 'getPosts' });
+    const posts = (data.posts || []).sort(function(a, b) { return new Date(b.SubmittedAt) - new Date(a.SubmittedAt); });
+    list.innerHTML = posts.length ? posts.map(function(p) {
+      return '<div class="card"><div class="meta">Week ' + esc(p.Week) + ' — ' + esc(new Date(p.SubmittedAt).toLocaleDateString()) + '</div>' +
+        '<div class="post-text">' + esc(p.Text).replace(/\\n/g, '<br>') + '</div></div>';
+    }).join('') : '<div class="empty-note">No posts yet this term.</div>';
+  } catch (e) {
+    list.innerHTML = '<div class="empty-note">Connection error.</div>';
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  BOOT
+// ════════════════════════════════════════════════════════
+if (!authToken) {
+  document.querySelector('main').innerHTML = '<div class="card"><div class="msg error">No session found — please open this page from the dashboard.</div></div>';
+} else {
+  loadWriteStatus();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EWS Teacher Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+<style>
+  :root {
+    --ink: #1a1a2e; --ink-soft: #4a4a6a; --ink-mute: #8888aa;
+    --paper: #faf9f6; --paper-2: #f2f0eb; --paper-3: #e8e5de;
+    --accent: #2e5ba8; --accent-lt: #dde7f7;
+    --red: #b03030; --red-lt: #fce8e8;
+    --green: #2a7a4e; --green-lt: #e3f3ea;
+    --gold: #c9a227; --gold-lt: #f7f0d8;
+    --rule: rgba(26,26,46,0.10);
+    --shadow: 0 2px 16px rgba(26,26,46,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--paper); color: var(--ink); min-height: 100vh; line-height: 1.6; }
+  header {
+    background: var(--ink); padding: 20px 32px; display: flex; align-items: center;
+    justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .header-mark { width: 34px; height: 34px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; color: #fff; }
+  .header-text h1 { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; color: #fff; }
+  .header-text p { font-size: 10px; color: rgba(255,255,255,0.45); letter-spacing: 0.05em; text-transform: uppercase; margin-top: 2px; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .class-badge { font-size: 11px; font-weight: 600; padding: 4px 12px; border-radius: 20px; background: rgba(255,255,255,0.12); color: #fff; letter-spacing: 0.03em; }
+  .header-btn { font-size: 12px; color: rgba(255,255,255,0.65); background: none; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 14px; cursor: pointer; }
+  .header-btn:hover { border-color: rgba(255,255,255,0.5); color: #fff; }
+
+  main { max-width: 920px; margin: 0 auto; padding: 40px 24px 80px; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* Login */
+  .login-card { background: #fff; border: 1px solid var(--rule); border-radius: 16px; padding: 44px; max-width: 380px; margin: 40px auto 0; box-shadow: var(--shadow); }
+  .login-card h2 { font-family: 'Fraunces', serif; font-size: 21px; font-weight: 600; margin-bottom: 24px; }
+  .field { margin-bottom: 14px; }
+  .field-label { font-size: 11px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 6px; display: block; }
+  .text-input, textarea, select {
+    width: 100%; min-height: 44px; border: 1.5px solid var(--paper-3); border-radius: 9px;
+    padding: 10px 14px; font-family: 'DM Sans', sans-serif; font-size: 15px; color: var(--ink);
+    background: var(--paper); outline: none;
+  }
+  .text-input:focus, textarea:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-lt); }
+  textarea { min-height: 90px; resize: vertical; font-family: 'DM Sans', monospace; font-size: 13px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; height: 42px; padding: 0 18px;
+    background: var(--accent); color: #fff; border: none; border-radius: 9px;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .btn:hover { background: #1f4690; }
+  .btn:disabled { background: var(--paper-3); color: var(--ink-mute); cursor: default; }
+  .btn-ghost { background: none; border: 1.5px solid var(--paper-3); color: var(--ink-soft); }
+  .btn-ghost:hover { border-color: var(--ink-soft); color: var(--ink); background: none; }
+  .btn-danger { background: var(--red); }
+  .btn-danger:hover { background: #8a2020; }
+  .btn-sm { height: 34px; padding: 0 12px; font-size: 12px; }
+  .msg { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-top: 12px; display: none; }
+  .msg.error { background: var(--red-lt); color: var(--red); display: block; }
+  .msg.ok { background: var(--green-lt); color: var(--green); display: block; }
+
+  /* Class Selector */
+  .selector-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+  .selector-header h2 { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; }
+  .chain-board { display: flex; flex-direction: column; gap: 16px; min-height: 80px; }
+  .chain-row { display: flex; align-items: center; gap: 0; padding: 6px; border-radius: 14px; min-height: 90px; transition: background 0.15s; }
+  .chain-row.drag-over { background: var(--accent-lt); }
+  .class-card {
+    background: #fff; border: 1px solid var(--rule); border-radius: 12px; padding: 14px 18px;
+    min-width: 150px; box-shadow: var(--shadow); cursor: pointer; position: relative;
+  }
+  .class-card:hover { border-color: var(--accent); }
+  .class-card.dragging { opacity: 0.4; }
+  .class-card .title { font-family: 'Fraunces', serif; font-size: 15px; font-weight: 600; }
+  .class-card .sub { font-size: 11px; color: var(--ink-mute); margin-top: 3px; }
+  .chain-arrow { color: var(--ink-mute); font-size: 20px; padding: 0 10px; flex-shrink: 0; }
+  .card-delete {
+    position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; border-radius: 50%;
+    background: var(--red); color: #fff; border: none; font-size: 12px; cursor: pointer;
+    display: none; align-items: center; justify-content: center;
+  }
+  .arrange-mode .card-delete { display: flex; }
+  .add-class-card {
+    min-width: 150px; border: 1.5px dashed var(--paper-3); border-radius: 12px; padding: 14px 18px;
+    display: flex; align-items: center; justify-content: center; color: var(--ink-mute);
+    cursor: pointer; font-size: 13px; min-height: 60px;
+  }
+  .add-class-card:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Hub */
+  .hub-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-top: 24px; }
+  .hub-tile {
+    background: #fff; border: 1px solid var(--rule); border-radius: 14px; padding: 24px 20px;
+    text-align: center; cursor: pointer; box-shadow: var(--shadow); transition: transform 0.15s, border-color 0.15s;
+  }
+  .hub-tile:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .hub-tile .tile-icon { font-size: 28px; color: var(--accent); margin-bottom: 10px; }
+  .hub-tile .tile-title { font-family: 'Fraunces', serif; font-size: 15px; font-weight: 600; }
+
+  /* Panels */
+  .panel-header { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
+  .back-btn { background: none; border: none; color: var(--ink-mute); font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 4px; }
+  .back-btn:hover { color: var(--accent); }
+  .panel-header h2 { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; }
+  .subpanel-nav { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+  .subpanel-nav button {
+    background: var(--paper-2); border: 1px solid var(--rule); border-radius: 8px; padding: 7px 14px;
+    font-size: 12px; font-weight: 600; color: var(--ink-soft); cursor: pointer;
+  }
+  .subpanel-nav button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .card { background: #fff; border: 1px solid var(--rule); border-radius: 14px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px; }
+  .card h3 { font-family: 'Fraunces', serif; font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .data-table th { text-align: left; padding: 8px 10px; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-mute); border-bottom: 1px solid var(--rule); }
+  .data-table td { padding: 9px 10px; border-bottom: 1px solid var(--rule); }
+  .data-table tr:hover td { background: var(--paper-2); }
+  .row-flex { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+  .row-flex .field { flex: 1; min-width: 120px; margin-bottom: 0; }
+  .chip { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 12px; }
+  .chip-green { background: var(--green-lt); color: var(--green); }
+  .chip-gold { background: var(--gold-lt); color: var(--gold); }
+  .chip-red { background: var(--red-lt); color: var(--red); }
+  .empty-note { font-size: 13px; color: var(--ink-mute); padding: 20px; text-align: center; }
+  .danger-zone { border-color: var(--red-lt); background: #fffaf9; }
+  .danger-zone h3 { color: var(--red); }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="header-mark">EWS</div>
+    <div class="header-text"><h1>Teacher Portal</h1><p>Unified Platform</p></div>
+  </div>
+  <div class="header-right">
+    <span class="class-badge" id="header-class-badge" style="display:none"></span>
+    <button class="header-btn" id="hub-nav-btn" style="display:none" onclick="goHub()">All classes</button>
+    <button class="header-btn" id="logout-btn" style="display:none" onclick="doLogout()">Sign out</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- LOGIN -->
+  <div class="screen active" id="screen-login">
+    <div class="login-card">
+      <h2>Sign in</h2>
+      <div class="field"><label class="field-label">Username</label><input class="text-input" id="login-user"></div>
+      <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
+      <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
+      <div class="msg" id="login-msg"></div>
+    </div>
+  </div>
+
+  <!-- CLASS SELECTOR -->
+  <div class="screen" id="screen-selector">
+    <div class="selector-header">
+      <h2>Classes</h2>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" id="arrange-toggle-btn" onclick="toggleArrange()">Arrange</button>
+      </div>
+    </div>
+    <p style="font-size:13px;color:var(--ink-mute);margin-bottom:16px" id="arrange-hint" style="display:none">
+      Drag a class onto another to chain them (progression, left → right). Drag onto an empty row for a fresh start.
+    </p>
+    <div class="chain-board" id="chain-board"></div>
+    <div class="msg" id="selector-msg"></div>
+  </div>
+
+  <!-- HUB -->
+  <div class="screen" id="screen-hub">
+    <div class="hub-tiles">
+      <div class="hub-tile" onclick="openPanel('roster')"><div class="tile-icon"><i class="ti ti-users"></i></div><div class="tile-title">Roster / Settings</div></div>
+      <div class="hub-tile" onclick="openPanel('typing')"><div class="tile-icon"><i class="ti ti-keyboard"></i></div><div class="tile-title">Typing Skills</div></div>
+      <div class="hub-tile" onclick="openPanel('forum')"><div class="tile-icon"><i class="ti ti-message-2"></i></div><div class="tile-title">Forum / CCF</div></div>
+      <div class="hub-tile" onclick="openPanel('quiz')"><div class="tile-icon"><i class="ti ti-clipboard-text"></i></div><div class="tile-title">Grammar Quiz</div></div>
+    </div>
+  </div>
+
+  <!-- ROSTER / SETTINGS PANEL -->
+  <div class="screen" id="screen-panel-roster">
+    <div class="panel-header"><button class="back-btn" onclick="goHub()">← Hub</button><h2>Roster / Settings</h2></div>
+
+    <div class="card">
+      <h3>Active students</h3>
+      <div id="roster-table-wrap"><div class="empty-note">Loading…</div></div>
+    </div>
+
+    <div class="card">
+      <h3>Add students (CSV)</h3>
+      <p style="font-size:12px;color:var(--ink-mute);margin-bottom:10px">Columns: Student Number, Name (JP), Name (Eng), Password (optional). One student per line.</p>
+      <textarea id="roster-csv" placeholder="2511001,阿部ガイト,ABE GAITO,&#10;2511002,鈴木ハナ,SUZUKI HANA,"></textarea>
+      <button class="btn btn-sm" style="margin-top:10px" onclick="importRosterCsv()">Import</button>
+    </div>
+
+    <div class="card" id="move-class-card" style="display:none">
+      <h3>Promote class</h3>
+      <p style="font-size:13px;color:var(--ink-mute);margin-bottom:12px" id="move-class-desc"></p>
+      <button class="btn" id="move-class-btn" onclick="moveClass()">Move class to <span id="move-target-label"></span> →</button>
+    </div>
+
+    <div class="card danger-zone">
+      <h3 id="reset-card-title">Archive &amp; Reset Class</h3>
+      <p style="font-size:13px;color:var(--ink-mute);margin-bottom:12px" id="reset-card-desc">
+        Sweeps this term's forum posts, quiz results, and colour history into the Archive — never deleted, just moved out of the way — then clears this class for the next intake.
+      </p>
+      <button class="btn btn-danger" onclick="archiveResetClass()" id="reset-card-btn">Archive &amp; Reset Class</button>
+    </div>
+  </div>
+
+  <!-- TYPING SKILLS PANEL -->
+  <div class="screen" id="screen-panel-typing">
+    <div class="panel-header"><button class="back-btn" onclick="goHub()">← Hub</button><h2>Typing Skills</h2></div>
+    <div class="subpanel-nav">
+      <button class="active" onclick="showTypingSub('sessions')" id="typing-nav-sessions">Sessions</button>
+      <button onclick="showTypingSub('paragraphs')" id="typing-nav-paragraphs">Paragraphs</button>
+      <button onclick="showTypingSub('results')" id="typing-nav-results">Results</button>
+    </div>
+
+    <div id="typing-sub-sessions">
+      <div class="card">
+        <h3>Create session</h3>
+        <div class="row-flex">
+          <div class="field"><label class="field-label">Name</label><input class="text-input" id="ts-name" placeholder="Typing Skill Check #1"></div>
+          <div class="field"><label class="field-label">Number</label><input class="text-input" id="ts-number" type="number" value="1"></div>
+          <div class="field"><label class="field-label">Threshold %</label><input class="text-input" id="ts-threshold" type="number" value="80"></div>
+        </div>
+        <div style="margin-top:10px"><label style="font-size:13px"><input type="checkbox" id="ts-baseline"> This is the baseline session</label></div>
+        <button class="btn btn-sm" style="margin-top:12px" onclick="createTypingSession()">Create</button>
+      </div>
+      <div class="card"><h3>Existing sessions</h3><div id="typing-sessions-list"><div class="empty-note">Loading…</div></div></div>
+    </div>
+
+    <div id="typing-sub-paragraphs" style="display:none">
+      <div class="card">
+        <h3>Add paragraph</h3>
+        <div class="row-flex">
+          <div class="field"><label class="field-label">Session #</label><input class="text-input" id="tp-session" type="number" value="1"></div>
+          <div class="field"><label class="field-label">Order</label><input class="text-input" id="tp-order" type="number" value="1"></div>
+        </div>
+        <div class="field" style="margin-top:10px"><label class="field-label">Text</label><textarea id="tp-text"></textarea></div>
+        <button class="btn btn-sm" onclick="addTypingParagraph()">Add</button>
+      </div>
+    </div>
+
+    <div id="typing-sub-results" style="display:none">
+      <div class="card">
+        <h3>Look up a student</h3>
+        <select id="typing-results-student"></select>
+        <button class="btn btn-sm" style="margin-top:10px" onclick="loadTypingResults()">Show history</button>
+        <div id="typing-results-table" style="margin-top:14px"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FORUM / CCF PANEL -->
+  <div class="screen" id="screen-panel-forum">
+    <div class="panel-header"><button class="back-btn" onclick="goHub()">← Hub</button><h2>Forum / CCF</h2></div>
+    <div class="subpanel-nav">
+      <button class="active" onclick="showForumSub('cycle')" id="forum-nav-cycle">Cycle &amp; Scaffold</button>
+      <button onclick="showForumSub('groups')" id="forum-nav-groups">Groups</button>
+      <button onclick="showForumSub('units')" id="forum-nav-units">Manual Unit Entry</button>
+    </div>
+
+    <div id="forum-sub-cycle">
+      <div class="card">
+        <h3>Current cycle</h3>
+        <div id="scaffold-current"><div class="empty-note">Loading…</div></div>
+        <div class="row-flex" style="margin-top:14px">
+          <div class="field"><label class="field-label">Scaffolded unit for this cycle</label><input class="text-input" id="scaffold-unit"></div>
+          <button class="btn btn-sm" onclick="setScaffold()">Save</button>
+        </div>
+        <button class="btn btn-ghost btn-sm" style="margin-top:14px" onclick="advanceCycle()">Advance to next cycle →</button>
+      </div>
+    </div>
+
+    <div id="forum-sub-groups" style="display:none">
+      <div class="card">
+        <h3>Groups</h3>
+        <p style="font-size:12px;color:var(--ink-mute);margin-bottom:10px">One line per student: Group Name, Student Number</p>
+        <textarea id="groups-input" placeholder="Group A,2511001&#10;Group A,2511002&#10;Group B,2511003"></textarea>
+        <button class="btn btn-sm" style="margin-top:10px" onclick="saveGroups()">Save groups</button>
+      </div>
+    </div>
+
+    <div id="forum-sub-units" style="display:none">
+      <div class="card">
+        <h3>Manual unit submission</h3>
+        <p style="font-size:12px;color:var(--ink-mute);margin-bottom:10px">For a student who came to you directly, per CCF's one-door policy. Warns rather than blocks if already studied.</p>
+        <div class="row-flex">
+          <div class="field"><label class="field-label">Student</label><select id="unit-student"></select></div>
+          <div class="field"><label class="field-label">Unit</label><input class="text-input" id="unit-main"></div>
+          <div class="field"><label class="field-label">Cycle (blank = current)</label><input class="text-input" id="unit-cycle"></div>
+        </div>
+        <button class="btn btn-sm" style="margin-top:10px" onclick="submitUnitManual()">Submit</button>
+        <div class="msg" id="unit-msg"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRAMMAR QUIZ PANEL -->
+  <div class="screen" id="screen-panel-quiz">
+    <div class="panel-header"><button class="back-btn" onclick="goHub()">← Hub</button><h2>Grammar Quiz</h2></div>
+    <div class="subpanel-nav">
+      <button class="active" onclick="showQuizSub('control')" id="quiz-nav-control">Test Control</button>
+      <button onclick="showQuizSub('flags')" id="quiz-nav-flags">Flags</button>
+      <button onclick="showQuizSub('qb')" id="quiz-nav-qb">Question Bank</button>
+    </div>
+
+    <div id="quiz-sub-control">
+      <div class="card">
+        <h3>This week's quiz</h3>
+        <div id="test-control-status"><div class="empty-note">Loading…</div></div>
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button class="btn btn-sm" onclick="setTestControl('open')">Open quiz</button>
+          <button class="btn btn-ghost btn-sm" onclick="setTestControl('closed')">Close quiz</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="quiz-sub-flags" style="display:none">
+      <div class="card"><h3>Flagged questions</h3><div id="flags-table"><div class="empty-note">Loading…</div></div></div>
+    </div>
+
+    <div id="quiz-sub-qb" style="display:none">
+      <div class="card">
+        <h3>Add question</h3>
+        <div class="row-flex">
+          <div class="field"><label class="field-label">Tier</label>
+            <select id="qb-tier"><option>Basic</option><option>Intermediate</option><option>Advanced</option></select>
+          </div>
+          <div class="field"><label class="field-label">Unit</label><input class="text-input" id="qb-unit"></div>
+        </div>
+        <div class="field" style="margin-top:10px"><label class="field-label">Question</label><input class="text-input" id="qb-question"></div>
+        <div class="field" style="margin-top:10px"><label class="field-label">Answer</label><input class="text-input" id="qb-answer"></div>
+        <button class="btn btn-sm" style="margin-top:10px" onclick="addQuestion()">Add</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  CONFIG — stamped in automatically by Genesis, see Decision Log §9
+// ════════════════════════════════════════════════════════
+const FORUM_ENGINE_URL = 'https://script.google.com/macros/s/AKfycbzEc7ZRrnBOQDgKcYwwQXKCg98lr2rEbM55Q9tB696TpQUTRO5f_Hwp1l8r46KGEhHBew/exec';
+const QUIZ_ENGINE_URL  = 'https://script.google.com/macros/s/AKfycbzLI5i9mTqzTmUYjwOHyRu1YicyHhuuqM4yxBFnwD6BkhZuy5s-Dz_LZ_RAXZwMzzTI/exec';
+
+// ════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════
+let authToken = sessionStorage.getItem('tp_token') || '';
+let classes = [];           // full Classes list from System sheet
+let currentClassId = sessionStorage.getItem('tp_class') || '';
+let arrangeMode = false;
+let dragSourceId = null;
+
+// ════════════════════════════════════════════════════════
+//  API HELPER — XHR + GET, matches existing system convention
+//  (avoids GAS CORS redirect issues with fetch/POST — see TeacherPortal.gs)
+// ════════════════════════════════════════════════════════
+function xhrGet(url) {
+  return new Promise(function(resolve, reject) {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.onload = function() {
+      try { resolve(JSON.parse(xhr.responseText)); }
+      catch (e) { reject(new Error('Invalid response: ' + xhr.responseText.slice(0, 150))); }
+    };
+    xhr.onerror = function() { reject(new Error('Network error')); };
+    xhr.send();
+  });
+}
+async function api(engine, params) {
+  const base = engine === 'quiz' ? QUIZ_ENGINE_URL : FORUM_ENGINE_URL;
+  const allParams = Object.assign({}, params, { token: authToken });
+  const url = base + '?' + new URLSearchParams(allParams).toString();
+  const data = await xhrGet(url);
+  if (!data.ok && !data.requiresPassword) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+function esc(s) { return s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ════════════════════════════════════════════════════════
+//  SCREENS
+// ════════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+}
+
+// ════════════════════════════════════════════════════════
+//  LOGIN
+// ════════════════════════════════════════════════════════
+async function doLogin() {
+  const username = document.getElementById('login-user').value.trim();
+  const password = document.getElementById('login-pass').value.trim();
+  const btn = document.getElementById('login-btn');
+  const msg = document.getElementById('login-msg');
+  msg.className = 'msg';
+  if (!username || !password) { msg.textContent = 'Enter a username and password.'; msg.className = 'msg error'; return; }
+
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    const url = FORUM_ENGINE_URL + '?' + new URLSearchParams({ action: 'teacherLogin', username: username, password: password }).toString();
+    const data = await xhrGet(url);
+    if (!data.ok) { msg.textContent = data.error || 'Login failed.'; msg.className = 'msg error'; return; }
+    authToken = data.token;
+    sessionStorage.setItem('tp_token', authToken);
+    document.getElementById('hub-nav-btn').style.display = 'inline-block';
+    document.getElementById('logout-btn').style.display = 'inline-block';
+    await loadClasses();
+    showScreen('screen-selector');
+  } catch (e) {
+    msg.textContent = 'Connection error. Please try again.'; msg.className = 'msg error';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Sign in →';
+  }
+}
+function doLogout() {
+  authToken = ''; currentClassId = '';
+  sessionStorage.clear();
+  document.getElementById('hub-nav-btn').style.display = 'none';
+  document.getElementById('logout-btn').style.display = 'none';
+  document.getElementById('header-class-badge').style.display = 'none';
+  showScreen('screen-login');
+}
+
+// ════════════════════════════════════════════════════════
+//  CLASS SELECTOR + ARRANGE BOARD  (Decision Log §5, §7)
+// ════════════════════════════════════════════════════════
+async function loadClasses() {
+  const data = await api('forum', { action: 'listClasses' });
+  classes = (data.classes || []).filter(function(c) { return c.Status === 'active'; });
+  renderChainBoard();
+}
+
+// Rows are derived purely from the PromotesFrom graph — never stored
+// separately (Decision Log §5): a chain's entry point is any class nobody
+// points away from as "promotes into it" backwards... concretely, walk from
+// every class that ISN'T pointed to as someone's PromotesFrom predecessor
+// chain root, then follow forward links.
+function computeChainRows() {
+  const byId = {}; classes.forEach(function(c) { byId[c.ClassId] = c; });
+  const hasPredecessor = {}; classes.forEach(function(c) { if (c.PromotesFrom) hasPredecessor[c.PromotesFrom] = true; });
+  // A root is a class with no OTHER class pointing FROM it into something —
+  // i.e. every class is either a root (nothing promotes into it from here)
+  // or a continuation. Roots = classes whose ClassId isn't any other class's
+  // PromotesFrom target reversed... simplest correct rule: a class is a
+  // chain-start if no class has ITS ClassId as a target, i.e. nothing lists
+  // this class as what comes before it going backward. Practically: find
+  // classes that are never referenced as someone else's PromotesFrom.
+  const referencedAsTarget = {};
+  classes.forEach(function(c) {
+    // c.PromotesFrom means "c comes after that class" — so that class has
+    // a forward edge TO c. Track forward edges instead:
+  });
+  const forwardEdge = {}; // predecessor ClassId -> successor ClassId
+  classes.forEach(function(c) { if (c.PromotesFrom) forwardEdge[c.PromotesFrom] = c.ClassId; });
+  const isSuccessor = {}; Object.values(forwardEdge).forEach(function(id) { isSuccessor[id] = true; });
+
+  const roots = classes.filter(function(c) { return !isSuccessor[c.ClassId]; });
+  return roots.map(function(root) {
+    const row = [root];
+    let cursor = root.ClassId;
+    while (forwardEdge[cursor]) {
+      const nextId = forwardEdge[cursor];
+      const nextClass = byId[nextId];
+      if (!nextClass) break;
+      row.push(nextClass);
+      cursor = nextId;
+    }
+    return row;
+  });
+}
+
+function renderChainBoard() {
+  const board = document.getElementById('chain-board');
+  const rows = computeChainRows();
+  board.innerHTML = '';
+  rows.forEach(function(row) {
+    const rowEl = document.createElement('div');
+    rowEl.className = 'chain-row';
+    rowEl.ondragover = function(e) { e.preventDefault(); rowEl.classList.add('drag-over'); };
+    rowEl.ondragleave = function() { rowEl.classList.remove('drag-over'); };
+    rowEl.ondrop = function(e) { handleDrop(e, rowEl, row); };
+    row.forEach(function(c, i) {
+      if (i > 0) { const arrow = document.createElement('span'); arrow.className = 'chain-arrow'; arrow.textContent = '→'; rowEl.appendChild(arrow); }
+      rowEl.appendChild(renderClassCard(c));
+    });
+    board.appendChild(rowEl);
+  });
+  // An empty row at the end, always available as a drop target for
+  // "start a new chain."
+  const emptyRow = document.createElement('div');
+  emptyRow.className = 'chain-row';
+  emptyRow.style.border = '1.5px dashed var(--paper-3)';
+  emptyRow.ondragover = function(e) { e.preventDefault(); emptyRow.classList.add('drag-over'); };
+  emptyRow.ondragleave = function() { emptyRow.classList.remove('drag-over'); };
+  emptyRow.ondrop = function(e) { handleDrop(e, emptyRow, []); };
+  board.appendChild(emptyRow);
+
+  const addCard = document.createElement('div');
+  addCard.className = 'add-class-card';
+  addCard.textContent = '+ Add Class';
+  addCard.onclick = addClass;
+  board.appendChild(addCard);
+}
+
+function renderClassCard(c) {
+  const card = document.createElement('div');
+  card.className = 'class-card';
+  card.draggable = arrangeMode;
+  card.innerHTML = '<div class="title">' + esc(c.Label) + '</div><div class="sub">' + (arrangeMode ? 'Drag to reorder' : 'Tap to open') + '</div>' +
+    '<button class="card-delete" onclick="event.stopPropagation();deleteClass(\'' + c.ClassId + '\')">×</button>';
+  card.ondragstart = function() { dragSourceId = c.ClassId; card.classList.add('dragging'); };
+  card.ondragend = function() { card.classList.remove('dragging'); };
+  card.onclick = function() { if (!arrangeMode) selectClass(c); };
+  return card;
+}
+
+async function handleDrop(e, rowEl, row) {
+  e.preventDefault();
+  rowEl.classList.remove('drag-over');
+  if (!dragSourceId || !arrangeMode) return;
+  const targetClass = row.length ? row[row.length - 1] : null; // drop = "chain after the row's last card"
+  if (targetClass && targetClass.ClassId === dragSourceId) return;
+
+  const proceed = confirm(targetClass
+    ? 'Chain this class to promote from "' + targetClass.Label + '"? This changes semester rollover — usually a one-time setup decision.'
+    : 'Make this a new, independent chain? This changes semester rollover — usually a one-time setup decision.');
+  if (!proceed) return;
+
+  await api('forum', { action: 'reorderClasses', moves: JSON.stringify([{ classId: dragSourceId, promotesFrom: targetClass ? targetClass.ClassId : '' }]) });
+  await loadClasses();
+}
+
+function toggleArrange() {
+  arrangeMode = !arrangeMode;
+  document.getElementById('arrange-toggle-btn').textContent = arrangeMode ? 'Done arranging' : 'Arrange';
+  document.getElementById('arrange-toggle-btn').classList.toggle('btn-ghost', !arrangeMode);
+  document.getElementById('arrange-hint').style.display = arrangeMode ? 'block' : 'none';
+  document.getElementById('chain-board').classList.toggle('arrange-mode', arrangeMode);
+  renderChainBoard();
+}
+
+async function addClass() {
+  const label = prompt('Class name (e.g. "EWS I"):');
+  if (!label) return;
+  await api('forum', { action: 'addClass', label: label });
+  await loadClasses();
+}
+async function deleteClass(classId) {
+  if (!confirm('Archive this class? Its data is kept, just no longer active.')) return;
+  await api('forum', { action: 'deleteClass', classId: classId });
+  await loadClasses();
+}
+
+function selectClass(c) {
+  currentClassId = c.ClassId;
+  sessionStorage.setItem('tp_class', currentClassId);
+  document.getElementById('header-class-badge').textContent = c.Label;
+  document.getElementById('header-class-badge').style.display = 'inline-block';
+  showScreen('screen-hub');
+}
+function goHub() { showScreen('screen-hub'); }
+
+// ════════════════════════════════════════════════════════
+//  PANEL ROUTING
+// ════════════════════════════════════════════════════════
+function openPanel(name) {
+  showScreen('screen-panel-' + name);
+  if (name === 'roster') loadRosterPanel();
+  if (name === 'typing') loadTypingPanel();
+  if (name === 'forum') loadForumPanel();
+  if (name === 'quiz') loadQuizPanel();
+}
+
+// ════════════════════════════════════════════════════════
+//  ROSTER / SETTINGS PANEL
+// ════════════════════════════════════════════════════════
+async function loadRosterPanel() {
+  const data = await api('forum', { action: 'getRoster', classId: currentClassId });
+  const rows = data.roster || [];
+  const wrap = document.getElementById('roster-table-wrap');
+  wrap.innerHTML = rows.length ? (
+    '<table class="data-table"><thead><tr><th>#</th><th>Name</th><th>Tier</th><th></th></tr></thead><tbody>' +
+    rows.map(function(r) {
+      return '<tr><td>' + esc(r.StudentNumber) + '</td><td>' + esc(r.NameEng) + '</td><td>' + esc(r.TextbookTier) + '</td>' +
+        '<td><button class="btn btn-ghost btn-sm" onclick="removeStudent(\'' + r.StudentId + '\')">Remove</button></td></tr>';
+    }).join('') + '</tbody></table>'
+  ) : '<div class="empty-note">No students yet — import a roster below.</div>';
+
+  // Move-to-next / Archive-Reset button setup
+  const successor = classes.find(function(c) { return c.PromotesFrom === currentClassId; });
+  const moveCard = document.getElementById('move-class-card');
+  const resetTitle = document.getElementById('reset-card-title');
+  const resetDesc = document.getElementById('reset-card-desc');
+  const resetBtn = document.getElementById('reset-card-btn');
+
+  if (successor) {
+    moveCard.style.display = 'block';
+    document.getElementById('move-target-label').textContent = successor.Label;
+    document.getElementById('move-class-desc').textContent =
+      'Carries every active student\'s permanent record, textbook tier, studied units, and full typing history forward to ' + successor.Label + '.';
+    resetTitle.textContent = 'Archive & Reset Class';
+    resetDesc.textContent = 'Run this AFTER moving students on — sweeps this term\'s remaining forum posts, quiz results, and colour history into the Archive, then clears this class for the next intake.';
+    resetBtn.textContent = 'Archive & Reset Class';
+  } else {
+    moveCard.style.display = 'none';
+    resetTitle.textContent = 'Graduate & Reset Class';
+    resetDesc.textContent = 'No further class is chained after this one — this fully archives every active student\'s permanent record (not just this term), since they\'re leaving the program, then clears this class.';
+    resetBtn.textContent = 'Graduate & Reset Class';
+  }
+}
+
+async function importRosterCsv() {
+  const csv = document.getElementById('roster-csv').value.trim();
+  if (!csv) return;
+  const data = await api('forum', { action: 'importRosterCsv', classId: currentClassId, csv: csv });
+  document.getElementById('roster-csv').value = '';
+  alert('Added ' + data.added + ' student(s).');
+  loadRosterPanel();
+}
+async function removeStudent(studentId) {
+  if (!confirm('Remove this student from the active roster?')) return;
+  await api('forum', { action: 'removeStudent', studentId: studentId });
+  loadRosterPanel();
+}
+async function moveClass() {
+  const successor = classes.find(function(c) { return c.PromotesFrom === currentClassId; });
+  if (!successor) return;
+  if (!confirm('Move all active students in this class to ' + successor.Label + '?')) return;
+  await api('forum', { action: 'moveClass', fromClassId: currentClassId, toClassId: successor.ClassId });
+  alert('Moved.');
+  loadRosterPanel();
+}
+async function archiveResetClass() {
+  const successor = classes.find(function(c) { return c.PromotesFrom === currentClassId; });
+  const isGraduation = !successor;
+  const warning = isGraduation
+    ? 'This permanently archives every remaining active student in this class as graduating. Continue?'
+    : 'This archives the term\'s data and clears this class for new intake. Make sure you\'ve already moved continuing students on. Continue?';
+  if (!confirm(warning)) return;
+  await api('forum', { action: 'archiveResetClass', classId: currentClassId, isGraduation: isGraduation ? 'true' : 'false' });
+  alert('Done.');
+  loadRosterPanel();
+}
+
+// ════════════════════════════════════════════════════════
+//  TYPING SKILLS PANEL
+// ════════════════════════════════════════════════════════
+function showTypingSub(name) {
+  ['sessions', 'paragraphs', 'results'].forEach(function(n) {
+    document.getElementById('typing-sub-' + n).style.display = n === name ? 'block' : 'none';
+    document.getElementById('typing-nav-' + n).classList.toggle('active', n === name);
+  });
+  if (name === 'results') populateTypingResultsStudentDropdown();
+}
+async function loadTypingPanel() { renderTypingSessions(); }
+async function renderTypingSessions() {
+  // No dedicated "list sessions for class" action was built with full CRUD
+  // read yet — reusing getTypingSession's per-class active lookup as a
+  // stand-in; a fuller list view is a natural next enhancement.
+  const list = document.getElementById('typing-sessions-list');
+  list.innerHTML = '<div class="empty-note">Session list view — enhancement pending; use "Create session" above and manage status from there for now.</div>';
+}
+async function createTypingSession() {
+  await api('forum', {
+    action: 'manageTypingSession', op: 'create', classId: currentClassId,
+    sessionName: document.getElementById('ts-name').value,
+    sessionNumber: document.getElementById('ts-number').value,
+    isBaseline: document.getElementById('ts-baseline').checked ? 'true' : 'false',
+    accuracyThreshold: document.getElementById('ts-threshold').value,
+    status: 'open'
+  });
+  alert('Session created.');
+}
+async function addTypingParagraph() {
+  await api('forum', {
+    action: 'manageTypingParagraph',
+    sessionNumber: document.getElementById('tp-session').value,
+    paragraphOrder: document.getElementById('tp-order').value,
+    text: document.getElementById('tp-text').value
+  });
+  document.getElementById('tp-text').value = '';
+  alert('Paragraph added.');
+}
+async function populateTypingResultsStudentDropdown() {
+  const data = await api('forum', { action: 'getRoster', classId: currentClassId });
+  const sel = document.getElementById('typing-results-student');
+  sel.innerHTML = (data.roster || []).map(function(r) { return '<option value="' + r.StudentId + '">' + esc(r.NameEng) + '</option>'; }).join('');
+}
+async function loadTypingResults() {
+  const studentId = document.getElementById('typing-results-student').value;
+  const data = await api('forum', { action: 'getTypingHistory', studentId: studentId });
+  const rows = data.history || [];
+  document.getElementById('typing-results-table').innerHTML = rows.length ? (
+    '<table class="data-table"><thead><tr><th>Session</th><th>WPM</th><th>Accuracy</th><th>Score</th></tr></thead><tbody>' +
+    rows.map(function(r) { return '<tr><td>' + esc(r.SessionName) + '</td><td>' + esc(r.WPM) + '</td><td>' + esc(r.Accuracy) + '%</td><td>' + esc(r.Score) + '/' + esc(r.TotalPoints) + '</td></tr>'; }).join('') +
+    '</tbody></table>'
+  ) : '<div class="empty-note">No results yet.</div>';
+}
+
+// ════════════════════════════════════════════════════════
+//  FORUM / CCF PANEL
+// ════════════════════════════════════════════════════════
+function showForumSub(name) {
+  ['cycle', 'groups', 'units'].forEach(function(n) {
+    document.getElementById('forum-sub-' + n).style.display = n === name ? 'block' : 'none';
+    document.getElementById('forum-nav-' + n).classList.toggle('active', n === name);
+  });
+  if (name === 'units') populateUnitStudentDropdown();
+}
+async function loadForumPanel() {
+  const data = await api('forum', { action: 'getScaffold', classId: currentClassId });
+  const el = document.getElementById('scaffold-current');
+  if (data.scaffold) {
+    el.innerHTML = '<span class="chip chip-gold">Cycle ' + esc(data.scaffold.Week || '') + '</span> Scaffolded unit: <strong>' + esc(data.scaffold.ScaffoldedUnit || '—') + '</strong>';
+    document.getElementById('scaffold-unit').value = data.scaffold.ScaffoldedUnit || '';
+  } else {
+    el.innerHTML = '<div class="empty-note">No cycle started yet — click "Advance to next cycle" to begin.</div>';
+  }
+}
+async function setScaffold() {
+  await api('forum', { action: 'setScaffold', classId: currentClassId, scaffoldedUnit: document.getElementById('scaffold-unit').value });
+  loadForumPanel();
+}
+async function advanceCycle() {
+  if (!confirm('Advance to a new cycle for this class?')) return;
+  await api('forum', { action: 'advanceCycle', classId: currentClassId });
+  loadForumPanel();
+}
+async function saveGroups() {
+  const lines = document.getElementById('groups-input').value.trim().split('\\n').filter(Boolean);
+  const assignments = lines.map(function(line) {
+    const parts = line.split(',');
+    return { groupName: (parts[0] || '').trim(), studentId: (parts[1] || '').trim() };
+  });
+  await api('forum', { action: 'setGroups', classId: currentClassId, assignments: JSON.stringify(assignments) });
+  alert('Groups saved.');
+}
+async function populateUnitStudentDropdown() {
+  const data = await api('forum', { action: 'getRoster', classId: currentClassId });
+  const sel = document.getElementById('unit-student');
+  sel.innerHTML = (data.roster || []).map(function(r) { return '<option value="' + r.StudentId + '">' + esc(r.NameEng) + '</option>'; }).join('');
+}
+async function submitUnitManual() {
+  const msg = document.getElementById('unit-msg');
+  msg.className = 'msg';
+  try {
+    await api('forum', {
+      action: 'submitUnit', classId: currentClassId,
+      studentId: document.getElementById('unit-student').value,
+      unit: document.getElementById('unit-main').value,
+      cycleOverride: document.getElementById('unit-cycle').value,
+      teacherOverride: 'true'
+    });
+    msg.textContent = 'Submitted.'; msg.className = 'msg ok';
+  } catch (e) {
+    msg.textContent = e.message; msg.className = 'msg error';
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  GRAMMAR QUIZ PANEL
+// ════════════════════════════════════════════════════════
+function showQuizSub(name) {
+  ['control', 'flags', 'qb'].forEach(function(n) {
+    document.getElementById('quiz-sub-' + n).style.display = n === name ? 'block' : 'none';
+    document.getElementById('quiz-nav-' + n).classList.toggle('active', n === name);
+  });
+  if (name === 'flags') loadFlags();
+}
+async function loadQuizPanel() {
+  const data = await api('quiz', { action: 'getTestControl', classId: currentClassId });
+  const el = document.getElementById('test-control-status');
+  const tc = data.testControl;
+  el.innerHTML = tc
+    ? 'Status: <span class="chip ' + (tc.Status === 'open' ? 'chip-green' : 'chip-red') + '">' + esc(tc.Status) + '</span>'
+    : '<div class="empty-note">No test control record yet for this class.</div>';
+}
+async function setTestControl(status) {
+  await api('quiz', { action: 'setTestControl', classId: currentClassId, status: status });
+  loadQuizPanel();
+}
+async function loadFlags() {
+  const data = await api('quiz', { action: 'getFlags', classId: currentClassId });
+  const rows = data.flags || [];
+  document.getElementById('flags-table').innerHTML = rows.length ? (
+    '<table class="data-table"><thead><tr><th>Week</th><th>Q#</th><th>Reason</th><th></th></tr></thead><tbody>' +
+    rows.map(function(r, i) { return '<tr><td>' + esc(r.Week) + '</td><td>' + esc(r['Q#']) + '</td><td>' + esc(r.Reason) + '</td>' +
+      '<td><button class="btn btn-ghost btn-sm" onclick="resolveFlag(' + i + ')">Resolve</button></td></tr>'; }).join('') + '</tbody></table>'
+  ) : '<div class="empty-note">No flags.</div>';
+}
+async function resolveFlag(rowIndex) {
+  await api('quiz', { action: 'resolveFlag', rowIndex: rowIndex });
+  loadFlags();
+}
+async function addQuestion() {
+  await api('quiz', {
+    action: 'editQuestionBank', op: 'add',
+    tier: document.getElementById('qb-tier').value,
+    unit: document.getElementById('qb-unit').value,
+    question: document.getElementById('qb-question').value,
+    answer: document.getElementById('qb-answer').value
+  });
+  document.getElementById('qb-question').value = '';
+  document.getElementById('qb-answer').value = '';
+  alert('Question added.');
+}
+
+// ════════════════════════════════════════════════════════
+//  BOOT
+// ════════════════════════════════════════════════════════
+(async function boot() {
+  if (authToken) {
+    try {
+      await loadClasses();
+      document.getElementById('hub-nav-btn').style.display = 'inline-block';
+      document.getElementById('logout-btn').style.display = 'inline-block';
+      showScreen('screen-selector');
+    } catch (e) {
+      doLogout();
+    }
+  }
+})();
+</script>
+</body>
+</html>

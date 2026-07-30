@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EWS Grammar Quiz</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1a2e; --ink-soft: #4a4a6a; --ink-mute: #8888aa;
+    --paper: #faf9f6; --paper-2: #f2f0eb; --paper-3: #e8e5de;
+    --accent: #2e5ba8; --accent-lt: #dde7f7;
+    --red: #b03030; --red-lt: #fce8e8;
+    --green: #2a7a4e; --green-lt: #e3f3ea;
+    --rule: rgba(26,26,46,0.10); --shadow: 0 2px 16px rgba(26,26,46,0.08);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--paper); color: var(--ink); min-height: 100vh; line-height: 1.6; }
+  header { background: var(--ink); padding: 22px 32px; display: flex; align-items: center; justify-content: space-between; }
+  .header-text h1 { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 600; color: #fff; }
+  .header-text p { font-size: 10px; color: rgba(255,255,255,0.45); letter-spacing: 0.05em; text-transform: uppercase; margin-top: 2px; }
+  .timer { font-size: 13px; font-weight: 600; color: #fff; background: rgba(255,255,255,0.12); padding: 6px 14px; border-radius: 20px; display: none; }
+
+  main { max-width: 640px; margin: 0 auto; padding: 40px 20px 80px; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  .card { background: #fff; border: 1px solid var(--rule); border-radius: 16px; padding: 32px; box-shadow: var(--shadow); }
+  .card h2 { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 600; margin-bottom: 10px; }
+  .card p.sub { font-size: 13px; color: var(--ink-mute); margin-bottom: 20px; }
+
+  .progress-bar { height: 5px; background: var(--paper-3); border-radius: 3px; overflow: hidden; margin-bottom: 24px; }
+  .progress-fill { height: 100%; background: var(--accent); transition: width 0.3s; }
+
+  .question-block { margin-bottom: 26px; }
+  .question-num { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+  .question-text { font-size: 16px; margin-bottom: 10px; }
+  .answer-input {
+    width: 100%; height: 46px; border: 1.5px solid var(--paper-3); border-radius: 9px; padding: 0 14px;
+    font-size: 15px; font-family: 'DM Sans', sans-serif; outline: none;
+  }
+  .answer-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-lt); }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; height: 46px; padding: 0 22px;
+    background: var(--accent); color: #fff; border: none; border-radius: 10px;
+    font-size: 14px; font-weight: 600; cursor: pointer; width: 100%; justify-content: center;
+  }
+  .btn:hover { background: #1f4690; }
+  .btn:disabled { background: var(--paper-3); color: var(--ink-mute); }
+
+  .result-hero { text-align: center; padding: 20px 0 30px; }
+  .result-score { font-family: 'Fraunces', serif; font-size: 48px; font-weight: 600; color: var(--accent); }
+  .result-label { font-size: 13px; color: var(--ink-mute); margin-top: 4px; }
+  .result-badge { display: inline-block; margin-top: 14px; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700; }
+  .result-badge.pass { background: var(--green-lt); color: var(--green); }
+  .result-badge.fail { background: var(--red-lt); color: var(--red); }
+
+  .msg { padding: 14px 18px; border-radius: 10px; font-size: 14px; }
+  .msg.error { background: var(--red-lt); color: var(--red); }
+  .msg.info { background: var(--accent-lt); color: var(--accent); }
+
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-text"><h1>Grammar Quiz</h1><p>English Writing Skills</p></div>
+  <div class="timer" id="timer">--:--</div>
+</header>
+
+<main>
+  <div class="screen active" id="screen-loading"><div class="card"><p class="sub">Loading your quiz…</p></div></div>
+
+  <div class="screen" id="screen-blocked">
+    <div class="card"><div class="msg info" id="blocked-msg">Loading…</div></div>
+  </div>
+
+  <div class="screen" id="screen-quiz">
+    <div class="card">
+      <h2>Week <span id="quiz-week"></span> — Unit <span id="quiz-unit"></span></h2>
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+      <div id="questions-container"></div>
+      <button class="btn" id="submit-btn" onclick="submitQuiz()">Submit Quiz →</button>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-result">
+    <div class="card">
+      <div class="result-hero">
+        <div class="result-score" id="result-score">--%</div>
+        <div class="result-label" id="result-label"></div>
+        <div class="result-badge" id="result-badge"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  CONFIG — stamped in automatically by Genesis
+// ════════════════════════════════════════════════════════
+const QUIZ_ENGINE_URL = 'https://script.google.com/macros/s/AKfycbzLI5i9mTqzTmUYjwOHyRu1YicyHhuuqM4yxBFnwD6BkhZuy5s-Dz_LZ_RAXZwMzzTI/exec';
+
+// ════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════
+const authToken = new URLSearchParams(window.location.search).get('token') || '';
+let currentWeek = null;
+let questions = [];
+let timerInterval = null;
+let elapsedSeconds = 0;
+
+function xhrGet(url) {
+  return new Promise(function(resolve, reject) {
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.onload = function() {
+      try { resolve(JSON.parse(xhr.responseText)); }
+      catch (e) { reject(new Error('Invalid response')); }
+    };
+    xhr.onerror = function() { reject(new Error('Network error')); };
+    xhr.send();
+  });
+}
+async function api(params) {
+  const allParams = Object.assign({}, params, { token: authToken });
+  const url = QUIZ_ENGINE_URL + '?' + new URLSearchParams(allParams).toString();
+  return xhrGet(url);
+}
+function esc(s) { return s == null ? '' : String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+}
+function showBlocked(text) {
+  document.getElementById('blocked-msg').textContent = text;
+  document.getElementById('blocked-msg').className = 'msg error';
+  showScreen('screen-blocked');
+}
+
+// ════════════════════════════════════════════════════════
+//  LOAD QUIZ
+// ════════════════════════════════════════════════════════
+async function loadQuiz() {
+  if (!authToken) { showBlocked('No session found — please open this page from the dashboard.'); return; }
+
+  // Week is inferred from the most recent week with an assigned unit —
+  // simplest robust approach without a separate "current week" concept;
+  // the backend returns an error if nothing is assigned yet.
+  const week = new URLSearchParams(window.location.search).get('week') || String(getIsoWeek());
+  currentWeek = week;
+
+  try {
+    const data = await api({ action: 'getQuiz', week: week });
+    if (!data.ok) { showBlocked(data.error || 'The quiz is not available right now.'); return; }
+
+    document.getElementById('quiz-week').textContent = data.week;
+    document.getElementById('quiz-unit').textContent = data.unit;
+    questions = data.questions;
+    renderQuestions();
+    showScreen('screen-quiz');
+    startTimer();
+  } catch (e) {
+    showBlocked('Connection error. Please try again.');
+  }
+}
+function getIsoWeek() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 1);
+  return Math.ceil((((now - start) / 86400000) + start.getDay() + 1) / 7);
+}
+
+function renderQuestions() {
+  const container = document.getElementById('questions-container');
+  container.innerHTML = questions.map(function(q) {
+    return '<div class="question-block">' +
+      '<div class="question-num">Question ' + q.qNumber + '</div>' +
+      '<div class="question-text">' + esc(q.question) + '</div>' +
+      '<input class="answer-input" data-qnum="' + q.qNumber + '" data-unit="' + esc(q.unit) + '" data-question="' + esc(q.question).replace(/"/g, '&quot;') + '" oninput="updateProgress()">' +
+      '</div>';
+  }).join('');
+}
+
+function updateProgress() {
+  const inputs = document.querySelectorAll('.answer-input');
+  const filled = Array.prototype.filter.call(inputs, function(i) { return i.value.trim().length > 0; }).length;
+  document.getElementById('progress-fill').style.width = (filled / inputs.length * 100) + '%';
+}
+
+function startTimer() {
+  const timerEl = document.getElementById('timer');
+  timerEl.style.display = 'inline-block';
+  timerInterval = setInterval(function() {
+    elapsedSeconds++;
+    const m = Math.floor(elapsedSeconds / 60), s = elapsedSeconds % 60;
+    timerEl.textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+  }, 1000);
+}
+
+// ════════════════════════════════════════════════════════
+//  SUBMIT
+// ════════════════════════════════════════════════════════
+async function submitQuiz() {
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
+  const inputs = document.querySelectorAll('.answer-input');
+  const answers = Array.prototype.map.call(inputs, function(input) {
+    return {
+      qNumber: Number(input.dataset.qnum), unit: input.dataset.unit,
+      questionText: input.dataset.question, studentAnswer: input.value, timedOut: false
+    };
+  });
+
+  try {
+    const data = await api({ action: 'submitQuiz', week: currentWeek, answers: JSON.stringify(answers) });
+    clearInterval(timerInterval);
+    if (!data.ok) { alert(data.error); btn.disabled = false; btn.textContent = 'Submit Quiz →'; return; }
+
+    document.getElementById('result-score').textContent = data.score + '%';
+    document.getElementById('result-label').textContent = data.correctCount + ' of ' + data.totalQuestions + ' correct';
+    const badge = document.getElementById('result-badge');
+    if (data.score >= 60) { badge.textContent = 'Pass'; badge.className = 'result-badge pass'; }
+    else { badge.textContent = 'Needs review'; badge.className = 'result-badge fail'; }
+    showScreen('screen-result');
+  } catch (e) {
+    alert('Connection error — your answers were not lost, please try submitting again.');
+    btn.disabled = false; btn.textContent = 'Submit Quiz →';
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  BOOT
+// ════════════════════════════════════════════════════════
+loadQuiz();
+</script>
+</body>
+</html>
