@@ -773,7 +773,11 @@ async function importRosterCsv() {
   const csv = await readTextFileAutoEncoding(file);
   const data = await api('forum', { action: 'importRosterCsv', classId: currentClassId, csv: csv });
   fileInput.value = '';
-  alert('Added ' + data.added + ' student(s).');
+  let msg = 'Added ' + data.added + ' new student(s), updated ' + data.updated + ' existing.';
+  if (data.skippedClassChange && data.skippedClassChange.length) {
+    msg += '\n\nThese student numbers already exist in a different class and were NOT moved (use "Move class" for that): ' + data.skippedClassChange.join(', ');
+  }
+  alert(msg);
   loadRosterPanel();
 }
 async function removeStudent(studentId) {
