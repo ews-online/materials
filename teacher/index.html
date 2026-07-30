@@ -141,7 +141,7 @@
   </div>
   <div class="header-right">
     <span class="class-badge" id="header-class-badge" style="display:none"></span>
-    <button class="header-btn" id="hub-nav-btn" style="display:none" onclick="goHub()">All classes</button>
+    <button class="header-btn" id="hub-nav-btn" style="display:none" onclick="goToClassSelector()">All classes</button>
     <button class="header-btn" id="logout-btn" style="display:none" onclick="doLogout()">Sign out</button>
   </div>
 </header>
@@ -573,6 +573,7 @@ function selectClass(c) {
   showScreen('screen-hub');
 }
 function goHub() { showScreen('screen-hub'); }
+function goToClassSelector() { showScreen('screen-selector'); }
 
 // ════════════════════════════════════════════════════════
 //  PANEL ROUTING
