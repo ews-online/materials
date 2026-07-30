@@ -285,7 +285,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v2.0 — full Forum/CCF port</div>
+      <div class="version-tag">v2.1 — roster JP names + error handling fixes</div>
     </div>
   </div>
 
@@ -720,9 +720,9 @@ async function loadRosterPanel() {
   const rows = data.roster || [];
   const wrap = document.getElementById('roster-table-wrap');
   wrap.innerHTML = rows.length ? (
-    '<table class="data-table"><thead><tr><th>#</th><th>Name</th><th>Tier</th><th></th></tr></thead><tbody>' +
+    '<table class="data-table"><thead><tr><th>#</th><th>Name (JP)</th><th>Name (Eng)</th><th>Tier</th><th></th></tr></thead><tbody>' +
     rows.map(function(r) {
-      return '<tr><td>' + esc(r.StudentNumber) + '</td><td>' + esc(r.NameEng) + '</td><td>' + esc(r.TextbookTier) + '</td>' +
+      return '<tr><td>' + esc(r.StudentNumber) + '</td><td>' + esc(r.NameJP) + '</td><td>' + esc(r.NameEng) + '</td><td>' + esc(r.TextbookTier) + '</td>' +
         '<td><button class="btn btn-ghost btn-sm" onclick="removeStudent(\'' + r.StudentId + '\')">Remove</button></td></tr>';
     }).join('') + '</tbody></table>'
   ) : '<div class="empty-note">No students yet — import a roster below.</div>';
@@ -881,8 +881,13 @@ function formatTs(ts) {
 }
 
 async function loadForumPanel() {
-  forumClassData = await api('forum', { action: 'getClassData', classId: currentClassId });
-  switchForumTab('grading');
+  document.getElementById('forum-content').innerHTML = '<div class="card empty-note">Loading…</div>';
+  try {
+    forumClassData = await api('forum', { action: 'getClassData', classId: currentClassId });
+    switchForumTab('grading');
+  } catch (e) {
+    document.getElementById('forum-content').innerHTML = '<div class="card empty-note">Couldn\'t load this class\'s Forum/CCF data: ' + esc(e.message) + '<br><br>Open the browser console (F12) for the full error, or try switching classes and back.</div>';
+  }
 }
 
 function switchForumTab(tab) {
@@ -890,15 +895,16 @@ function switchForumTab(tab) {
   ['grading', 'schedule', 'rosterGroups', 'rubric', 'settings', 'reflections', 'grammar', 'scaffold', 'unitSubmissions'].forEach(function(t) {
     document.getElementById('forum-nav-' + t).classList.toggle('active', t === tab);
   });
-  if (tab === 'grading') renderGrading();
-  if (tab === 'schedule') renderSchedule();
-  if (tab === 'rosterGroups') renderRosterGroups();
-  if (tab === 'rubric') renderRubricTab();
-  if (tab === 'settings') renderSettings();
-  if (tab === 'reflections') renderReflections();
-  if (tab === 'grammar') renderGrammarAnalysis();
-  if (tab === 'scaffold') renderScaffold();
-  if (tab === 'unitSubmissions') renderUnitSubmissions();
+  const renderFns = {
+    grading: renderGrading, schedule: renderSchedule, rosterGroups: renderRosterGroups, rubric: renderRubricTab,
+    settings: renderSettings, reflections: renderReflections, grammar: renderGrammarAnalysis,
+    scaffold: renderScaffold, unitSubmissions: renderUnitSubmissions
+  };
+  const fn = renderFns[tab];
+  if (!fn) return;
+  Promise.resolve(fn()).catch(function(e) {
+    document.getElementById('forum-content').innerHTML = '<div class="card empty-note">Something went wrong loading this tab: ' + esc(e.message) + '<br><br>Open the browser console (F12) for the full error.</div>';
+  });
 }
 
 function getRubricVersionForWeek(week) {
@@ -1303,7 +1309,7 @@ async function addNewWeek() {
 /* ====================== ROSTER & GROUPS TAB ====================== */
 function renderRosterGroups() {
   const rosterRows = forumClassData.roster.map(function(m) {
-    return '<tr><td>' + esc(m.StudentNumber) + '</td><td>' + esc(m.Name) + '</td>' +
+    return '<tr><td>' + esc(m.StudentNumber) + '</td><td>' + esc(m.NameJP) + '</td><td>' + esc(m.Name) + '</td>' +
       '<td><label class="switch"><input type="checkbox" ' + (m.Active ? 'checked' : '') + ' onchange="toggleRosterActive(\'' + m.StudentId + '\', this.checked)"><span class="slider"></span></label></td></tr>';
   }).join('');
 
@@ -1321,7 +1327,7 @@ function renderRosterGroups() {
   const defaultGroups = Math.max(1, Math.round(activeCount / 3));
 
   document.getElementById('forum-content').innerHTML =
-    '<div class="card"><h3>Roster</h3><table class="data-table"><thead><tr><th>Student #</th><th>Name</th><th>Active</th></tr></thead>' +
+    '<div class="card"><h3>Roster</h3><table class="data-table"><thead><tr><th>Student #</th><th>Name (JP)</th><th>Name (Eng)</th><th>Active</th></tr></thead>' +
     '<tbody>' + (rosterRows || '<tr><td colspan="3" class="empty-note">No students yet.</td></tr>') + '</tbody></table></div>' +
     '<div class="card"><h3>Groups</h3>' +
     '<div class="week-edit-grid" style="margin-bottom:14px">' +
