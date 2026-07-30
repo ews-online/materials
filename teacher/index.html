@@ -6,6 +6,8 @@
 <title>EWS Teacher Portal</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
   :root {
     --ink: #1a1a2e; --ink-soft: #4a4a6a; --ink-mute: #8888aa;
@@ -141,6 +143,99 @@
   }
   .loading-overlay .loading-text { font-size: 13px; color: var(--ink-soft); font-weight: 500; }
   .version-tag { text-align: center; font-size: 11px; color: var(--ink-mute); letter-spacing: 0.06em; margin-top: 20px; }
+
+  /* Grading layout */
+  .grading-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .grading-layout { display: grid; grid-template-columns: 1fr; gap: 18px; align-items: start; }
+  @media (min-width: 900px) { .grading-layout { grid-template-columns: 1.2fr 1fr; } }
+  .submission-card .sub-title { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+  .sub-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-weight: 600; font-size: 13px; flex-shrink: 0; }
+  .sub-meta .nm { font-weight: 600; font-size: 13px; }
+  .sub-meta .wc { font-size: 11px; color: var(--ink-mute); }
+  .sub-body { line-height: 1.65; font-size: 14px; white-space: pre-wrap; margin-bottom: 10px; }
+  .sub-media img { width: 100%; border-radius: 10px; margin-bottom: 10px; }
+  .sub-subhead { font-size: 10px; color: var(--ink-mute); text-transform: uppercase; letter-spacing: 0.06em; margin: 18px 0 8px; border-top: 1px solid var(--rule); padding-top: 14px; }
+  .sub-comment { display: flex; gap: 9px; margin-bottom: 10px; }
+  .sub-comment .avatar { width: 26px; height: 26px; font-size: 10px; }
+  .sub-comment-body { flex: 1; background: var(--paper-2); border-radius: 9px; padding: 8px 11px; }
+  .sub-comment-body .cn { font-weight: 600; font-size: 12px; }
+  .sub-comment-body .ct { font-size: 13px; margin-top: 1px; line-height: 1.45; }
+  .sub-comment-body .cwc { font-size: 10px; color: var(--ink-mute); margin-top: 4px; }
+  .sub-reply { margin-top: 7px; padding-top: 7px; border-top: 1px solid var(--rule); }
+  .reply-label { font-size: 10px; font-weight: 600; color: var(--ink-mute); margin-bottom: 2px; }
+  .no-reply-yet { color: var(--red) !important; }
+  .ts { font-size: 10px; color: var(--ink-mute); font-weight: 400; margin-left: 4px; }
+  .grade-sidebar { position: relative; }
+  .grade-total-strip { display: flex; align-items: center; justify-content: center; padding: 8px 0 4px; }
+  .grade-total-strip span { font-size: 17px; font-weight: 600; }
+  .student-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .student-nav .id { display: flex; align-items: center; gap: 10px; }
+  .student-nav .id .nm { font-weight: 600; font-size: 16px; }
+  .nav-arrow { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--rule); background: #fff; cursor: pointer; font-size: 16px; color: var(--ink-mute); }
+  .nav-arrow:hover { background: var(--paper-2); }
+  .criterion { border: 1px solid var(--rule); border-radius: 10px; margin-bottom: 10px; overflow: hidden; }
+  .criterion-head { display: flex; justify-content: space-between; align-items: center; padding: 11px 14px; cursor: pointer; background: var(--paper-2); }
+  .criterion-head .cname { font-weight: 600; font-size: 14px; }
+  .criterion-head .cpts { font-size: 12px; color: var(--ink-mute); }
+  .criterion-body { padding: 6px 14px 12px; display: none; }
+  .criterion.open .criterion-body { display: block; }
+  .criterion.open .criterion-head { background: #fff; border-bottom: 1px solid var(--rule); }
+  .tier-option { display: flex; gap: 10px; align-items: flex-start; padding: 8px 6px; border-radius: 8px; cursor: pointer; }
+  .tier-option:hover { background: var(--paper-2); }
+  .tier-option input { margin-top: 3px; }
+  .tier-option .tlabel { font-weight: 600; font-size: 13px; }
+  .tier-option .tdesc { font-size: 12px; color: var(--ink-mute); margin-top: 2px; line-height: 1.4; }
+  .tier-option .tpts { font-size: 11px; color: var(--gold); margin-top: 3px; display: inline-block; }
+  .tier-option.auto-suggested { background: var(--gold-lt); }
+  .auto-tag { font-size: 9px; color: var(--gold); text-transform: uppercase; letter-spacing: 0.04em; margin-left: 6px; }
+  .grade-actions { display: flex; gap: 10px; margin-top: 16px; }
+  .feedback-box textarea { min-height: 80px; margin-bottom: 16px; }
+
+  /* Toggles */
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 4px; border-bottom: 1px solid var(--rule); }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-row .tname { font-weight: 600; font-size: 14px; }
+  .toggle-row .tdesc { font-size: 12px; color: var(--ink-mute); margin-top: 2px; }
+  .switch { position: relative; width: 42px; height: 24px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .slider { position: absolute; inset: 0; background: var(--paper-3); border-radius: 26px; cursor: pointer; transition: background .15s; }
+  .switch .slider::before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform .15s; }
+  .switch input:checked + .slider { background: var(--accent); }
+  .switch input:checked + .slider::before { transform: translateX(18px); }
+
+  /* Groups */
+  .group-pill { display: inline-block; background: var(--paper-2); color: var(--accent); font-size: 11px; padding: 3px 9px; border-radius: 12px; margin: 2px; }
+  .week-edit-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  @media (min-width: 700px) { .week-edit-grid { grid-template-columns: 1fr 1fr; } }
+
+  /* Rubric editor */
+  .version-pill { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--rule); background: #fff; cursor: pointer; margin: 0 8px 8px 0; }
+  .version-pill.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .version-pill .vrange { opacity: 0.7; }
+  .editor-criterion { border: 1px solid var(--rule); border-radius: 10px; padding: 14px; margin-bottom: 12px; background: var(--paper-2); }
+  .editor-criterion-head { display: grid; grid-template-columns: 2fr 1fr 1fr auto; gap: 8px; align-items: end; margin-bottom: 10px; }
+  .editor-tier-row { display: grid; grid-template-columns: 1.2fr 2fr 0.7fr auto; gap: 8px; align-items: end; margin-bottom: 8px; }
+  @media (max-width: 700px) { .editor-criterion-head, .editor-tier-row { grid-template-columns: 1fr; } }
+  .icon-btn { background: none; border: 1px solid var(--rule); border-radius: 8px; width: 32px; height: 32px; cursor: pointer; color: var(--red); flex-shrink: 0; }
+  .icon-btn:hover { background: var(--red-lt); }
+  .icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .editor-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  .new-version-row { display: flex; gap: 10px; align-items: end; margin-top: 18px; border-top: 1px solid var(--rule); padding-top: 16px; }
+  .new-version-row > div { flex: 1; }
+  .total-pts-note { font-size: 12px; color: var(--ink-mute); margin-top: 10px; }
+
+  /* Modals (student search + confirm) */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(26,26,46,0.5); display: none; align-items: flex-start; justify-content: center; z-index: 500; padding: 60px 20px; }
+  .modal-overlay.show { display: flex; }
+  .modal-box { background: #fff; border-radius: 16px; padding: 20px; max-width: 420px; width: 100%; box-shadow: var(--shadow); max-height: 80vh; display: flex; flex-direction: column; }
+  .student-search-list { margin: 14px 0; overflow-y: auto; flex: 1; min-height: 60px; }
+  .search-result-row { display: flex; align-items: center; gap: 12px; padding: 10px 8px; border-radius: 9px; cursor: pointer; }
+  .search-result-row:hover { background: var(--paper-2); }
+  .search-result-row .nm { font-weight: 600; font-size: 14px; }
+  .search-result-row .st { font-size: 12px; color: var(--ink-mute); margin-top: 1px; }
+  .search-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--rule); background: #fff; cursor: pointer; font-size: 15px; }
+  .search-btn:hover { background: var(--paper-2); }
 </style>
 </head>
 <body>
@@ -148,6 +243,24 @@
 <div class="loading-overlay" id="loading-overlay">
   <div class="loading-spinner-lg"></div>
   <div class="loading-text">Saving…</div>
+</div>
+
+<div class="modal-overlay" id="studentSearchModal">
+  <div class="modal-box">
+    <input type="text" class="text-input" id="studentSearchInput" placeholder="Search students..." oninput="filterStudentSearch()">
+    <div id="studentSearchList" class="student-search-list"></div>
+    <button class="btn btn-ghost" style="width:100%" onclick="closeStudentSearch()">Close</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-box" style="text-align:center">
+    <p id="confirmModalText" style="font-size:14px;color:var(--ink-mute);line-height:1.5;margin:0 0 18px"></p>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-ghost" style="flex:1" onclick="closeConfirmModal()">Cancel</button>
+      <button class="btn btn-danger" style="flex:1" id="confirmModalOkBtn">Remove</button>
+    </div>
+  </div>
 </div>
 
 <header>
@@ -172,7 +285,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v1.1</div>
+      <div class="version-tag">v2.0 — full Forum/CCF port</div>
     </div>
   </div>
 
@@ -282,45 +395,17 @@
   <div class="screen" id="screen-panel-forum">
     <div class="panel-header"><button class="back-btn" onclick="goHub()">← Hub</button><h2>Forum / CCF</h2></div>
     <div class="subpanel-nav">
-      <button class="active" onclick="showForumSub('cycle')" id="forum-nav-cycle">Cycle &amp; Scaffold</button>
-      <button onclick="showForumSub('groups')" id="forum-nav-groups">Groups</button>
-      <button onclick="showForumSub('units')" id="forum-nav-units">Manual Unit Entry</button>
+      <button class="active" onclick="switchForumTab('grading')" id="forum-nav-grading">Grading</button>
+      <button onclick="switchForumTab('schedule')" id="forum-nav-schedule">Schedule</button>
+      <button onclick="switchForumTab('rosterGroups')" id="forum-nav-rosterGroups">Roster &amp; Groups</button>
+      <button onclick="switchForumTab('rubric')" id="forum-nav-rubric">Rubric</button>
+      <button onclick="switchForumTab('settings')" id="forum-nav-settings">Settings</button>
+      <button onclick="switchForumTab('reflections')" id="forum-nav-reflections">Reflections</button>
+      <button onclick="switchForumTab('grammar')" id="forum-nav-grammar">Grammar Analysis</button>
+      <button onclick="switchForumTab('scaffold')" id="forum-nav-scaffold">Scaffold</button>
+      <button onclick="switchForumTab('unitSubmissions')" id="forum-nav-unitSubmissions">Unit Submissions</button>
     </div>
-
-    <div id="forum-sub-cycle">
-      <div class="card">
-        <h3>Current cycle</h3>
-        <div id="scaffold-current"><div class="empty-note">Loading…</div></div>
-        <div class="row-flex" style="margin-top:14px">
-          <div class="field"><label class="field-label">Scaffolded unit for this cycle</label><input class="text-input" id="scaffold-unit"></div>
-          <button class="btn btn-sm" onclick="setScaffold()">Save</button>
-        </div>
-        <button class="btn btn-ghost btn-sm" style="margin-top:14px" onclick="advanceCycle()">Advance to next cycle →</button>
-      </div>
-    </div>
-
-    <div id="forum-sub-groups" style="display:none">
-      <div class="card">
-        <h3>Groups</h3>
-        <p style="font-size:12px;color:var(--ink-mute);margin-bottom:10px">One line per student: Group Name, Student Number</p>
-        <textarea id="groups-input" placeholder="Group A,2511001&#10;Group A,2511002&#10;Group B,2511003"></textarea>
-        <button class="btn btn-sm" style="margin-top:10px" onclick="saveGroups()">Save groups</button>
-      </div>
-    </div>
-
-    <div id="forum-sub-units" style="display:none">
-      <div class="card">
-        <h3>Manual unit submission</h3>
-        <p style="font-size:12px;color:var(--ink-mute);margin-bottom:10px">For a student who came to you directly, per CCF's one-door policy. Warns rather than blocks if already studied.</p>
-        <div class="row-flex">
-          <div class="field"><label class="field-label">Student</label><select id="unit-student"></select></div>
-          <div class="field"><label class="field-label">Unit</label><input class="text-input" id="unit-main"></div>
-          <div class="field"><label class="field-label">Cycle (blank = current)</label><input class="text-input" id="unit-cycle"></div>
-        </div>
-        <button class="btn btn-sm" style="margin-top:10px" onclick="submitUnitManual()">Submit</button>
-        <div class="msg" id="unit-msg"></div>
-      </div>
-    </div>
+    <div id="forum-content"><div class="empty-note">Loading…</div></div>
   </div>
 
   <!-- GRAMMAR QUIZ PANEL -->
@@ -378,6 +463,7 @@ const QUIZ_ENGINE_URL  = 'https://script.google.com/macros/s/AKfycbzirSLXaqEV1St
 let authToken = sessionStorage.getItem('tp_token') || '';
 let classes = [];           // full Classes list from System sheet
 let currentClassId = sessionStorage.getItem('tp_class') || '';
+let currentClassLabel = sessionStorage.getItem('tp_class_label') || '';
 let arrangeMode = false;
 let dragSourceId = null;
 
@@ -598,7 +684,9 @@ async function deleteClass(classId) {
 
 function selectClass(c) {
   currentClassId = c.ClassId;
+  currentClassLabel = c.Label;
   sessionStorage.setItem('tp_class', currentClassId);
+  sessionStorage.setItem('tp_class_label', currentClassLabel);
   document.getElementById('header-class-badge').textContent = c.Label;
   document.getElementById('header-class-badge').style.display = 'inline-block';
   showScreen('screen-hub');
@@ -748,64 +836,1395 @@ async function loadTypingResults() {
 
 // ════════════════════════════════════════════════════════
 //  FORUM / CCF PANEL
+//  Faithful port of the real teacher.html — Grading, Schedule, Roster &
+//  Groups, Rubric, Settings, Reflections, Grammar Analysis, Scaffold, and
+//  Unit Submissions. Loading overlay is automatic (built into api()), so
+//  none of the ported logic below needs its own showLoading()/hideLoading()
+//  calls the way the original did.
 // ════════════════════════════════════════════════════════
-function showForumSub(name) {
-  ['cycle', 'groups', 'units'].forEach(function(n) {
-    document.getElementById('forum-sub-' + n).style.display = n === name ? 'block' : 'none';
-    document.getElementById('forum-nav-' + n).classList.toggle('active', n === name);
-  });
-  if (name === 'units') populateUnitStudentDropdown();
+let forumClassData = null;   // one big load per class-entry, same caching pattern as the original
+let currentForumTab = 'grading';
+
+function initials(name) { return (name || '?').split(' ').map(function(n) { return n[0]; }).join(''); }
+function wordCount(text) { return (text || '').trim().split(/\s+/).filter(Boolean).length; }
+function formatTs(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
+
 async function loadForumPanel() {
-  const data = await api('forum', { action: 'getScaffold', classId: currentClassId });
-  const el = document.getElementById('scaffold-current');
-  if (data.scaffold) {
-    el.innerHTML = '<span class="chip chip-gold">Cycle ' + esc(data.scaffold.Week || '') + '</span> Scaffolded unit: <strong>' + esc(data.scaffold.ScaffoldedUnit || '—') + '</strong>';
-    document.getElementById('scaffold-unit').value = data.scaffold.ScaffoldedUnit || '';
-  } else {
-    el.innerHTML = '<div class="empty-note">No cycle started yet — click "Advance to next cycle" to begin.</div>';
-  }
+  forumClassData = await api('forum', { action: 'getClassData', classId: currentClassId });
+  switchForumTab('grading');
 }
-async function setScaffold() {
-  await api('forum', { action: 'setScaffold', classId: currentClassId, scaffoldedUnit: document.getElementById('scaffold-unit').value });
-  loadForumPanel();
-}
-async function advanceCycle() {
-  if (!confirm('Advance to a new cycle for this class?')) return;
-  await api('forum', { action: 'advanceCycle', classId: currentClassId });
-  loadForumPanel();
-}
-async function saveGroups() {
-  const lines = document.getElementById('groups-input').value.trim().split('\\n').filter(Boolean);
-  const assignments = lines.map(function(line) {
-    const parts = line.split(',');
-    return { groupName: (parts[0] || '').trim(), studentId: (parts[1] || '').trim() };
+
+function switchForumTab(tab) {
+  currentForumTab = tab;
+  ['grading', 'schedule', 'rosterGroups', 'rubric', 'settings', 'reflections', 'grammar', 'scaffold', 'unitSubmissions'].forEach(function(t) {
+    document.getElementById('forum-nav-' + t).classList.toggle('active', t === tab);
   });
-  await api('forum', { action: 'setGroups', classId: currentClassId, assignments: JSON.stringify(assignments) });
-  alert('Groups saved.');
+  if (tab === 'grading') renderGrading();
+  if (tab === 'schedule') renderSchedule();
+  if (tab === 'rosterGroups') renderRosterGroups();
+  if (tab === 'rubric') renderRubricTab();
+  if (tab === 'settings') renderSettings();
+  if (tab === 'reflections') renderReflections();
+  if (tab === 'grammar') renderGrammarAnalysis();
+  if (tab === 'scaffold') renderScaffold();
+  if (tab === 'unitSubmissions') renderUnitSubmissions();
 }
-async function populateUnitStudentDropdown() {
-  const data = await api('forum', { action: 'getRoster', classId: currentClassId });
-  const sel = document.getElementById('unit-student');
-  sel.innerHTML = (data.roster || []).map(function(r) { return '<option value="' + r.StudentId + '">' + esc(r.NameEng) + '</option>'; }).join('');
+
+function getRubricVersionForWeek(week) {
+  const versions = forumClassData.rubricVersions;
+  if (!versions.length) return { versionId: null, startWeek: 0, criteria: [] };
+  let best = versions[0];
+  versions.forEach(function(v) { if (v.startWeek <= Number(week) && v.startWeek >= best.startWeek) best = v; });
+  return best;
 }
-async function submitUnitManual() {
-  const msg = document.getElementById('unit-msg');
-  msg.className = 'msg';
-  try {
-    await api('forum', {
-      action: 'submitUnit', classId: currentClassId,
-      studentId: document.getElementById('unit-student').value,
-      unit: document.getElementById('unit-main').value,
-      cycleOverride: document.getElementById('unit-cycle').value,
-      teacherOverride: 'true'
-    });
-    msg.textContent = 'Submitted.'; msg.className = 'msg ok';
-  } catch (e) {
-    msg.textContent = e.message; msg.className = 'msg error';
+function getGroupmateCount(studentNumber, week) {
+  const rows = forumClassData.groups.filter(function(g) { return String(g.Week) === String(week); });
+  const mine = rows.find(function(g) { return String(g.StudentNumber) === String(studentNumber); });
+  if (!mine) return 0;
+  return rows.filter(function(g) { return g.GroupID === mine.GroupID; }).length - 1;
+}
+function commentsQualify(commentsArr, deadline) {
+  if (!deadline) return commentsArr.every(function(c) { return wordCount(c.text) >= 30; });
+  return commentsArr.every(function(c) { return wordCount(c.text) >= 30 && new Date(c.createdAt) <= new Date(deadline); });
+}
+function autoSelectTier(crit, sub, sn, week, schedule) {
+  if (crit.autoType === 'WordCount') {
+    const wc = wordCount(sub.text);
+    if (wc === 0) return 0;
+    for (let i = crit.tiers.length - 1; i >= 0; i--) {
+      const min = (crit.tiers[i].autoMin !== '' && crit.tiers[i].autoMin !== undefined) ? Number(crit.tiers[i].autoMin) : 0;
+      if (wc >= min) return i;
+    }
+    return 0;
+  }
+  if (crit.autoType === 'PictureTimeliness') return sub.image ? 1 : 0;
+  if (crit.autoType === 'CommentCompletion') {
+    const required = sub.groupmatesWithPosts !== undefined ? sub.groupmatesWithPosts : getGroupmateCount(sn, week);
+    if (required <= 0) return null;
+    const okc = sub.commentsMade.length >= required && commentsQualify(sub.commentsMade, schedule && schedule.CommentDeadline);
+    return okc ? 1 : 0;
+  }
+  if (crit.autoType === 'ReplyCompletion') {
+    const received = sub.commentsReceived;
+    if (received.length === 0) {
+      const couldHaveReceived = sub.groupmatesWithPosts !== undefined ? sub.groupmatesWithPosts > 0 : getGroupmateCount(sn, week) > 0;
+      return couldHaveReceived ? 0 : null;
+    }
+    const allReplied = received.every(function(c) { return c.reply; });
+    if (!allReplied) return 0;
+    const okr = received.every(function(c) { return wordCount(c.reply.text) >= 30 && (!schedule || !schedule.ReplyDeadline || new Date(c.reply.createdAt) <= new Date(schedule.ReplyDeadline)); });
+    return okr ? 1 : 0;
+  }
+  return null;
+}
+
+/* ====================== GRADING ====================== */
+let gradingWeek = null;
+let gradingIdx = 0;
+let gradingSubmissionsCache = {};
+let gradingSelections = {};
+let gradingAutoSelections = {};
+let gradingFeedbackDraft = {};
+let gradingSavedSet = {};
+let currentGradingRubric = null;
+let currentGradingSn = null;
+
+function updateGradeTotalDisplay() {
+  const el = document.getElementById('gradeTotalDisplay');
+  if (!el || !currentGradingRubric || !currentGradingSn) return;
+  const sel = gradingSelections[currentGradingSn] || {};
+  const auto = gradingAutoSelections[currentGradingSn] || {};
+  let total = 0, max = 0, allSelected = true;
+  currentGradingRubric.forEach(function(crit) {
+    const tierIdx = sel[crit.id] !== undefined ? sel[crit.id] : auto[crit.id];
+    const critMax = crit.tiers.length ? Math.max.apply(null, crit.tiers.map(function(t) { return Number(t.points) || 0; })) : 0;
+    max += critMax;
+    if (tierIdx !== undefined && tierIdx !== null && crit.tiers[tierIdx]) total += Number(crit.tiers[tierIdx].points) || 0;
+    else allSelected = false;
+  });
+  el.textContent = total + ' / ' + max + ' pts';
+  el.style.color = allSelected ? 'var(--accent)' : 'var(--ink-mute)';
+}
+
+async function loadSubmissionsForWeek(week) {
+  if (gradingSubmissionsCache[week]) return gradingSubmissionsCache[week];
+  gradingSelections = {}; gradingAutoSelections = {}; gradingFeedbackDraft = {}; gradingSavedSet = {};
+  currentGradingRubric = null; currentGradingSn = null;
+  const result = await api('forum', { action: 'getSubmissionsForGrading', classId: currentClassId, week: week });
+  if (result.ok) gradingSubmissionsCache[week] = result;
+  return result;
+}
+
+function downloadMoodleReport() {
+  const subResult = gradingSubmissionsCache[gradingWeek];
+  if (!subResult) { alert('Load the grading tab for this week first.'); return; }
+  const rubric = getRubricVersionForWeek(gradingWeek).criteria;
+
+  const lines = subResult.roster.map(function(r) {
+    const sn = r.studentNumber;
+    const sub = subResult.submissions[sn] || {};
+    const saved = sub.savedGrades || {};
+    const session = gradingSelections[sn] || {};
+    let total = 0, max = 0;
+    const criterionLines = rubric.map(function(crit) {
+      const critMax = crit.tiers.length ? Math.max.apply(null, crit.tiers.map(function(t) { return Number(t.points) || 0; })) : 0;
+      max += critMax;
+      const tierIdx = saved[crit.id] !== undefined ? saved[crit.id] : (session[crit.id] !== undefined ? session[crit.id] : null);
+      if (tierIdx === null || tierIdx === undefined || !crit.tiers[tierIdx]) return crit.name + ': Not graded';
+      const pts = Number(crit.tiers[tierIdx].points) || 0;
+      total += pts;
+      return crit.name + ': ' + crit.tiers[tierIdx].label + ' = ' + pts + ' points';
+    }).join('\n');
+    return total + '\t' + r.name + ' (' + sn + ')\n' + criterionLines + '\nTotal: ' + total + ' / ' + max;
+  }).join('\n\n');
+
+  const blob = new Blob([lines], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = currentClassId + '_Week' + String(gradingWeek).padStart(2, '0') + '_Moodle_Grades.txt';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function getSelections(sn, rubric, sub, week, schedule) {
+  if (!gradingSelections[sn]) {
+    const sel = {};
+    if (sub.savedGrades && Object.keys(sub.savedGrades).length > 0) {
+      rubric.forEach(function(crit) { if (sub.savedGrades[crit.id] !== undefined) sel[crit.id] = sub.savedGrades[crit.id]; });
+      gradingSavedSet[sn] = true;
+    } else {
+      rubric.forEach(function(crit) {
+        const auto = autoSelectTier(crit, sub, sn, week, schedule);
+        if (auto !== null) sel[crit.id] = auto;
+      });
+    }
+    gradingSelections[sn] = sel;
+    gradingAutoSelections[sn] = Object.assign({}, sel);
+    if (sub.savedFeedback && !gradingFeedbackDraft[sn]) gradingFeedbackDraft[sn] = sub.savedFeedback;
+  }
+  return gradingSelections[sn];
+}
+
+async function renderGrading() {
+  const weekOptions = forumClassData.schedule.slice().sort(function(a, b) { return b.Week - a.Week; })
+    .map(function(s) { return '<option value="' + s.Week + '">Week ' + String(s.Week).padStart(2, '0') + '</option>'; }).join('');
+  if (gradingWeek === null && forumClassData.schedule.length) gradingWeek = forumClassData.schedule[0].Week;
+  if (!forumClassData.schedule.length) {
+    document.getElementById('forum-content').innerHTML = '<div class="card empty-note">No weeks set up in Schedule yet — add one in the Schedule tab first.</div>';
+    return;
+  }
+
+  document.getElementById('forum-content').innerHTML = '<div class="card empty-note">Loading submissions…</div>';
+  const subResult = await loadSubmissionsForWeek(gradingWeek);
+  if (!subResult.ok) {
+    document.getElementById('forum-content').innerHTML = '<div class="card empty-note">' + esc(subResult.error) + '</div>';
+    return;
+  }
+
+  const studentNumbers = subResult.roster.map(function(r) { return r.studentNumber; });
+  if (studentNumbers.length === 0) {
+    document.getElementById('forum-content').innerHTML = '<div class="card empty-note">No active students in this class yet.</div>';
+    return;
+  }
+  gradingIdx = ((gradingIdx % studentNumbers.length) + studentNumbers.length) % studentNumbers.length;
+  const sn = studentNumbers[gradingIdx];
+  const author = subResult.roster.find(function(r) { return r.studentNumber === sn; });
+  const sub = subResult.submissions[sn];
+  const schedule = forumClassData.schedule.find(function(s) { return String(s.Week) === String(gradingWeek); });
+  const rubricVersion = getRubricVersionForWeek(gradingWeek);
+  const rubric = rubricVersion.criteria;
+  const sel = getSelections(sn, rubric, sub, gradingWeek, schedule);
+  const gradedCount = studentNumbers.filter(function(s) { return gradingSavedSet[s]; }).length;
+  currentGradingRubric = rubric;
+  currentGradingSn = sn;
+
+  let bodyHtml;
+  if (!sub.title) {
+    bodyHtml = '<div class="card"><div class="empty-note">No submission from this student for this week.</div></div>';
+  } else {
+    const wc = wordCount(sub.text);
+    const postTs = sub.postCreatedAt ? '<span class="ts">' + formatTs(sub.postCreatedAt) + '</span>' : '';
+    const mediaHtml = sub.image ? '<div class="sub-media"><img src="' + sub.image + '"></div>' : '';
+    const groupMembersHtml = sub.groupMembers && sub.groupMembers.length
+      ? '<div class="sub-subhead">Group members</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px">' +
+        sub.groupMembers.map(function(n) { return '<span class="group-pill">' + esc(n) + '</span>'; }).join('') + '</div>'
+      : '';
+    const receivedHtml = sub.commentsReceived.length ? sub.commentsReceived.map(function(c) {
+      const cAuthor = subResult.roster.find(function(r) { return r.studentId === c.from || r.studentNumber === c.from; });
+      const cwc = wordCount(c.text);
+      const replyHtml = c.reply
+        ? '<div class="sub-reply"><div class="reply-label">↩ Their reply</div><div class="ct">' + esc(c.reply.text) + '</div><div class="cwc">' + wordCount(c.reply.text) + ' words · ' + formatTs(c.reply.createdAt) + '</div></div>'
+        : '<div class="cwc no-reply-yet">No reply yet</div>';
+      return '<div class="sub-comment"><div class="avatar">' + initials(cAuthor ? cAuthor.name : c.from) + '</div>' +
+        '<div class="sub-comment-body"><div class="cn">' + esc(cAuthor ? cAuthor.name : c.from) + ' <span class="ts">' + formatTs(c.createdAt) + '</span></div>' +
+        '<div class="ct">' + esc(c.text) + '</div><div class="cwc">' + cwc + ' words</div>' + replyHtml + '</div></div>';
+    }).join('') : '<div class="empty-note">No comments received.</div>';
+    const madeHtml = sub.commentsMade.length ? sub.commentsMade.map(function(c) {
+      const cwc = wordCount(c.text);
+      const replyHtml = c.reply
+        ? '<div class="sub-reply"><div class="reply-label">↩ Groupmate\u2019s reply</div><div class="ct">' + esc(c.reply.text) + '</div><div class="cwc">' + wordCount(c.reply.text) + ' words · ' + formatTs(c.reply.createdAt) + '</div></div>'
+        : '';
+      return '<div class="sub-comment"><div class="avatar" style="background:var(--paper-3);color:var(--ink-mute)">→</div>' +
+        '<div class="sub-comment-body"><div class="cn">On: "' + esc(c.toPost) + '" <span class="ts">' + formatTs(c.createdAt) + '</span></div>' +
+        '<div class="ct">' + esc(c.text) + '</div><div class="cwc">' + cwc + ' words</div>' + replyHtml + '</div></div>';
+    }).join('') : '<div class="empty-note">No comments made on groupmates.</div>';
+
+    bodyHtml = '<div class="card submission-card"><div class="sub-title">' + esc(sub.title) + '</div>' +
+      '<div class="sub-meta"><div class="avatar">' + initials(author.name) + '</div><div><div class="nm">' + esc(author.name) + '</div><div class="wc">' + wc + ' words ' + postTs + '</div></div></div>' +
+      '<div class="sub-body">' + esc(sub.text) + '</div>' + mediaHtml + groupMembersHtml +
+      '<div class="sub-subhead">Comments received (on their post)</div>' + receivedHtml +
+      '<div class="sub-subhead">Comments made (on groupmates\u2019 posts)</div>' + madeHtml + '</div>';
+  }
+
+  const criteriaHtml = rubric.map(function(crit) {
+    const selIdx = sel[crit.id];
+    const tiersHtml = crit.tiers.map(function(t, i) {
+      const checked = i === selIdx ? 'checked' : '';
+      const autoTag = (i === selIdx && crit.autoType !== 'Manual') ? '<span class="auto-tag">Auto-suggested</span>' : '';
+      return '<label class="tier-option ' + (i === selIdx && crit.autoType !== 'Manual' ? 'auto-suggested' : '') + '">' +
+        '<input type="radio" name="' + crit.id + '-' + sn + '" value="' + i + '" ' + checked + ' onchange="selectTier(\'' + sn + '\',\'' + crit.id + '\',' + i + ')">' +
+        '<div><div class="tlabel">' + esc(t.label) + autoTag + '</div>' + (t.desc ? '<div class="tdesc">' + esc(t.desc) + '</div>' : '') +
+        '<div class="tpts">' + t.points + ' pts</div></div></label>';
+    }).join('');
+    return '<div class="criterion open" id="crit-' + crit.id + '"><div class="criterion-head" onclick="toggleCriterion(\'' + crit.id + '\')">' +
+      '<div class="cname">' + esc(crit.name) + '</div><div style="display:flex;align-items:center;gap:8px"><span class="cpts">' + crit.maxPoints + ' pts max</span><span>▾</span></div></div>' +
+      '<div class="criterion-body">' + tiersHtml + '</div></div>';
+  }).join('');
+
+  document.getElementById('forum-content').innerHTML =
+    '<div class="grading-toolbar"><select onchange="gradingWeek=parseInt(this.value);gradingIdx=0;gradingSelections={};renderGrading();">' + weekOptions + '</select>' +
+    '<div class="chip chip-gold">Graded ' + gradedCount + ' / ' + studentNumbers.length + '</div>' +
+    '<button class="btn btn-ghost btn-sm" onclick="downloadMoodleReport()">⬇ Moodle Report</button>' +
+    '<button class="search-btn" onclick="openStudentSearch()">🔍</button></div>' +
+    '<div class="total-pts-note" style="margin:-8px 0 14px">Using rubric version starting Week ' + rubricVersion.startWeek + ' (Rubric tab to manage versions)</div>' +
+    '<div class="grading-layout"><div>' + bodyHtml + '</div><div class="grade-sidebar card">' +
+    '<div class="student-nav"><button class="nav-arrow" onclick="navStudent(-1)">‹</button>' +
+    '<div class="id"><div class="avatar">' + initials(author.name) + '</div><div class="nm">' + esc(author.name) + '</div></div>' +
+    '<button class="nav-arrow" onclick="navStudent(1)">›</button></div>' +
+    '<div class="grade-total-strip"><span id="gradeTotalDisplay"></span></div>' + criteriaHtml +
+    '<div class="feedback-box"><label class="field-label">Overall feedback (shown to student)</label>' +
+    '<textarea id="feedbackInput" placeholder="Write some overall advice...">' + esc(gradingFeedbackDraft[sn] || '') + '</textarea></div>' +
+    '<div class="grade-actions"><button class="btn btn-ghost" style="flex:1" onclick="saveGrade(false)">Save</button>' +
+    '<button class="btn" style="flex:1" onclick="saveGrade(true)">Save &amp; Next →</button></div></div></div>';
+  updateGradeTotalDisplay();
+}
+
+function toggleCriterion(critId) { document.getElementById('crit-' + critId).classList.toggle('open'); }
+function selectTier(sn, critId, idx) {
+  if (!gradingSelections[sn]) gradingSelections[sn] = {};
+  gradingSelections[sn][critId] = idx;
+  updateGradeTotalDisplay();
+}
+function navStudent(dir) { gradingIdx += dir; renderGrading(); }
+
+async function saveGrade(andNext) {
+  const subResult = gradingSubmissionsCache[gradingWeek];
+  const studentNumbers = subResult.roster.map(function(r) { return r.studentNumber; });
+  const sn = studentNumbers[((gradingIdx % studentNumbers.length) + studentNumbers.length) % studentNumbers.length];
+  gradingFeedbackDraft[sn] = document.getElementById('feedbackInput').value;
+
+  const rubricVersion = getRubricVersionForWeek(gradingWeek);
+  const sel = gradingSelections[sn] || {};
+  const auto = gradingAutoSelections[sn] || {};
+  const grades = rubricVersion.criteria.filter(function(crit) { return sel[crit.id] !== undefined; })
+    .map(function(crit) { return { criterionId: crit.id, tierOrder: sel[crit.id], wasOverridden: auto[crit.id] !== undefined && auto[crit.id] !== sel[crit.id] }; });
+
+  const result = await api('forum', {
+    action: 'saveGrade', classId: currentClassId, studentNumber: sn, week: gradingWeek,
+    grades: JSON.stringify(grades), overallFeedback: gradingFeedbackDraft[sn], gradedBy: 'Teacher'
+  });
+  if (result.ok) {
+    gradingSavedSet[sn] = true;
+    if (andNext) navStudent(1); else renderGrading();
+  } else {
+    alert(result.error || "Couldn't save grade.");
   }
 }
 
+/* ====================== STUDENT SEARCH MODAL ====================== */
+function openStudentSearch() {
+  document.getElementById('studentSearchModal').classList.add('show');
+  const input = document.getElementById('studentSearchInput');
+  input.value = ''; renderStudentSearchList(''); input.focus();
+}
+function closeStudentSearch() { document.getElementById('studentSearchModal').classList.remove('show'); }
+function filterStudentSearch() { renderStudentSearchList(document.getElementById('studentSearchInput').value.toLowerCase()); }
+function renderStudentSearchList(query) {
+  const subResult = gradingSubmissionsCache[gradingWeek];
+  if (!subResult) return;
+  const filtered = subResult.roster.filter(function(r) { return r.name.toLowerCase().indexOf(query) !== -1 || r.studentNumber.indexOf(query) !== -1; });
+  document.getElementById('studentSearchList').innerHTML = filtered.map(function(r) {
+    const graded = !!gradingSavedSet[r.studentNumber];
+    return '<div class="search-result-row" onclick="jumpToStudent(\'' + r.studentNumber + '\')"><div class="avatar">' + initials(r.name) +
+      '</div><div><div class="nm">' + esc(r.name) + '</div><div class="st">' + (graded ? '✓ Graded' : 'Not graded yet') + '</div></div></div>';
+  }).join('') || '<div class="empty-note">No matching students.</div>';
+}
+function jumpToStudent(sn) {
+  const subResult = gradingSubmissionsCache[gradingWeek];
+  const studentNumbers = subResult.roster.map(function(r) { return r.studentNumber; });
+  gradingIdx = studentNumbers.indexOf(sn);
+  closeStudentSearch();
+  renderGrading();
+}
+
+/* ====================== CONFIRM MODAL ====================== */
+let confirmCallback = null;
+function showConfirmModal(text, onConfirm) {
+  document.getElementById('confirmModalText').textContent = text;
+  confirmCallback = onConfirm;
+  document.getElementById('confirmModal').classList.add('show');
+}
+function closeConfirmModal() { document.getElementById('confirmModal').classList.remove('show'); confirmCallback = null; }
+document.getElementById('confirmModalOkBtn').onclick = function() {
+  const cb = confirmCallback;
+  closeConfirmModal();
+  if (cb) cb();
+};
+
+/* ====================== SCHEDULE TAB ====================== */
+function renderSchedule() {
+  const weeksHtml = forumClassData.schedule.slice().sort(function(a, b) { return b.Week - a.Week; }).map(function(s) {
+    const w = s.Week;
+    const toLocal = function(v) {
+      if (!v) return '';
+      const dt = new Date(v);
+      if (isNaN(dt.getTime())) return '';
+      const pad = function(n) { return String(n).padStart(2, '0'); };
+      return dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate()) + 'T' + pad(dt.getHours()) + ':' + pad(dt.getMinutes());
+    };
+    return '<div class="card"><div class="sub-title" style="font-family:\'Fraunces\',serif;font-size:16px;font-weight:600">Week ' + String(w).padStart(2, '0') + '</div>' +
+      '<label class="field-label" style="margin-top:10px">Date range label</label><input class="text-input" value="' + esc(s.DateRangeLabel || '') + '" onchange="saveScheduleField(' + w + ',\'dateRangeLabel\',this.value)">' +
+      '<label class="field-label" style="margin-top:10px">Prompt</label><input class="text-input" value="' + esc(s.Prompt || '') + '" onchange="saveScheduleField(' + w + ',\'prompt\',this.value)">' +
+      '<div class="week-edit-grid" style="margin-top:12px">' +
+      '<div><label class="field-label">Post opens</label><input class="text-input" type="datetime-local" value="' + toLocal(s.PostOpen) + '" onchange="saveScheduleField(' + w + ',\'postOpen\',this.value)"></div>' +
+      '<div><label class="field-label">Post closes</label><input class="text-input" type="datetime-local" value="' + toLocal(s.PostClose) + '" onchange="saveScheduleField(' + w + ',\'postClose\',this.value)"></div>' +
+      '<div><label class="field-label">Picture deadline</label><input class="text-input" type="datetime-local" value="' + toLocal(s.PictureDeadline) + '" onchange="saveScheduleField(' + w + ',\'pictureDeadline\',this.value)"></div>' +
+      '<div><label class="field-label">Comment deadline</label><input class="text-input" type="datetime-local" value="' + toLocal(s.CommentDeadline) + '" onchange="saveScheduleField(' + w + ',\'commentDeadline\',this.value)"></div>' +
+      '<div><label class="field-label">Reply deadline</label><input class="text-input" type="datetime-local" value="' + toLocal(s.ReplyDeadline) + '" onchange="saveScheduleField(' + w + ',\'replyDeadline\',this.value)"></div>' +
+      '<div><label class="field-label">Grammar unit submission</label><input class="text-input" type="datetime-local" value="' + toLocal(s.GrammarSubmitDeadline) + '" onchange="saveScheduleField(' + w + ',\'grammarSubmitDeadline\',this.value)"></div>' +
+      '</div></div>';
+  }).join('');
+  document.getElementById('forum-content').innerHTML =
+    '<div class="total-pts-note" style="margin-bottom:14px">Weekly deadlines — ' + esc(currentClassLabel) + '</div>' +
+    (weeksHtml || '<div class="card empty-note">No weeks yet.</div>') +
+    '<div class="card"><label class="field-label">Add a new week</label><input class="text-input" type="number" id="newWeekNum" placeholder="Week number" style="margin-bottom:8px">' +
+    '<button class="btn btn-ghost btn-sm" onclick="addNewWeek()">+ Add week</button></div>';
+}
+
+async function saveScheduleField(week, field, value) {
+  const s = forumClassData.schedule.find(function(s) { return s.Week === week; });
+  const payload = {
+    classId: currentClassId, week: week,
+    dateRangeLabel: s.DateRangeLabel, prompt: s.Prompt, postOpen: s.PostOpen, postClose: s.PostClose,
+    pictureDeadline: s.PictureDeadline, commentDeadline: s.CommentDeadline, replyDeadline: s.ReplyDeadline,
+    grammarSubmitDeadline: s.GrammarSubmitDeadline
+  };
+  payload[field] = value;
+  const fieldMap = { dateRangeLabel: 'DateRangeLabel', prompt: 'Prompt', postOpen: 'PostOpen', postClose: 'PostClose',
+    pictureDeadline: 'PictureDeadline', commentDeadline: 'CommentDeadline', replyDeadline: 'ReplyDeadline', grammarSubmitDeadline: 'GrammarSubmitDeadline' };
+  s[fieldMap[field]] = value;
+  const result = await api('forum', payload && Object.assign({ action: 'saveSchedule' }, payload));
+  if (!result.ok) alert(result.error || "Couldn't save.");
+}
+
+async function addNewWeek() {
+  const w = parseInt(document.getElementById('newWeekNum').value);
+  if (!w) { alert('Enter a week number first.'); return; }
+  if (forumClassData.schedule.find(function(s) { return s.Week === w; })) { alert('That week already exists.'); return; }
+
+  const priorWeeks = forumClassData.schedule.filter(function(s) { return s.Week < w; }).sort(function(a, b) { return b.Week - a.Week; });
+  const reference = priorWeeks[0] || forumClassData.schedule.slice().sort(function(a, b) { return b.Week - a.Week; })[0];
+  const weeksApart = reference ? (w - reference.Week) : 0;
+  const shiftDate = function(d) {
+    if (!d) return '';
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return '';
+    dt.setDate(dt.getDate() + weeksApart * 7);
+    return dt.toISOString();
+  };
+  const formatRangeDate = function(d) {
+    if (!d) return '';
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return '';
+    return dt.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  };
+  const postOpen = reference ? shiftDate(reference.PostOpen) : '';
+  const postClose = reference ? shiftDate(reference.PostClose) : '';
+  const pictureDeadline = reference ? shiftDate(reference.PictureDeadline) : '';
+  const commentDeadline = reference ? shiftDate(reference.CommentDeadline) : '';
+  const replyDeadline = reference ? shiftDate(reference.ReplyDeadline) : '';
+  const grammarSubmitDeadline = reference ? shiftDate(reference.GrammarSubmitDeadline) : '';
+  const dateRangeLabel = (postOpen && replyDeadline) ? (formatRangeDate(postOpen) + ' \u2013 ' + formatRangeDate(replyDeadline)) : '';
+
+  const result = await api('forum', {
+    action: 'saveSchedule', classId: currentClassId, week: w, dateRangeLabel: dateRangeLabel, prompt: '',
+    postOpen: postOpen, postClose: postClose, pictureDeadline: pictureDeadline, commentDeadline: commentDeadline,
+    replyDeadline: replyDeadline, grammarSubmitDeadline: grammarSubmitDeadline
+  });
+  if (result.ok) {
+    forumClassData.schedule.push({ Week: w, DateRangeLabel: dateRangeLabel, Prompt: '', PostOpen: postOpen, PostClose: postClose,
+      PictureDeadline: pictureDeadline, CommentDeadline: commentDeadline, ReplyDeadline: replyDeadline, GrammarSubmitDeadline: grammarSubmitDeadline });
+    renderSchedule();
+  } else {
+    alert(result.error || "Couldn't add week.");
+  }
+}
+
+/* ====================== ROSTER & GROUPS TAB ====================== */
+function renderRosterGroups() {
+  const rosterRows = forumClassData.roster.map(function(m) {
+    return '<tr><td>' + esc(m.StudentNumber) + '</td><td>' + esc(m.Name) + '</td>' +
+      '<td><label class="switch"><input type="checkbox" ' + (m.Active ? 'checked' : '') + ' onchange="toggleRosterActive(\'' + m.StudentId + '\', this.checked)"><span class="slider"></span></label></td></tr>';
+  }).join('');
+
+  const weekOptions = forumClassData.schedule.map(function(s) { return '<option value="' + s.Week + '">Week ' + String(s.Week).padStart(2, '0') + '</option>'; }).join('');
+  const latestWeek = forumClassData.groups.length ? Math.max.apply(null, forumClassData.groups.map(function(g) { return Number(g.Week); })) : null;
+  const currentGroupRows = latestWeek !== null ? forumClassData.groups.filter(function(g) { return Number(g.Week) === latestWeek; }) : [];
+  const groupIds = Array.from(new Set(currentGroupRows.map(function(g) { return g.GroupID; })));
+  const groupsHtml = groupIds.map(function(gid) {
+    const members = currentGroupRows.filter(function(g) { return g.GroupID === gid; }).map(function(g) { return g.StudentNumber; });
+    return '<div style="margin-bottom:8px"><span class="group-pill" style="background:var(--accent);color:#fff">Group ' + gid + '</span>' +
+      members.map(function(n) { return '<span class="group-pill">' + esc(n) + '</span>'; }).join('') + '</div>';
+  }).join('');
+
+  const activeCount = forumClassData.roster.filter(function(r) { return r.Active; }).length;
+  const defaultGroups = Math.max(1, Math.round(activeCount / 3));
+
+  document.getElementById('forum-content').innerHTML =
+    '<div class="card"><h3>Roster</h3><table class="data-table"><thead><tr><th>Student #</th><th>Name</th><th>Active</th></tr></thead>' +
+    '<tbody>' + (rosterRows || '<tr><td colspan="3" class="empty-note">No students yet.</td></tr>') + '</tbody></table></div>' +
+    '<div class="card"><h3>Groups</h3>' +
+    '<div class="week-edit-grid" style="margin-bottom:14px">' +
+    '<div><label class="field-label">Number of groups</label><input class="text-input" type="number" id="numGroupsInput" value="' + defaultGroups + '" min="1" max="' + (activeCount || 1) + '"></div>' +
+    '<div><label class="field-label">Generate for</label><select id="groupWeekSelect">' + weekOptions + '</select></div></div>' +
+    '<div style="font-size:12px;color:var(--ink-mute);margin-bottom:12px">' + activeCount + ' active student' + (activeCount === 1 ? '' : 's') + '</div>' +
+    '<button class="btn" onclick="doGenerateGroups()">🎲 Generate fresh groups</button>' +
+    '<div class="sub-subhead" style="margin-top:18px">Current groups' + (latestWeek !== null ? ' (Week ' + String(latestWeek).padStart(2, '0') + ')' : '') + '</div>' +
+    (groupsHtml || '<div class="empty-note">No groups yet.</div>') + '</div>';
+}
+
+async function toggleRosterActive(studentId, active) {
+  const result = await api('forum', { action: 'updateRosterActive', classId: currentClassId, studentId: studentId, active: active });
+  if (result.ok) {
+    const r = forumClassData.roster.find(function(r) { return r.StudentId === studentId; });
+    if (r) r.Active = active;
+  } else {
+    alert(result.error || "Couldn't save.");
+    renderRosterGroups();
+  }
+}
+
+async function doGenerateGroups() {
+  const week = parseInt(document.getElementById('groupWeekSelect').value);
+  const numberOfGroups = parseInt(document.getElementById('numGroupsInput').value) || 1;
+  const result = await api('forum', { action: 'generateGroups', classId: currentClassId, week: week, numberOfGroups: numberOfGroups });
+  if (result.ok) {
+    forumClassData = await api('forum', { action: 'getClassData', classId: currentClassId });
+    renderRosterGroups();
+  } else {
+    alert(result.error || "Couldn't generate groups.");
+  }
+}
+
+/* ====================== RUBRIC TAB ====================== */
+let rubricEditorVersionIdx = null;
+
+function renderRubricTab() {
+  if (rubricEditorVersionIdx === null) rubricEditorVersionIdx = forumClassData.rubricVersions.length - 1;
+  const sorted = forumClassData.rubricVersions;
+
+  const pillsHtml = sorted.map(function(v, i) {
+    const next = sorted[i + 1];
+    const range = next ? ('Weeks ' + v.startWeek + '\u2013' + (next.startWeek - 1)) : ('Week ' + v.startWeek + '+ (current)');
+    return '<button class="version-pill ' + (i === rubricEditorVersionIdx ? 'active' : '') + '" onclick="rubricEditorVersionIdx=' + i + ';renderRubricTab();">' +
+      'Version ' + (i + 1) + ' <span class="vrange">\u00b7 ' + range + '</span></button>';
+  }).join('');
+
+  if (!sorted.length) {
+    document.getElementById('forum-content').innerHTML = '<div class="card empty-note">No rubric versions yet.</div>';
+    return;
+  }
+  const version = sorted[rubricEditorVersionIdx];
+  const totalPts = version.criteria.reduce(function(s, cr) { return s + cr.maxPoints; }, 0);
+
+  const criteriaHtml = version.criteria.map(function(crit, ci) {
+    const tiersHtml = crit.tiers.map(function(t, ti) {
+      return '<div class="editor-tier-row">' +
+        '<input class="text-input" value="' + esc(t.label) + '" placeholder="Tier label" onchange="updateTier(' + ci + ',' + ti + ',\'label\',this.value)">' +
+        '<input class="text-input" value="' + esc(t.desc) + '" placeholder="Description (optional)" onchange="updateTier(' + ci + ',' + ti + ',\'desc\',this.value)">' +
+        '<input class="text-input" type="number" value="' + t.points + '" placeholder="Pts" onchange="updateTier(' + ci + ',' + ti + ',\'points\',parseInt(this.value)||0)">' +
+        '<div style="display:flex;gap:4px"><button class="icon-btn" ' + (ti === 0 ? 'disabled' : '') + ' onclick="moveTier(' + ci + ',' + ti + ',-1)">↑</button>' +
+        '<button class="icon-btn" ' + (ti === crit.tiers.length - 1 ? 'disabled' : '') + ' onclick="moveTier(' + ci + ',' + ti + ',1)">↓</button>' +
+        '<button class="icon-btn" onclick="removeTier(' + ci + ',' + ti + ')">✕</button></div></div>';
+    }).join('');
+    return '<div class="editor-criterion"><div class="editor-criterion-head">' +
+      '<div><label class="field-label">Criterion name</label><input class="text-input" value="' + esc(crit.name) + '" onchange="updateCriterion(' + ci + ',\'name\',this.value)"></div>' +
+      '<div><label class="field-label">Max points</label><input class="text-input" value="' + crit.maxPoints + '" disabled></div>' +
+      '<div><label class="field-label">Auto-grade by</label><select onchange="updateCriterion(' + ci + ',\'autoType\',this.value)">' +
+      ['Manual', 'WordCount', 'PictureTimeliness', 'CommentCompletion', 'ReplyCompletion'].map(function(t) { return '<option value="' + t + '" ' + (crit.autoType === t ? 'selected' : '') + '>' + t + '</option>'; }).join('') +
+      '</select></div><button class="icon-btn" onclick="removeCriterion(' + ci + ')">✕</button></div>' +
+      '<label class="field-label">Tiers</label>' + tiersHtml +
+      '<button class="btn btn-ghost btn-sm" onclick="addTier(' + ci + ')">+ Add tier</button></div>';
+  }).join('');
+
+  document.getElementById('forum-content').innerHTML =
+    '<p style="font-size:13px;color:var(--ink-mute);margin-bottom:14px">Editing a version changes grading for every week mapped to it — including past weeks. To change the rubric going forward only, use "Save as new version" below instead.</p>' +
+    pillsHtml +
+    '<div class="card" style="margin-top:14px"><div class="total-pts-note">Total: ' + totalPts + ' points across ' + version.criteria.length + ' criteria</div>' +
+    criteriaHtml + '<button class="btn btn-ghost" onclick="addCriterion()">+ Add criterion</button>' +
+    '<div class="editor-actions"><button class="btn" onclick="saveCurrentRubricVersion()">Save changes to this version</button></div>' +
+    '<div class="new-version-row"><div><label class="field-label">Start a new version from week</label><input class="text-input" type="number" id="newVersionWeek" min="1" placeholder="e.g. 9"></div>' +
+    '<button class="btn btn-ghost" onclick="saveAsNewVersion()">Save as new version →</button></div></div>';
+}
+
+function updateCriterion(ci, field, value) {
+  const crit = forumClassData.rubricVersions[rubricEditorVersionIdx].criteria[ci];
+  crit[field] = value;
+  if (field === 'name') renderRubricTab();
+}
+function removeCriterion(ci) {
+  const crit = forumClassData.rubricVersions[rubricEditorVersionIdx].criteria[ci];
+  showConfirmModal('Remove "' + crit.name + '" completely from this rubric version? This affects every week using this version.', function() {
+    forumClassData.rubricVersions[rubricEditorVersionIdx].criteria.splice(ci, 1);
+    renderRubricTab();
+  });
+}
+function addCriterion() {
+  forumClassData.rubricVersions[rubricEditorVersionIdx].criteria.push({
+    id: 'crit' + Date.now(), name: 'New Criterion', order: 99, autoType: 'Manual', maxPoints: 10,
+    tiers: [{ label: 'No submission', desc: '', points: 0 }, { label: 'Good', desc: '', points: 10 }]
+  });
+  renderRubricTab();
+}
+function updateTier(ci, ti, field, value) {
+  const crit = forumClassData.rubricVersions[rubricEditorVersionIdx].criteria[ci];
+  crit.tiers[ti][field] = value;
+  if (field === 'points') crit.maxPoints = Math.max.apply(null, crit.tiers.map(function(t) { return t.points; }));
+}
+function removeTier(ci, ti) {
+  const crit = forumClassData.rubricVersions[rubricEditorVersionIdx].criteria[ci];
+  crit.tiers.splice(ti, 1);
+  crit.maxPoints = crit.tiers.length ? Math.max.apply(null, crit.tiers.map(function(t) { return t.points; })) : 0;
+  renderRubricTab();
+}
+function moveTier(ci, ti, dir) {
+  const tiers = forumClassData.rubricVersions[rubricEditorVersionIdx].criteria[ci].tiers;
+  const newIdx = ti + dir;
+  if (newIdx < 0 || newIdx >= tiers.length) return;
+  const tmp = tiers[ti]; tiers[ti] = tiers[newIdx]; tiers[newIdx] = tmp;
+  renderRubricTab();
+}
+function addTier(ci) {
+  forumClassData.rubricVersions[rubricEditorVersionIdx].criteria[ci].tiers.push({ label: 'New tier', desc: '', points: 0 });
+  renderRubricTab();
+}
+
+async function saveCurrentRubricVersion() {
+  const version = forumClassData.rubricVersions[rubricEditorVersionIdx];
+  const result = await api('forum', { action: 'saveRubricVersion', classId: currentClassId, versionId: version.versionId, criteria: JSON.stringify(version.criteria) });
+  if (!result.ok) alert(result.error || "Couldn't save rubric.");
+}
+
+async function saveAsNewVersion() {
+  const wk = parseInt(document.getElementById('newVersionWeek').value);
+  if (!wk || wk < 1) { alert('Enter a valid starting week first.'); return; }
+  const currentVersion = forumClassData.rubricVersions[rubricEditorVersionIdx];
+  const cloned = JSON.parse(JSON.stringify(currentVersion.criteria));
+  const result = await api('forum', { action: 'createRubricVersion', classId: currentClassId, startWeek: wk, criteria: JSON.stringify(cloned) });
+  if (result.ok) {
+    forumClassData.rubricVersions.push({ versionId: result.versionId, startWeek: wk, criteria: cloned });
+    forumClassData.rubricVersions.sort(function(a, b) { return a.startWeek - b.startWeek; });
+    rubricEditorVersionIdx = forumClassData.rubricVersions.findIndex(function(v) { return v.versionId === result.versionId; });
+    renderRubricTab();
+  } else {
+    alert(result.error || "Couldn't create new version.");
+  }
+}
+
+/* ====================== SETTINGS TAB ====================== */
+function renderSettings() {
+  const s = forumClassData.settings;
+  document.getElementById('forum-content').innerHTML =
+    '<div class="card"><h3>Feature toggles — ' + esc(currentClassLabel) + '</h3>' +
+    '<div class="toggle-row"><div><div class="tname">Groups</div><div class="tdesc">Randomize students into weekly groups for commenting.</div></div>' +
+    '<label class="switch"><input type="checkbox" ' + (s.GroupsEnabled ? 'checked' : '') + ' onchange="saveSettingsField(\'groupsEnabled\',this.checked)"><span class="slider"></span></label></div>' +
+    '<div class="toggle-row"><div><div class="tname">Comments</div><div class="tdesc">Allow students to comment on groupmates\u2019 posts.</div></div>' +
+    '<label class="switch"><input type="checkbox" ' + (s.CommentsEnabled ? 'checked' : '') + ' onchange="saveSettingsField(\'commentsEnabled\',this.checked)"><span class="slider"></span></label></div>' +
+    '<div class="toggle-row"><div><div class="tname">Replies</div><div class="tdesc">Allow students to reply to comments they receive.</div></div>' +
+    '<label class="switch"><input type="checkbox" ' + (s.RepliesEnabled ? 'checked' : '') + ' onchange="saveSettingsField(\'repliesEnabled\',this.checked)"><span class="slider"></span></label></div>' +
+    '<div class="toggle-row"><div><div class="tname">Picture / video</div><div class="tdesc">Allow photo uploads and YouTube links on posts.</div></div>' +
+    '<label class="switch"><input type="checkbox" ' + (s.PictureEnabled ? 'checked' : '') + ' onchange="saveSettingsField(\'pictureEnabled\',this.checked)"><span class="slider"></span></label></div>' +
+    '<div class="toggle-row"><div><div class="tname">Scaffold mode (formS)</div><div class="tdesc">Border highlight when a student errs on the cycle\u2019s assigned scaffold unit and hasn\u2019t studied it yet.</div></div>' +
+    '<label class="switch"><input type="checkbox" ' + (s.ScaffoldEnabled ? 'checked' : '') + ' onchange="saveSettingsField(\'scaffoldEnabled\',this.checked)"><span class="slider"></span></label></div>' +
+    '<div class="toggle-row"><div><div class="tname">Show untreatable errors</div><div class="tdesc">Grey-highlight collocation/idiom/word-choice/awkward-phrasing errors. Data is always recorded either way.</div></div>' +
+    '<label class="switch"><input type="checkbox" ' + (s.ShowUntreatableErrors ? 'checked' : '') + ' onchange="saveSettingsField(\'showUntreatableErrors\',this.checked)"><span class="slider"></span></label></div>' +
+    '</div>';
+}
+
+async function saveSettingsField(field, value) {
+  const s = forumClassData.settings;
+  const capField = field.charAt(0).toUpperCase() + field.slice(1);
+  s[capField] = value;
+  const result = await api('forum', {
+    action: 'saveSettings', classId: currentClassId, groupSize: s.GroupSize,
+    groupsEnabled: field === 'groupsEnabled' ? value : s.GroupsEnabled,
+    commentsEnabled: field === 'commentsEnabled' ? value : s.CommentsEnabled,
+    repliesEnabled: field === 'repliesEnabled' ? value : s.RepliesEnabled,
+    pictureEnabled: field === 'pictureEnabled' ? value : s.PictureEnabled,
+    scaffoldEnabled: field === 'scaffoldEnabled' ? value : s.ScaffoldEnabled,
+    showUntreatableErrors: field === 'showUntreatableErrors' ? value : s.ShowUntreatableErrors
+  });
+  if (!result.ok) alert(result.error || "Couldn't save.");
+}
+
+/* ====================== TOAST (used for PDF batch-progress messages) ====================== */
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { t.classList.remove('show'); }, 2400);
+}
+
+/* ====================== REFLECTIONS ====================== */
+let reflectionsWeek = null;
+let reflectionsData = null;
+
+async function renderReflections() {
+  if (!forumClassData.schedule.length) {
+    document.getElementById('forum-content').innerHTML = '<div class="card empty-note">No weeks set up yet — add one in the Schedule tab first.</div>';
+    return;
+  }
+  if (reflectionsWeek === null) reflectionsWeek = forumClassData.schedule.slice().sort(function(a, b) { return b.Week - a.Week; })[0].Week;
+
+  const weekOptions = forumClassData.schedule.slice().sort(function(a, b) { return b.Week - a.Week; })
+    .map(function(s) { return '<option value="' + s.Week + '" ' + (s.Week === reflectionsWeek ? 'selected' : '') + '>' + String(s.Week).padStart(2, '0') + ' \u00b7 ' + esc(s.DateRangeLabel) + '</option>'; }).join('');
+
+  document.getElementById('forum-content').innerHTML =
+    '<div class="card" style="margin-bottom:14px"><div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">' +
+    '<div><label class="field-label" style="margin-bottom:6px">Week</label><select id="reflWeekSelect" onchange="reflectionsWeek=parseInt(this.value);loadReflectionsData()">' + weekOptions + '</select></div>' +
+    '<div style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap">' +
+    '<button class="btn btn-ghost" id="reflZipBtn" onclick="downloadReflectionZip()" disabled>⬇ Individual PDFs (ZIP)</button>' +
+    '<button class="btn" id="reflMergedBtn" onclick="downloadReflectionMerged()" disabled>⬇ All-in-one PDF</button></div></div></div>' +
+    '<div id="reflStudentList"><div class="card empty-note">Loading…</div></div>';
+  loadReflectionsData();
+}
+
+async function loadReflectionsData() {
+  document.getElementById('reflStudentList').innerHTML = '<div class="card empty-note">Loading…</div>';
+  document.getElementById('reflZipBtn').disabled = true;
+  document.getElementById('reflMergedBtn').disabled = true;
+
+  let subResult = gradingSubmissionsCache[reflectionsWeek];
+  if (!subResult) {
+    const res = await api('forum', { action: 'getSubmissionsForGrading', classId: currentClassId, week: reflectionsWeek });
+    if (!res.ok) {
+      document.getElementById('reflStudentList').innerHTML = '<div class="card empty-note">Couldn\'t load submissions for this week.</div>';
+      return;
+    }
+    gradingSubmissionsCache[reflectionsWeek] = res;
+    subResult = res;
+  }
+  reflectionsData = subResult;
+
+  const rows = subResult.roster.map(function(r) {
+    const sub = subResult.submissions[r.studentNumber] || {};
+    const hasPost = !!sub.title;
+    const wc = hasPost ? wordCount(sub.text) : 0;
+    return '<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--rule)">' +
+      '<div class="avatar" style="width:30px;height:30px;font-size:11px">' + initials(r.name) + '</div>' +
+      '<div style="flex:1"><div style="font-weight:600;font-size:13px">' + esc(r.name) + '</div>' +
+      '<div style="font-size:11px;color:var(--ink-mute)">' + (hasPost ? ('"' + esc(sub.title) + '" \u00b7 ' + wc + ' words') : 'No submission') + '</div></div>' +
+      '<div style="font-size:11px;color:' + (hasPost ? 'var(--accent)' : 'var(--ink-mute)') + '">' + (hasPost ? '✓ Has entry' : '—') + '</div></div>';
+  }).join('');
+
+  const withPosts = subResult.roster.filter(function(r) { return subResult.submissions[r.studentNumber] && subResult.submissions[r.studentNumber].title; }).length;
+
+  document.getElementById('reflStudentList').innerHTML =
+    '<div class="card" style="padding:0;overflow:hidden"><div style="padding:12px 16px;background:var(--paper-2);border-bottom:1px solid var(--rule);font-size:12px;color:var(--ink-mute)">' +
+    subResult.roster.length + ' students \u00b7 ' + withPosts + ' with entries</div>' + rows + '</div>';
+
+  if (withPosts > 0) { document.getElementById('reflZipBtn').disabled = false; document.getElementById('reflMergedBtn').disabled = false; }
+}
+
+const CCF_M = 12, CCF_W = 210 - CCF_M * 2;
+const CCF_COLORS = {
+  green:  { fill: [219,242,229], text: [26,58,42] },
+  yellow: { fill: [253,244,205], text: [102,79,8] },
+  orange: { fill: [253,225,196], text: [120,58,10] },
+  red:    { fill: [252,220,220], text: [110,28,28] },
+  purple: { fill: [230,222,247], text: [74,42,128] },
+  grey:   { fill: [230,230,228], text: [90,90,86] }
+};
+function ccfUnitState(code, unit, colourMap) {
+  if (!code) return null;
+  if (code === 'SC' || code === 'PU') return 'purple';
+  if (code === 'COL' || code === 'WC' || code === 'IDM' || code === 'AWK') return 'grey';
+  if (unit && colourMap && colourMap[unit]) return colourMap[unit].colour;
+  return 'green';
+}
+function ccfUnitBorder(unit, colourMap) { return !!(unit && colourMap && colourMap[unit] && colourMap[unit].border); }
+function ccfTagFor(style) {
+  const noUnit = style.state === 'purple' || style.state === 'grey';
+  return noUnit ? style.code : style.code + (style.primaryUnit ? '\u00b7' + style.primaryUnit : '');
+}
+
+function ccfTokenize(text, colourMap, showUntreatable) {
+  const re = /\{(\^|[^{}|]*)\|([A-Z]+)(?:\|([BI]\d+(?:\/[BI]\d+)?))?\}/g;
+  const tokens = []; let last = 0, m;
+  const paraTexts = text.split(/\n\s*\n/);
+  const paraIndents = paraTexts.map(function(p) { return /^[ \t]+\S/.test(p); });
+  let paraIdx = 0;
+  let needIndentMarker = paraIndents[0];
+
+  function pushWords(str, style) {
+    String(str).split(/\n\s*\n/).forEach(function(para, i, arr) {
+      if (needIndentMarker) { tokens.push({ indent: true }); needIndentMarker = false; }
+      para.split(/\s+/).filter(Boolean).forEach(function(w) { tokens.push({ text: w, style: style }); });
+      if (i < arr.length - 1) { tokens.push({ brk: true }); paraIdx++; needIndentMarker = paraIndents[paraIdx]; }
+    });
+  }
+  while ((m = re.exec(text)) !== null) {
+    pushWords(text.slice(last, m.index), null);
+    const span = m[1], code = m[2].trim();
+    const unitRaw = m[3] ? m[3].trim() : '';
+    const parts = unitRaw ? unitRaw.split('/') : [null, null];
+    const primaryUnit = parts[0], secondaryUnit = parts[1];
+    let state = ccfUnitState(code, primaryUnit, colourMap);
+    if (state === 'grey' && showUntreatable === false) state = null;
+    const noUnit = state === 'purple' || state === 'grey';
+    const border = (!state || noUnit) ? false : ccfUnitBorder(primaryUnit, colourMap);
+    const style = state ? { code: code, primaryUnit: noUnit ? null : primaryUnit, secondaryUnit: noUnit ? null : secondaryUnit, state: state, border: border } : null;
+    if (needIndentMarker) { tokens.push({ indent: true }); needIndentMarker = false; }
+    if (span === '^') {
+      tokens.push({ text: '^', style: style });
+    } else {
+      span.trim().split(/\s+/).filter(Boolean).forEach(function(w) { tokens.push({ text: w, style: style }); });
+    }
+    last = m.index + m[0].length;
+  }
+  pushWords(text.slice(last), null);
+  return tokens;
+}
+
+function ccfLayoutAnnotated(doc, tokens, fontSize, maxWidth) {
+  const tagFontSize = fontSize * 0.62;
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(fontSize);
+  const spaceW = doc.getTextWidth(' ');
+  const widths = tokens.map(function(t) {
+    if (t.brk || t.indent) return 0;
+    doc.setFont('helvetica', t.style ? 'bold' : 'normal'); doc.setFontSize(fontSize);
+    let w = doc.getTextWidth(t.text);
+    if (t.style) {
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(tagFontSize);
+      w += doc.getTextWidth(' [' + ccfTagFor(t.style) + ']');
+    }
+    return w;
+  });
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(fontSize);
+  const lines = []; let cur = []; let curW = 0;
+  let pendingIndent = false;
+  tokens.forEach(function(t, i) {
+    if (t.indent) { pendingIndent = true; return; }
+    if (t.brk) { if (cur.length) { lines.push(cur); cur = []; curW = 0; } lines.push([]); return; }
+    const w = widths[i];
+    const add = cur.length ? spaceW + w : w;
+    if (curW + add > maxWidth && cur.length) { lines.push(cur); cur = []; curW = 0; }
+    if (cur.length === 0 && pendingIndent) { cur.indent = true; pendingIndent = false; }
+    cur.push(t); curW += (cur.length > 1 ? spaceW : 0) + w;
+  });
+  if (cur.length) lines.push(cur);
+  return lines;
+}
+
+function ccfDrawAnnotated(doc, tokens, x0, y0, fontSize, lineHeight, maxWidth) {
+  const lines = ccfLayoutAnnotated(doc, tokens, fontSize, maxWidth);
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(fontSize);
+  const spaceW = doc.getTextWidth(' ');
+  const tagFontSize = fontSize * 0.62;
+  const PARA_INDENT_MM = 5;
+  let y = y0;
+  lines.forEach(function(line) {
+    let x = x0 + (line.indent ? PARA_INDENT_MM : 0);
+    line.forEach(function(t) {
+      doc.setFont('helvetica', t.style ? 'bold' : 'normal'); doc.setFontSize(fontSize);
+      let w = doc.getTextWidth(t.text);
+      let tagStr = null, tagW = 0;
+      if (t.style) {
+        tagStr = ' [' + ccfTagFor(t.style) + ']';
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(tagFontSize);
+        tagW = doc.getTextWidth(tagStr);
+      }
+      if (t.style) {
+        const c = CCF_COLORS[t.style.state];
+        doc.setFillColor(c.fill[0], c.fill[1], c.fill[2]);
+        doc.roundedRect(x - 0.6, y - fontSize * 0.34, w + tagW + 1.2, fontSize * 0.48, 0.5, 0.5, 'F');
+        if (t.style.border) {
+          doc.setDrawColor(42, 122, 78); doc.setLineWidth(0.35);
+          doc.roundedRect(x - 0.6, y - fontSize * 0.34, w + tagW + 1.2, fontSize * 0.48, 0.5, 0.5, 'S');
+        }
+        doc.setTextColor(c.text[0], c.text[1], c.text[2]);
+      } else {
+        doc.setTextColor(40, 40, 40);
+      }
+      doc.setFont('helvetica', t.style ? 'bold' : 'normal'); doc.setFontSize(fontSize);
+      doc.text(t.text, x, y);
+      x += w;
+      if (tagStr) {
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(tagFontSize);
+        doc.text(tagStr, x, y);
+        x += tagW;
+      }
+      x += spaceW;
+    });
+    y += lineHeight;
+  });
+  return y;
+}
+
+function ccfRuled(doc, y, n, gap, width) {
+  const w = width || CCF_W;
+  for (let i = 0; i < n; i++) {
+    doc.setDrawColor(61, 90, 115); doc.setLineWidth(0.35);
+    doc.line(CCF_M + 2, y, CCF_M + 2 + w, y);
+    if (i < n - 1) y += gap;
+  }
+  return y;
+}
+function ccfFieldLabel(doc, y, text) {
+  doc.setFontSize(7.2); doc.setFont('helvetica', 'bold'); doc.setTextColor(91, 99, 88);
+  doc.text(text.toUpperCase(), CCF_M + 2, y);
+  return y + 5.2;
+}
+
+const CCF_TABLE_COLS = [
+  { label: 'What I changed', frac: 0.36 }, { label: 'Unit', frac: 0.06 }, { label: 'Page', frac: 0.06 }, { label: 'Why?', frac: 0.52 }
+];
+function ccfDrawFixTable(doc, y, rows, width) {
+  const tableStart = y;
+  const rowH = 6.3, headerH = 5;
+  let x = CCF_M + 2;
+  const colX = [];
+  CCF_TABLE_COLS.forEach(function(c) { colX.push(x); x += width * c.frac; });
+  colX.push(CCF_M + 2 + width);
+  doc.setFillColor(240, 240, 236);
+  doc.rect(CCF_M + 2, y, width, headerH, 'F');
+  doc.setFontSize(6.3); doc.setFont('helvetica', 'bold'); doc.setTextColor(91, 99, 88);
+  CCF_TABLE_COLS.forEach(function(c, i) { doc.text(c.label, colX[i] + 1.5, y + 3.6); });
+  y += headerH;
+  doc.setDrawColor(180, 183, 176); doc.setLineWidth(0.25);
+  for (let r = 0; r < rows; r++) { doc.line(CCF_M + 2, y + rowH, CCF_M + 2 + width, y + rowH); y += rowH; }
+  const tableEnd = y;
+  doc.setDrawColor(91, 99, 88); doc.setLineWidth(0.4);
+  doc.rect(CCF_M + 2, tableStart, width, tableEnd - tableStart, 'S');
+  doc.setDrawColor(180, 183, 176); doc.setLineWidth(0.25);
+  for (let i = 1; i < colX.length - 1; i++) { doc.line(colX[i], tableStart, colX[i], tableEnd); }
+  return tableEnd;
+}
+
+function ccfDrawSentenceBlock(doc, y, sentenceNum, subtitle, fillColor, textColor) {
+  const boxTop = y;
+  const titleBarTop = boxTop + 1.2;
+  const titleBarH = 6.5;
+  doc.setFillColor(fillColor[0], fillColor[1], fillColor[2]);
+  doc.rect(CCF_M + 0.3, titleBarTop, CCF_W - 0.6, titleBarH, 'F');
+  let ty = titleBarTop + titleBarH / 2 + 1.5;
+  doc.setFontSize(7.2); doc.setFont('helvetica', 'bold'); doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+  doc.text('SENTENCE ' + sentenceNum + ' (' + subtitle.toUpperCase() + ') - CORRECTIONS', CCF_M + 2, ty);
+
+  let y2 = boxTop + 1.2 + titleBarH + 4.5;
+  y2 = ccfRuled(doc, y2, 2, 5.8, CCF_W - 4) + 3.8;
+  y2 = ccfFieldLabel(doc, y2, 'My Finished Attempt');
+  y2 = ccfRuled(doc, y2, 2, 5.8, CCF_W - 4) + 1.2;
+  y2 = ccfDrawFixTable(doc, y2, 5, CCF_W - 4);
+  const boxBottom = y2 + 5;
+  doc.setDrawColor(91, 99, 88); doc.setLineWidth(0.5);
+  doc.roundedRect(CCF_M - 2, boxTop, CCF_W + 4, boxBottom - boxTop, 2, 2, 'S');
+  return boxBottom;
+}
+
+function ccfDrawUnitAndCompletionRow(doc, y, newUnitValue, submittedAt) {
+  doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(91, 99, 88);
+  doc.text('NEW UNIT', CCF_M, y);
+  const newUnitLabelW = doc.getTextWidth('NEW UNIT');
+  const newUnitBoxX = CCF_M + newUnitLabelW + 2.5;
+  doc.setDrawColor(61, 90, 115); doc.setLineWidth(0.4);
+  doc.roundedRect(newUnitBoxX, y - 4.4, 16, 6, 1, 1, 'S');
+  if (newUnitValue) {
+    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(32, 38, 31);
+    doc.text(String(newUnitValue), newUnitBoxX + 3, y);
+  }
+  if (newUnitValue && submittedAt) {
+    doc.setFontSize(6.3); doc.setFont('helvetica', 'italic'); doc.setTextColor(120, 126, 116);
+    doc.text('Submitted by student on ' + submittedAt, newUnitBoxX + 16 + 4, y);
+  }
+  const label = 'IN-CLASS COMPLETION';
+  const boxW = 16;
+  doc.setFontSize(7); doc.setFont('helvetica', 'bold');
+  const boxRight = CCF_M + CCF_W;
+  const boxLeft = boxRight - boxW;
+  const labelEndX = boxLeft - 2.5;
+  doc.text(label, labelEndX, y, { align: 'right' });
+  doc.setDrawColor(61, 90, 115); doc.setLineWidth(0.4);
+  doc.roundedRect(boxLeft, y - 4.4, boxW, 6, 1, 1, 'S');
+  return y + 5;
+}
+
+function ccfDrawHomeworkBlock(doc, y, sentenceNum, fillColor, textColor) {
+  const boxTop = y;
+  const titleBarTop = boxTop + 1.2;
+  const titleBarH = 6.5;
+  doc.setFillColor(fillColor[0], fillColor[1], fillColor[2]);
+  doc.rect(CCF_M + 0.3, titleBarTop, CCF_W - 0.6, titleBarH, 'F');
+  let ty = titleBarTop + titleBarH / 2 + 1.5;
+  doc.setFontSize(7.2); doc.setFont('helvetica', 'bold'); doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+  doc.text('SENTENCE ' + sentenceNum + ' — AI CHECK', CCF_M + 2, ty);
+  let y2 = boxTop + 1.2 + titleBarH + 4.5;
+  y2 = ccfFieldLabel(doc, y2, 'Confirmed correct sentence');
+  y2 = ccfRuled(doc, y2, 2, 5.8, CCF_W - 4) + 3.8;
+  y2 = ccfFieldLabel(doc, y2, 'What the AI told me');
+  y2 = ccfRuled(doc, y2, 5, 5.8, CCF_W - 4) + 3;
+  const boxBottom = y2 + 5;
+  doc.setDrawColor(91, 99, 88); doc.setLineWidth(0.5);
+  doc.roundedRect(CCF_M - 2, boxTop, CCF_W + 4, boxBottom - boxTop, 2, 2, 'S');
+  return boxBottom + 8;
+}
+
+function ccfPageHeader(doc, title, meta) {
+  doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.setTextColor(32, 38, 31);
+  doc.text(title, CCF_M, 12);
+  if (meta) {
+    doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(91, 99, 88);
+    doc.text(meta, 210 - CCF_M, 12, { align: 'right' });
+  }
+  doc.setDrawColor(61, 90, 115); doc.setLineWidth(0.8);
+  doc.line(CCF_M, 16, 210 - CCF_M, 16);
+}
+
+function ccfDrawReflectionSheet(doc, studentName, classLabel, week, annotation, colourMap, showUntreatable, isFirst, newUnitValue, newUnitSubmittedAt) {
+  const MAX_Y = 285;
+  const hasAnnotation = annotation && annotation.annotatedText;
+  const blogTitle = (annotation && annotation.title) ? annotation.title : ('Week ' + week + ' entry');
+  const meta = classLabel + '  \u00b7  Week ' + week + '  \u00b7  ' + studentName;
+
+  if (!isFirst) doc.addPage();
+  ccfPageHeader(doc, 'Blog Entry Grammar Reflection', meta);
+  let y = 24;
+  doc.setFontSize(10.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(32, 38, 31);
+  doc.text(blogTitle, CCF_M + CCF_W / 2, y, { align: 'center' });
+  y += 5;
+  doc.setDrawColor(215, 218, 206); doc.setLineWidth(0.25); doc.line(CCF_M, y, 210 - CCF_M, y); y += 5;
+  const blogStartY = y;
+
+  const scratch = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+  let scratchY = ccfDrawUnitAndCompletionRow(scratch, 0, newUnitValue, newUnitSubmittedAt);
+  scratchY = ccfDrawSentenceBlock(scratch, scratchY, 1, 'New Unit', [219,242,229], [26,58,42]);
+  scratchY = ccfDrawSentenceBlock(scratch, scratchY, 2, 'Recurring', [253,244,205], [102,79,8]);
+  const FIXED_HEIGHT = scratchY;
+  const BLOG_AVAILABLE = MAX_Y - blogStartY - FIXED_HEIGHT;
+  const FONT_MIN = 5.5, FONT_MAX = 11;
+
+  let chosenFont = FONT_MIN, chosenLines = null, tokens = null;
+  if (hasAnnotation) {
+    tokens = ccfTokenize(annotation.annotatedText, colourMap, showUntreatable);
+    for (let fs = FONT_MAX; fs >= FONT_MIN; fs -= 0.25) {
+      const testLines = ccfLayoutAnnotated(doc, tokens, fs, CCF_W - 8);
+      const lineH = fs * 0.352778 * 1.35;
+      if (testLines.length * lineH <= BLOG_AVAILABLE) { chosenFont = fs; chosenLines = testLines; break; }
+      chosenLines = testLines;
+    }
+  } else {
+    const plainText = 'No entry was submitted this week.';
+    for (let fs = FONT_MAX; fs >= FONT_MIN; fs -= 0.25) {
+      doc.setFontSize(fs);
+      const testLines = doc.splitTextToSize(plainText, CCF_W - 8);
+      const lineH = fs * 0.352778 * 1.35;
+      if (testLines.length * lineH <= BLOG_AVAILABLE) { chosenFont = fs; chosenLines = testLines; break; }
+      chosenLines = testLines;
+    }
+  }
+  const lineH = chosenFont * 0.352778 * 1.35;
+  if (hasAnnotation) {
+    ccfDrawAnnotated(doc, tokens, CCF_M + 4, y, chosenFont, lineH, CCF_W - 8);
+  } else {
+    doc.setFontSize(chosenFont); doc.setFont('helvetica', 'italic'); doc.setTextColor(150, 155, 145);
+    chosenLines.forEach(function(l) { doc.text(l, CCF_M + 4, y); y += lineH; });
+  }
+
+  y = blogStartY + BLOG_AVAILABLE + 2;
+  y = ccfDrawUnitAndCompletionRow(doc, y, newUnitValue, newUnitSubmittedAt);
+  y = ccfDrawSentenceBlock(doc, y, 1, 'New Unit', [219,242,229], [26,58,42]);
+  y = ccfDrawSentenceBlock(doc, y, 2, 'Recurring', [253,244,205], [102,79,8]);
+
+  doc.addPage();
+  ccfPageHeader(doc, 'Homework', null);
+  y = 26;
+  y = ccfDrawHomeworkBlock(doc, y, 1, [219,242,229], [26,58,42]);
+  y = ccfDrawHomeworkBlock(doc, y, 2, [253,244,205], [102,79,8]);
+}
+
+function addCCFReflectionPage(doc, studentName, classLabel, studentNumber, week, annotation, colourMap, showUntreatable, isFirst, newUnitValue, newUnitSubmittedAt) {
+  ccfDrawReflectionSheet(doc, studentName, classLabel, week, annotation, colourMap, showUntreatable, isFirst, newUnitValue, newUnitSubmittedAt);
+}
+
+function withTimeout(promise, ms) {
+  return Promise.race([promise, new Promise(function(resolve) { setTimeout(function() { resolve({ ok: false, error: 'Timed out' }); }, ms); })]);
+}
+
+async function fetchAnnotationsForRoster(roster, week, onProgress) {
+  const BATCH_SIZE = 5, TIMEOUT_MS = 15000;
+  const results = {};
+  for (let i = 0; i < roster.length; i += BATCH_SIZE) {
+    const batch = roster.slice(i, i + BATCH_SIZE);
+    const settled = await Promise.allSettled(batch.map(function(r) {
+      return withTimeout(api('forum', { action: 'getAnnotationForWeek', classId: currentClassId, studentNumber: r.studentNumber, week: week }), TIMEOUT_MS);
+    }));
+    batch.forEach(function(r, idx) {
+      const res = settled[idx];
+      results[r.studentNumber] = (res.status === 'fulfilled' && res.value && res.value.ok && res.value.found) ? res.value : null;
+    });
+    if (onProgress) onProgress(Math.min(i + BATCH_SIZE, roster.length), roster.length);
+  }
+  return results;
+}
+
+async function fetchColourStatesForRoster(roster, week) {
+  const BATCH_SIZE = 5, TIMEOUT_MS = 15000;
+  const results = {};
+  let showUntreatable = true;
+  for (let i = 0; i < roster.length; i += BATCH_SIZE) {
+    const batch = roster.slice(i, i + BATCH_SIZE);
+    const settled = await Promise.allSettled(batch.map(function(r) {
+      return withTimeout(api('forum', { action: 'getColourStateForWeek', classId: currentClassId, studentNumber: r.studentNumber, week: week }), TIMEOUT_MS);
+    }));
+    batch.forEach(function(r, idx) {
+      const res = settled[idx];
+      results[r.studentNumber] = (res.status === 'fulfilled' && res.value && res.value.ok) ? res.value.colours : {};
+      if (res.status === 'fulfilled' && res.value && res.value.ok && res.value.settings) showUntreatable = res.value.settings.showUntreatableErrors;
+    });
+  }
+  return { colours: results, showUntreatable: showUntreatable };
+}
+
+async function downloadReflectionMerged() {
+  if (!window.jspdf) { showToast('PDF library loading — try again in a moment.'); return; }
+  const jsPDF = window.jspdf.jsPDF;
+  const mergedBtn = document.getElementById('reflMergedBtn');
+  const zipBtn = document.getElementById('reflZipBtn');
+  const origLabel = mergedBtn.textContent;
+  mergedBtn.disabled = true; zipBtn.disabled = true;
+
+  try {
+    mergedBtn.textContent = 'Fetching 0/' + reflectionsData.roster.length + '…';
+    const annotations = await fetchAnnotationsForRoster(reflectionsData.roster, reflectionsWeek,
+      function(done, total) { mergedBtn.textContent = 'Fetching ' + done + '/' + total + '…'; });
+    const colourResult = await fetchColourStatesForRoster(reflectionsData.roster, reflectionsWeek);
+    const colourStates = colourResult.colours;
+    const showUntreatable = colourResult.showUntreatable;
+
+    mergedBtn.textContent = 'Building PDF…';
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    let first = true;
+    const failed = [];
+    reflectionsData.roster.forEach(function(r) {
+      try {
+        addCCFReflectionPage(doc, r.name, currentClassLabel, r.studentNumber, reflectionsWeek, annotations[r.studentNumber], colourStates[r.studentNumber], showUntreatable, first);
+      } catch (pageErr) {
+        console.error('Failed to build reflection page for', r.name, r.studentNumber, pageErr);
+        if (!first) doc.addPage();
+        doc.setFontSize(11); doc.setFont('helvetica', 'bold'); doc.setTextColor(32, 38, 31);
+        doc.text(r.name, 12, 20);
+        doc.setFontSize(9); doc.setFont('helvetica', 'italic'); doc.setTextColor(150, 60, 60);
+        doc.text('Could not build this page — see browser console for details.', 12, 28);
+        failed.push(r.name);
+      }
+      first = false;
+    });
+    doc.save(currentClassId + '_Week' + String(reflectionsWeek).padStart(2, '0') + '_CCF-Reflections_All.pdf');
+    showToast(failed.length ? ('Downloaded — ' + failed.length + ' page(s) had errors: ' + failed.join(', ')) : 'Downloaded.');
+  } catch (e) {
+    console.error('downloadReflectionMerged failed:', e);
+    showToast('Something went wrong — see browser console for details.');
+  } finally {
+    mergedBtn.disabled = false; zipBtn.disabled = false;
+    mergedBtn.textContent = origLabel;
+  }
+}
+
+async function downloadReflectionZip() {
+  if (!window.jspdf || !window.JSZip) { showToast('Libraries loading — try again in a moment.'); return; }
+  const jsPDF = window.jspdf.jsPDF;
+  const zipBtn = document.getElementById('reflZipBtn');
+  const mergedBtn = document.getElementById('reflMergedBtn');
+  const origLabel = zipBtn.textContent;
+  zipBtn.disabled = true; mergedBtn.disabled = true;
+
+  try {
+    const zip = new JSZip();
+    const folder = zip.folder(currentClassId + '_Week' + String(reflectionsWeek).padStart(2, '0') + '_CCF-Reflections');
+
+    zipBtn.textContent = 'Fetching 0/' + reflectionsData.roster.length + '…';
+    const annotations = await fetchAnnotationsForRoster(reflectionsData.roster, reflectionsWeek,
+      function(done, total) { zipBtn.textContent = 'Fetching ' + done + '/' + total + '…'; });
+    const colourResult = await fetchColourStatesForRoster(reflectionsData.roster, reflectionsWeek);
+    const colourStates = colourResult.colours;
+    const showUntreatable = colourResult.showUntreatable;
+
+    zipBtn.textContent = 'Building ZIP…';
+    const failed = [];
+    reflectionsData.roster.forEach(function(r) {
+      const safeName = r.name.replace(/[^a-zA-Z0-9_\- ]/g, '').trim().replace(/\s+/g, '_');
+      try {
+        const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+        addCCFReflectionPage(doc, r.name, currentClassLabel, r.studentNumber, reflectionsWeek, annotations[r.studentNumber], colourStates[r.studentNumber], showUntreatable, true);
+        folder.file(safeName + '_CCF-Reflection.pdf', doc.output('arraybuffer'));
+      } catch (pageErr) {
+        console.error('Failed to build reflection page for', r.name, r.studentNumber, pageErr);
+        failed.push(r.name);
+      }
+    });
+
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = currentClassId + '_Week' + String(reflectionsWeek).padStart(2, '0') + '_CCF-Reflections.zip';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(failed.length ? ('ZIP downloaded — ' + failed.length + ' student(s) skipped: ' + failed.join(', ')) : 'ZIP downloaded.');
+  } catch (e) {
+    console.error('downloadReflectionZip failed:', e);
+    showToast('Something went wrong — see browser console for details.');
+  } finally {
+    zipBtn.disabled = false; mergedBtn.disabled = false;
+    zipBtn.textContent = origLabel;
+  }
+}
+
+/* ====================== GRAMMAR ANALYSIS (Stage 1/2/3 + Step 4 spelling) ====================== */
+let grammarWeek = null;
+
+function renderGrammarAnalysis() {
+  if (!forumClassData.schedule.length) {
+    document.getElementById('forum-content').innerHTML = '<div class="card empty-note">No weeks set up yet — add one in the Schedule tab first.</div>';
+    return;
+  }
+  if (grammarWeek === null) grammarWeek = forumClassData.schedule.slice().sort(function(a, b) { return b.Week - a.Week; })[0].Week;
+
+  const weekOptions = forumClassData.schedule.slice().sort(function(a, b) { return b.Week - a.Week; })
+    .map(function(s) { return '<option value="' + s.Week + '" ' + (s.Week === grammarWeek ? 'selected' : '') + '>' + String(s.Week).padStart(2, '0') + ' \u00b7 ' + esc(s.DateRangeLabel) + '</option>'; }).join('');
+
+  document.getElementById('forum-content').innerHTML =
+    '<div class="card" style="margin-bottom:14px"><div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">' +
+    '<div><label class="field-label" style="margin-bottom:6px">Week</label><select id="grammarWeekSelect" onchange="grammarWeek=parseInt(this.value)">' + weekOptions + '</select></div>' +
+    '<div style="margin-left:auto"><button class="btn" id="grammarExportBtn" onclick="doExportGrammarFeed()">Export for Claude →</button></div></div></div>' +
+    '<div class="total-pts-note">Step 1 — copy this into a new Claude chat (Stage 1)</div>' +
+    '<div class="card" id="grammarExportCard"><div class="empty-note">Pick a week and click Export to generate the feed.</div></div>' +
+    '<div class="total-pts-note">Step 2 — copy this into a NEW Claude chat for Stage 2 verification</div>' +
+    '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+    '<span style="font-size:12px;color:var(--ink-mute)">Stage 2 prompt + full unit reference doc, bundled together. Paste Stage 1\'s JSON output where marked at the bottom before sending.</span>' +
+    '<button class="btn btn-ghost btn-sm" id="grammarStage2Btn" onclick="loadStage2Bundle()" style="flex-shrink:0;margin-left:12px">Load bundle</button></div>' +
+    '<div id="grammarStage2Container"></div></div>' +
+    '<div class="total-pts-note">Step 3 — after Stage 2, paste the final JSON here</div>' +
+    '<div class="card"><label class="field-label" style="margin-bottom:6px">Verified JSON (Stage 2 output)</label>' +
+    '<textarea id="grammarImportInput" rows="8" placeholder=\'{"cycle": 4, "students": [...]}\' style="font-family:monospace;font-size:12px"></textarea>' +
+    '<button class="btn btn-sm" style="margin-top:10px" onclick="doImportAnnotations()">Import annotations →</button>' +
+    '<div id="grammarImportResult" style="margin-top:12px"></div></div>' +
+    '<div class="total-pts-note">Step 4 — spelling corrections pass (optional, for the typing/spelling practice tool)</div>' +
+    '<div class="card"><div style="font-size:12px;color:var(--ink-mute);margin-bottom:8px">Generates a narrow prompt asking only for corrected spellings of this week\'s SC-tagged errors, then saves the result to the spelling practice tool\'s Drive folder. Completely separate from CCF. Import annotations first (Step 3).</div>' +
+    '<button class="btn btn-ghost btn-sm" onclick="doGenerateSpellingPrompt()">Generate spelling pass prompt →</button>' +
+    '<div id="spellingPromptContainer" style="margin-top:10px"></div>' +
+    '<label class="field-label" style="margin-top:14px;margin-bottom:6px;display:block">Corrections JSON (from that Claude chat)</label>' +
+    '<textarea id="spellingImportInput" rows="6" placeholder=\'{"week": 4, "students": [...]}\' style="font-family:monospace;font-size:12px"></textarea>' +
+    '<button class="btn btn-sm" style="margin-top:10px" onclick="doImportSpellingCorrections()">Save to spelling folder →</button>' +
+    '<div id="spellingImportResult" style="margin-top:12px"></div></div>';
+}
+
+async function copyTextToClipboard(text, successMsg) {
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast(successMsg);
+  } catch (e) {
+    showToast('Press Ctrl/Cmd+C to copy.');
+  }
+}
+
+async function loadStage2Bundle() {
+  const btn = document.getElementById('grammarStage2Btn');
+  btn.disabled = true; btn.textContent = 'Loading…';
+  const result = await api('forum', { action: 'getStage2Bundle' });
+  btn.disabled = false; btn.textContent = 'Load bundle';
+  if (!result.ok) { showToast(result.error || 'Could not load.'); return; }
+  document.getElementById('grammarStage2Container').innerHTML =
+    '<div style="display:flex;justify-content:flex-end;margin-bottom:8px"><button class="btn btn-ghost btn-sm" onclick="copyStage2Bundle()">📋 Copy to clipboard</button></div>' +
+    '<textarea id="grammarStage2Text" rows="10" readonly style="font-family:monospace;font-size:11px">' + esc(result.text) + '</textarea>';
+}
+function copyStage2Bundle() {
+  copyTextToClipboard(document.getElementById('grammarStage2Text').value, 'Copied — paste into a NEW Claude chat, add Stage 1\'s JSON where marked, then send.');
+}
+
+async function doExportGrammarFeed() {
+  const btn = document.getElementById('grammarExportBtn');
+  btn.disabled = true; btn.textContent = 'Exporting…';
+  const result = await api('forum', { action: 'exportGrammarFeed', classId: currentClassId, week: grammarWeek });
+  btn.disabled = false; btn.textContent = 'Export for Claude →';
+
+  const card = document.getElementById('grammarExportCard');
+  if (!result.ok) { card.innerHTML = '<div class="empty-note">' + esc(result.error) + '</div>'; return; }
+
+  const warningsHtml = result.warnings && result.warnings.length
+    ? '<div class="msg error" style="display:block">' + result.warnings.map(function(w) { return '⚠ ' + esc(w); }).join('<br>') + '</div>' : '';
+
+  card.innerHTML = warningsHtml +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+    '<span style="font-size:12px;color:var(--ink-mute)">' + result.entryCount + ' ' + (result.entryCount === 1 ? 'entry' : 'entries') + ' for Week ' + grammarWeek + '</span>' +
+    '<button class="btn btn-ghost btn-sm" onclick="copyGrammarFeed()">📋 Copy to clipboard</button></div>' +
+    '<textarea id="grammarFeedText" rows="12" readonly style="font-family:monospace;font-size:11px">' + esc(result.feed) + '</textarea>';
+}
+function copyGrammarFeed() {
+  copyTextToClipboard(document.getElementById('grammarFeedText').value, 'Copied — paste into a new Claude chat.');
+}
+
+async function doImportAnnotations() {
+  const raw = document.getElementById('grammarImportInput').value.trim();
+  const resultDiv = document.getElementById('grammarImportResult');
+  if (!raw) { showToast('Paste the verified JSON first.'); return; }
+  resultDiv.innerHTML = '<div class="empty-note">Importing…</div>';
+  const result = await api('forum', { action: 'importAnnotations', classId: currentClassId, payload: raw });
+  if (!result.ok) { resultDiv.innerHTML = '<div class="msg error" style="display:block">' + esc(result.error) + '</div>'; return; }
+  const notFoundHtml = result.notFound && result.notFound.length
+    ? '<div class="msg error" style="display:block;margin-top:6px">Not matched to a student in Roster: ' + result.notFound.join(', ') + '</div>' : '';
+  resultDiv.innerHTML = '<div class="msg ok" style="display:block">✓ Imported ' + result.imported + ' ' + (result.imported === 1 ? 'entry' : 'entries') + ' for Week ' + result.week + '.</div>' + notFoundHtml;
+}
+
+async function doGenerateSpellingPrompt() {
+  const container = document.getElementById('spellingPromptContainer');
+  container.innerHTML = '<div class="empty-note">Generating…</div>';
+  const result = await api('forum', { action: 'getSpellingPassPrompt', classId: currentClassId, week: grammarWeek });
+  if (!result.ok) { container.innerHTML = '<div class="msg error" style="display:block">' + esc(result.error) + '</div>'; return; }
+  container.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+    '<span style="font-size:12px;color:var(--ink-mute)">' + result.studentCount + ' student(s) with spelling errors this week</span>' +
+    '<button class="btn btn-ghost btn-sm" onclick="copySpellingPrompt()">📋 Copy to clipboard</button></div>' +
+    '<textarea id="spellingPromptText" rows="10" readonly style="font-family:monospace;font-size:11px">' + esc(result.prompt) + '</textarea>';
+}
+function copySpellingPrompt() {
+  copyTextToClipboard(document.getElementById('spellingPromptText').value, 'Copied — paste into a NEW Claude chat.');
+}
+
+async function doImportSpellingCorrections() {
+  const raw = document.getElementById('spellingImportInput').value.trim();
+  const resultDiv = document.getElementById('spellingImportResult');
+  if (!raw) { showToast('Paste the corrections JSON first.'); return; }
+  resultDiv.innerHTML = '<div class="empty-note">Saving…</div>';
+  const result = await api('forum', { action: 'importSpellingCorrections', classId: currentClassId, payload: raw });
+  if (!result.ok) {
+    const mismatchHtml = result.mismatches && result.mismatches.length ? '<div class="msg error" style="display:block;margin-top:4px">' + result.mismatches.join('<br>') + '</div>' : '';
+    resultDiv.innerHTML = '<div class="msg error" style="display:block">' + esc(result.error) + '</div>' + mismatchHtml;
+    return;
+  }
+  const mismatchHtml = result.mismatches && result.mismatches.length ? '<div class="chip chip-gold" style="margin-top:6px">Skipped: ' + result.mismatches.join(', ') + '</div>' : '';
+  resultDiv.innerHTML = '<div class="msg ok" style="display:block">✓ Saved ' + esc(result.fileName) + ' (' + result.studentsWritten + ' student(s)) to the spelling folder.</div>' + mismatchHtml;
+}
+
+/* ====================== SCAFFOLD ASSIGNMENT ====================== */
+let scaffoldWeek = null;
+let scaffoldAssignments = [];
+
+async function renderScaffold() {
+  if (!forumClassData.schedule.length) {
+    document.getElementById('forum-content').innerHTML = '<div class="card empty-note">No weeks set up yet — add one in the Schedule tab first.</div>';
+    return;
+  }
+  if (scaffoldWeek === null) scaffoldWeek = forumClassData.schedule.slice().sort(function(a, b) { return b.Week - a.Week; })[0].Week;
+  const result = await api('forum', { action: 'getScaffoldAssignments', classId: currentClassId });
+  scaffoldAssignments = (result.ok && result.assignments) ? result.assignments : [];
+  renderScaffoldContent();
+}
+
+function renderScaffoldContent() {
+  const weekOptions = forumClassData.schedule.slice().sort(function(a, b) { return b.Week - a.Week; })
+    .map(function(s) { return '<option value="' + s.Week + '" ' + (s.Week === scaffoldWeek ? 'selected' : '') + '>' + String(s.Week).padStart(2, '0') + ' \u00b7 ' + esc(s.DateRangeLabel) + '</option>'; }).join('');
+
+  const sched = forumClassData.schedule.find(function(s) { return s.Week === scaffoldWeek; });
+  const existing = scaffoldAssignments.find(function(a) { return Number(a.Week) === scaffoldWeek; });
+  const existingUnit = existing ? existing.ScaffoldedUnit : '';
+
+  const historyRows = scaffoldAssignments.slice().sort(function(a, b) { return b.Week - a.Week; }).map(function(a) {
+    return '<div class="toggle-row" style="cursor:pointer" onclick="scaffoldWeek=' + a.Week + ';renderScaffoldContent()">' +
+      '<div><div style="font-weight:600;font-size:14px">Week ' + String(a.Week).padStart(2, '0') + '</div>' +
+      '<div style="font-size:12px;color:var(--ink-mute)">Scaffolded unit: ' + esc(a.ScaffoldedUnit) + '</div></div></div>';
+  }).join('');
+
+  document.getElementById('forum-content').innerHTML =
+    '<div class="card" style="margin-bottom:14px"><div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">' +
+    '<div><label class="field-label" style="margin-bottom:6px">Week</label><select id="scaffoldWeekSelect" onchange="scaffoldWeek=parseInt(this.value);renderScaffoldContent()">' + weekOptions + '</select></div></div></div>' +
+    '<div class="total-pts-note">This week\'s prompt</div><div class="card"><div style="font-size:14px">' + esc(sched ? sched.Prompt : '—') + '</div></div>' +
+    '<div class="total-pts-note">Scaffolded unit — Week ' + String(scaffoldWeek).padStart(2, '0') + '</div>' +
+    '<div class="card"><div style="font-size:12px;color:var(--ink-mute);margin-bottom:12px">This unit gets a border highlight for any student who errs on it and hasn\'t studied it yet — but only while Scaffold mode is on (Settings tab).</div>' +
+    '<div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap"><div><label class="field-label" style="margin-bottom:6px">Unit (e.g. B37 or I5)</label>' +
+    '<input class="text-input" id="scaffoldUnitInput" value="' + esc(existingUnit) + '" placeholder="e.g. B37" style="width:140px"></div>' +
+    '<button class="btn" onclick="saveScaffoldForWeek()">Save</button></div></div>' +
+    '<div class="total-pts-note">All scaffold assignments</div><div class="card">' + (historyRows || '<div class="empty-note">No scaffold assignments yet.</div>') + '</div>';
+}
+
+async function saveScaffoldForWeek() {
+  const unit = document.getElementById('scaffoldUnitInput').value.trim();
+  if (!unit) { showToast('Enter a unit number.'); return; }
+  const result = await api('forum', { action: 'saveScaffoldAssignment', classId: currentClassId, week: scaffoldWeek, unit: unit });
+  if (result.ok) {
+    const idx = scaffoldAssignments.findIndex(function(a) { return Number(a.Week) === scaffoldWeek; });
+    if (idx >= 0) scaffoldAssignments[idx] = { Week: scaffoldWeek, ScaffoldedUnit: unit };
+    else scaffoldAssignments.push({ Week: scaffoldWeek, ScaffoldedUnit: unit });
+    renderScaffoldContent();
+  } else {
+    showToast(result.error || "Couldn't save.");
+  }
+}
+
+/* ====================== UNIT SUBMISSIONS ====================== */
+let unitSubmissionsWeek = null;
+
+async function renderUnitSubmissions() {
+  if (!forumClassData.schedule.length) {
+    document.getElementById('forum-content').innerHTML = '<div class="card empty-note">No weeks set up yet — add one in the Schedule tab first.</div>';
+    return;
+  }
+  if (unitSubmissionsWeek === null) unitSubmissionsWeek = forumClassData.schedule.slice().sort(function(a, b) { return b.Week - a.Week; })[0].Week;
+  await loadUnitSubmissions();
+}
+
+async function loadUnitSubmissions() {
+  const weekOptions = forumClassData.schedule.slice().sort(function(a, b) { return b.Week - a.Week; })
+    .map(function(s) { return '<option value="' + s.Week + '" ' + (s.Week === unitSubmissionsWeek ? 'selected' : '') + '>' + String(s.Week).padStart(2, '0') + ' \u00b7 ' + esc(s.DateRangeLabel) + '</option>'; }).join('');
+
+  document.getElementById('forum-content').innerHTML =
+    '<div class="card" style="margin-bottom:14px"><div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">' +
+    '<div><label class="field-label" style="margin-bottom:6px">Week</label><select id="unitSubmissionsWeekSelect" onchange="unitSubmissionsWeek=parseInt(this.value);loadUnitSubmissions()">' + weekOptions + '</select></div></div></div>' +
+    '<div id="unitSubmissionsList"><div class="card empty-note">Loading…</div></div>';
+
+  const result = await api('forum', { action: 'getUnitSubmissionsForWeek', classId: currentClassId, week: unitSubmissionsWeek });
+  if (!result.ok) {
+    document.getElementById('unitSubmissionsList').innerHTML = '<div class="card empty-note">' + esc(result.error || "Couldn't load submissions.") + '</div>';
+    return;
+  }
+
+  const submitted = result.submissions.filter(function(s) { return s.unit !== null; });
+  const rowsHtml = result.submissions.map(function(s) {
+    const hasSubmitted = s.unit !== null;
+    return '<div class="toggle-row"><div><div style="font-weight:600;font-size:14px">' + esc(s.studentName) + '</div>' +
+      (hasSubmitted ? '<div style="font-size:12px;color:var(--ink-mute);margin-top:2px">' + esc(s.reason || '—') + '</div>'
+        : '<div style="font-size:12px;color:var(--ink-mute);margin-top:2px;font-style:italic">Not yet submitted</div>') + '</div>' +
+      (hasSubmitted ? '<div style="font-weight:600;font-size:15px;color:var(--accent);flex-shrink:0;margin-left:12px">Unit ' + esc(s.unit) + '</div>' : '') + '</div>';
+  }).join('');
+
+  document.getElementById('unitSubmissionsList').innerHTML =
+    '<div class="total-pts-note">' + submitted.length + ' of ' + result.submissions.length + ' submitted</div>' +
+    '<div class="card">' + (rowsHtml || '<div class="empty-note">No students on the roster.</div>') + '</div>';
+}
 // ════════════════════════════════════════════════════════
 //  GRAMMAR QUIZ PANEL
 // ════════════════════════════════════════════════════════
