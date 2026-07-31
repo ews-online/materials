@@ -285,7 +285,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v2.2 — cache-busting on every request</div>
+      <div class="version-tag">v2.3 — diagnostic unknown-action error + null-guard fix</div>
     </div>
   </div>
 
@@ -899,6 +899,10 @@ function switchForumTab(tab) {
   ['grading', 'schedule', 'rosterGroups', 'rubric', 'settings', 'reflections', 'grammar', 'scaffold', 'unitSubmissions'].forEach(function(t) {
     document.getElementById('forum-nav-' + t).classList.toggle('active', t === tab);
   });
+  if (!forumClassData) {
+    document.getElementById('forum-content').innerHTML = '<div class="card empty-note">This class\'s Forum/CCF data hasn\'t loaded yet. <button class="btn btn-ghost btn-sm" onclick="loadForumPanel()">Retry</button></div>';
+    return;
+  }
   const renderFns = {
     grading: renderGrading, schedule: renderSchedule, rosterGroups: renderRosterGroups, rubric: renderRubricTab,
     settings: renderSettings, reflections: renderReflections, grammar: renderGrammarAnalysis,
