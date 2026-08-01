@@ -968,8 +968,8 @@ const CCF_M = 12, CCF_W = 210 - CCF_M*2;
 // not built yet, so every treatable error defaults to green (Decision #4:
 // no study history recorded = "not yet studied," never higher). Purple is
 // real, not a stub (SC/PU never carry a unit or history — that's a fact
-// about the code). Grey is also real: COL/WC/IDM/AWK (untreatable errors)
-// are never colour-coded to a unit and never selectable as a study unit,
+// about the code). Grey is also real: COL/WC/IDM/AWK/ME (untreatable
+// errors, plus ME since it never carries a unit either) are never colour-coded to a unit and never selectable as a study unit,
 // but they're never silently dropped either — a class-wide toggle for
 // whether grey actually renders to students doesn't exist yet (would need
 // a new Settings field); for now grey always renders.
@@ -988,7 +988,10 @@ const CCF_COLORS = {
 function ccfUnitState(code, unit, colourMap){
   if(!code) return null;
   if(code==='SC'||code==='PU') return 'purple';
-  if(code==='COL'||code==='WC'||code==='IDM'||code==='AWK') return 'grey';
+  // ME never carries a unit by design — group it with the genuinely
+  // untreatable codes rather than letting it fall through to green, since
+  // a bare "ME" tag gives a student nothing actionable to study.
+  if(code==='COL'||code==='WC'||code==='IDM'||code==='AWK'||code==='ME') return 'grey';
   if(unit && colourMap && colourMap[unit]) return colourMap[unit].colour;
   return 'green';
 }
@@ -1007,7 +1010,7 @@ function ccfTagFor(style){
 // slash-separated), {^|CODE|UNIT} (omission, caret only — never the
 // missing word), {span|CODE} (no unit — SC/PU/COL/WC/IDM/AWK).
 // colourMap: this week's frozen {unit: {colour, border}} snapshot.
-// showUntreatable: class Settings toggle — when false, COL/WC/IDM/AWK tokens
+// showUntreatable: class Settings toggle — when false, COL/WC/IDM/AWK/ME tokens
 // are treated as plain text (no style at all) so BOTH the on-screen view and
 // the PDF automatically stay consistent without each needing their own check.
 // The underlying tag stays in annotatedText regardless — this only affects

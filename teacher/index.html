@@ -308,7 +308,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v3.3 — fix Unit History stuck-on-loading (unhandled rejection)</div>
+      <div class="version-tag">v3.4 — ME errors now grey/toggle-controlled, not green</div>
     </div>
   </div>
 
@@ -1883,7 +1883,12 @@ const CCF_COLORS = {
 function ccfUnitState(code, unit, colourMap) {
   if (!code) return null;
   if (code === 'SC' || code === 'PU') return 'purple';
-  if (code === 'COL' || code === 'WC' || code === 'IDM' || code === 'AWK') return 'grey';
+  // ME never carries a unit by design (it's the residual catch-all for
+  // errors that don't fit any of the 9 unit-bearing codes) — grouping it
+  // with the genuinely untreatable codes, rather than letting it fall
+  // through to green, since a bare "ME" tag gives a student nothing
+  // actionable to study, same as COL/WC/IDM/AWK.
+  if (code === 'COL' || code === 'WC' || code === 'IDM' || code === 'AWK' || code === 'ME') return 'grey';
   if (unit && colourMap && colourMap[unit]) return colourMap[unit].colour;
   return 'green';
 }
