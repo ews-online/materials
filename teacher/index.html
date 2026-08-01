@@ -118,6 +118,11 @@
     font-size: 11.5px; font-weight: 600; color: var(--ink-soft); cursor: pointer; white-space: nowrap;
   }
   .subpanel-nav button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .subpanel-nav button.tab-grammar.active { background: var(--gold); color: #fff; border-color: var(--gold); }
+  .subpanel-group-row { display: flex; flex-wrap: wrap; gap: 24px; margin-bottom: 20px; align-items: flex-start; }
+  .subpanel-group { display: flex; flex-direction: column; gap: 8px; }
+  .subpanel-group-heading { font-size: 10.5px; font-weight: 700; text-align: center; color: var(--ink-mute); text-transform: uppercase; letter-spacing: 0.08em; }
+  .subpanel-group .subpanel-nav { margin-bottom: 0; }
   .card { background: #fff; border: 1px solid var(--rule); border-radius: 14px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px; }
   /* Grading tab specifically needs the space back — blog entries and rubric
      criteria are dense, wordy content, unlike the rest of the app's cards. */
@@ -297,7 +302,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v2.8 — grading padding cut further + auto-growing rubric text</div>
+      <div class="version-tag">v2.9 — tab reorg/color-coding, moved toggles, single-version rubric, smart group defaults</div>
     </div>
   </div>
 
@@ -406,16 +411,26 @@
   <!-- FORUM / CCF PANEL -->
   <div class="screen" id="screen-panel-forum">
     <div class="panel-header"><button class="back-btn" onclick="goHub()">← Hub</button><h2>Forum / CCF</h2></div>
-    <div class="subpanel-nav">
-      <button class="active" onclick="switchForumTab('grading')" id="forum-nav-grading">Grading</button>
-      <button onclick="switchForumTab('schedule')" id="forum-nav-schedule">Schedule</button>
-      <button onclick="switchForumTab('rosterGroups')" id="forum-nav-rosterGroups">Roster &amp; Groups</button>
-      <button onclick="switchForumTab('rubric')" id="forum-nav-rubric">Rubric</button>
-      <button onclick="switchForumTab('settings')" id="forum-nav-settings">Settings</button>
-      <button onclick="switchForumTab('reflections')" id="forum-nav-reflections">Reflections</button>
-      <button onclick="switchForumTab('grammar')" id="forum-nav-grammar">Grammar Analysis</button>
-      <button onclick="switchForumTab('scaffold')" id="forum-nav-scaffold">Scaffold</button>
-      <button onclick="switchForumTab('unitSubmissions')" id="forum-nav-unitSubmissions">Unit Submissions</button>
+    <div class="subpanel-group-row">
+      <div class="subpanel-group">
+        <div class="subpanel-group-heading">Forum Settings</div>
+        <div class="subpanel-nav">
+          <button class="active" onclick="switchForumTab('grading')" id="forum-nav-grading">Grading</button>
+          <button onclick="switchForumTab('schedule')" id="forum-nav-schedule">Schedule</button>
+          <button onclick="switchForumTab('rosterGroups')" id="forum-nav-rosterGroups">Groups</button>
+          <button onclick="switchForumTab('rubric')" id="forum-nav-rubric">Rubric</button>
+          <button onclick="switchForumTab('settings')" id="forum-nav-settings">Settings</button>
+        </div>
+      </div>
+      <div class="subpanel-group">
+        <div class="subpanel-group-heading">Grammar Settings</div>
+        <div class="subpanel-nav">
+          <button class="tab-grammar" onclick="switchForumTab('scaffold')" id="forum-nav-scaffold">Scaffold</button>
+          <button class="tab-grammar" onclick="switchForumTab('grammar')" id="forum-nav-grammar">Grammar Analysis</button>
+          <button class="tab-grammar" onclick="switchForumTab('unitSubmissions')" id="forum-nav-unitSubmissions">Unit Submissions</button>
+          <button class="tab-grammar" onclick="switchForumTab('reflections')" id="forum-nav-reflections">Reflections</button>
+        </div>
+      </div>
     </div>
     <div id="forum-content"><div class="empty-note">Loading…</div></div>
   </div>
@@ -1339,6 +1354,16 @@ async function addNewWeek() {
   if (result.ok) {
     forumClassData.schedule.push({ Week: w, DateRangeLabel: dateRangeLabel, Prompt: '', PostOpen: postOpen, PostClose: postClose,
       PictureDeadline: pictureDeadline, CommentDeadline: commentDeadline, ReplyDeadline: replyDeadline, GrammarSubmitDeadline: grammarSubmitDeadline });
+
+    // Auto-randomize groups for the new week too, using the same group
+    // count as last time — easy for a teacher to forget to do by hand
+    // every single week, so it just happens automatically here.
+    const groupCount = getDefaultGroupCount();
+    const groupResult = await api('forum', { action: 'generateGroups', classId: currentClassId, week: w, numberOfGroups: groupCount });
+    if (groupResult.ok) {
+      forumClassData = await api('forum', { action: 'getClassData', classId: currentClassId });
+    }
+
     renderSchedule();
   } else {
     alert(result.error || "Couldn't add week.");
@@ -1346,6 +1371,19 @@ async function addNewWeek() {
 }
 
 /* ====================== ROSTER & GROUPS TAB ====================== */
+// Defaults to whatever group count was used last time, rather than always
+// recomputing from headcount — a teacher who deliberately chose 5 groups
+// last week almost certainly wants 5 again, not a fresh guess every time.
+function getDefaultGroupCount() {
+  const activeCount = forumClassData.roster.filter(function(r) { return r.Active; }).length;
+  if (forumClassData.groups.length) {
+    const latestWeek = Math.max.apply(null, forumClassData.groups.map(function(g) { return Number(g.Week); }));
+    const count = new Set(forumClassData.groups.filter(function(g) { return Number(g.Week) === latestWeek; }).map(function(g) { return g.GroupID; })).size;
+    if (count > 0) return count;
+  }
+  return Math.max(1, Math.round(activeCount / 3));
+}
+
 function renderRosterGroups() {
   const rosterRows = forumClassData.roster.map(function(m) {
     return '<tr><td>' + esc(m.StudentNumber) + '</td><td>' + esc(m.NameJP) + '</td><td>' + esc(m.Name) + '</td>' +
@@ -1363,11 +1401,11 @@ function renderRosterGroups() {
   }).join('');
 
   const activeCount = forumClassData.roster.filter(function(r) { return r.Active; }).length;
-  const defaultGroups = Math.max(1, Math.round(activeCount / 3));
+  const defaultGroups = getDefaultGroupCount();
 
   document.getElementById('forum-content').innerHTML =
     '<div class="card"><h3>Roster</h3><table class="data-table"><thead><tr><th>Student #</th><th>Name (JP)</th><th>Name (Eng)</th><th>Active</th></tr></thead>' +
-    '<tbody>' + (rosterRows || '<tr><td colspan="3" class="empty-note">No students yet.</td></tr>') + '</tbody></table></div>' +
+    '<tbody>' + (rosterRows || '<tr><td colspan="4" class="empty-note">No students yet.</td></tr>') + '</tbody></table></div>' +
     '<div class="card"><h3>Groups</h3>' +
     '<div class="week-edit-grid" style="margin-bottom:14px">' +
     '<div><label class="field-label">Number of groups</label><input class="text-input" type="number" id="numGroupsInput" value="' + defaultGroups + '" min="1" max="' + (activeCount || 1) + '"></div>' +
@@ -1540,14 +1578,12 @@ function version_label_for_confirm() {
 
 function renderRubricTab() {
   const sorted = forumClassData.rubricVersions;
-  // Clamp every time, not just once — a version list that shrank or
-  // reordered since the index was last set (e.g. after a CSV import) would
-  // otherwise leave this pointing past the end of the array, and
-  // `sorted[outOfBoundsIdx]` is `undefined`, not an error — the crash
-  // happens one line later reading `.criteria` off of it.
-  if (rubricEditorVersionIdx === null || rubricEditorVersionIdx >= sorted.length || rubricEditorVersionIdx < 0) {
-    rubricEditorVersionIdx = sorted.length - 1;
-  }
+  // Deliberately always the latest version — no history browser. Multiple
+  // stored versions still exist on the backend (grading needs the exact
+  // version that was active for each past week), but the editor only ever
+  // shows the current one; a long list of past versions to page through
+  // would make this page unmanageable.
+  rubricEditorVersionIdx = sorted.length - 1;
 
   const csvControlsHtml =
     '<div class="card"><h3 style="margin-bottom:6px">Import from CSV</h3>' +
@@ -1564,13 +1600,6 @@ function renderRubricTab() {
       csvControlsHtml;
     return;
   }
-
-  const pillsHtml = sorted.map(function(v, i) {
-    const next = sorted[i + 1];
-    const range = next ? ('Weeks ' + v.startWeek + '\u2013' + (next.startWeek - 1)) : ('Week ' + v.startWeek + '+ (current)');
-    return '<button class="version-pill ' + (i === rubricEditorVersionIdx ? 'active' : '') + '" onclick="rubricEditorVersionIdx=' + i + ';renderRubricTab();">' +
-      'Version ' + (i + 1) + ' <span class="vrange">\u00b7 ' + range + '</span></button>';
-  }).join('');
 
   const version = sorted[rubricEditorVersionIdx];
   const criteria = version.criteria || [];
@@ -1598,9 +1627,8 @@ function renderRubricTab() {
   }).join('');
 
   document.getElementById('forum-content').innerHTML =
-    '<p style="font-size:13px;color:var(--ink-mute);margin-bottom:14px">Editing a version changes grading for every week mapped to it — including past weeks. To change the rubric going forward only, use "Save as new version" below instead.</p>' +
-    pillsHtml +
-    '<div class="card" style="margin-top:14px"><div class="total-pts-note">Total: ' + totalPts + ' points across ' + criteria.length + ' criteria</div>' +
+    '<div class="total-pts-note" style="margin-bottom:14px">Current rubric — active from Week ' + version.startWeek + ' onward. Editing it changes grading for every one of those weeks, including past ones. Use "Save as new version" below for a change that should only apply going forward.</div>' +
+    '<div class="card"><div class="total-pts-note">Total: ' + totalPts + ' points across ' + criteria.length + ' criteria</div>' +
     criteriaHtml + '<button class="btn btn-ghost" onclick="addCriterion()">+ Add criterion</button>' +
     '<div class="editor-actions"><button class="btn" onclick="saveCurrentRubricVersion()">Save changes to this version</button></div>' +
     '<div class="new-version-row"><div><label class="field-label">Start a new version from week</label><input class="text-input" type="number" id="newVersionWeek" min="1" placeholder="e.g. 9"></div>' +
@@ -1696,10 +1724,7 @@ function renderSettings() {
     '<label class="switch"><input type="checkbox" ' + (s.RepliesEnabled ? 'checked' : '') + ' onchange="saveSettingsField(\'repliesEnabled\',this.checked)"><span class="slider"></span></label></div>' +
     '<div class="toggle-row"><div><div class="tname">Picture / video</div><div class="tdesc">Allow photo uploads and YouTube links on posts.</div></div>' +
     '<label class="switch"><input type="checkbox" ' + (s.PictureEnabled ? 'checked' : '') + ' onchange="saveSettingsField(\'pictureEnabled\',this.checked)"><span class="slider"></span></label></div>' +
-    '<div class="toggle-row"><div><div class="tname">Scaffold mode (formS)</div><div class="tdesc">Border highlight when a student errs on the cycle\u2019s assigned scaffold unit and hasn\u2019t studied it yet.</div></div>' +
-    '<label class="switch"><input type="checkbox" ' + (s.ScaffoldEnabled ? 'checked' : '') + ' onchange="saveSettingsField(\'scaffoldEnabled\',this.checked)"><span class="slider"></span></label></div>' +
-    '<div class="toggle-row"><div><div class="tname">Show untreatable errors</div><div class="tdesc">Grey-highlight collocation/idiom/word-choice/awkward-phrasing errors. Data is always recorded either way.</div></div>' +
-    '<label class="switch"><input type="checkbox" ' + (s.ShowUntreatableErrors ? 'checked' : '') + ' onchange="saveSettingsField(\'showUntreatableErrors\',this.checked)"><span class="slider"></span></label></div>' +
+    '<div class="total-pts-note" style="padding:10px 0 0">Scaffold mode is controlled from the Scaffold tab; "Show untreatable errors" from the Grammar Analysis tab — both live with the features they affect.</div>' +
     '</div>';
 }
 
@@ -2257,6 +2282,8 @@ function renderGrammarAnalysis() {
     .map(function(s) { return '<option value="' + s.Week + '" ' + (s.Week === grammarWeek ? 'selected' : '') + '>' + String(s.Week).padStart(2, '0') + ' \u00b7 ' + esc(s.DateRangeLabel) + '</option>'; }).join('');
 
   document.getElementById('forum-content').innerHTML =
+    '<div class="card" style="margin-bottom:14px"><div class="toggle-row" style="border-bottom:none;padding-bottom:0"><div><div class="tname">Show untreatable errors</div><div class="tdesc">Grey-highlight collocation/idiom/word-choice/awkward-phrasing errors on students\u2019 feedback. Data is always recorded either way.</div></div>' +
+    '<label class="switch"><input type="checkbox" ' + (forumClassData.settings.ShowUntreatableErrors ? 'checked' : '') + ' onchange="saveSettingsField(\'showUntreatableErrors\',this.checked)"><span class="slider"></span></label></div></div>' +
     '<div class="card" style="margin-bottom:14px"><div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">' +
     '<div><label class="field-label" style="margin-bottom:6px">Week</label><select id="grammarWeekSelect" onchange="grammarWeek=parseInt(this.value)">' + weekOptions + '</select></div>' +
     '<div style="margin-left:auto"><button class="btn" id="grammarExportBtn" onclick="doExportGrammarFeed()">Export for Claude →</button></div></div></div>' +
@@ -2398,11 +2425,13 @@ function renderScaffoldContent() {
   }).join('');
 
   document.getElementById('forum-content').innerHTML =
+    '<div class="card" style="margin-bottom:14px"><div class="toggle-row" style="border-bottom:none;padding-bottom:0"><div><div class="tname">Scaffold mode (formS)</div><div class="tdesc">Border highlight when a student errs on the cycle\u2019s assigned scaffold unit and hasn\u2019t studied it yet.</div></div>' +
+    '<label class="switch"><input type="checkbox" ' + (forumClassData.settings.ScaffoldEnabled ? 'checked' : '') + ' onchange="saveSettingsField(\'scaffoldEnabled\',this.checked)"><span class="slider"></span></label></div></div>' +
     '<div class="card" style="margin-bottom:14px"><div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">' +
     '<div><label class="field-label" style="margin-bottom:6px">Week</label><select id="scaffoldWeekSelect" onchange="scaffoldWeek=parseInt(this.value);renderScaffoldContent()">' + weekOptions + '</select></div></div></div>' +
     '<div class="total-pts-note">This week\'s prompt</div><div class="card"><div style="font-size:14px">' + esc(sched ? sched.Prompt : '—') + '</div></div>' +
     '<div class="total-pts-note">Scaffolded unit — Week ' + String(scaffoldWeek).padStart(2, '0') + '</div>' +
-    '<div class="card"><div style="font-size:12px;color:var(--ink-mute);margin-bottom:12px">This unit gets a border highlight for any student who errs on it and hasn\'t studied it yet — but only while Scaffold mode is on (Settings tab).</div>' +
+    '<div class="card"><div style="font-size:12px;color:var(--ink-mute);margin-bottom:12px">This unit gets a border highlight for any student who errs on it and hasn\'t studied it yet — but only while Scaffold mode above is on.</div>' +
     '<div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap"><div><label class="field-label" style="margin-bottom:6px">Unit (e.g. B37 or I5)</label>' +
     '<input class="text-input" id="scaffoldUnitInput" value="' + esc(existingUnit) + '" placeholder="e.g. B37" style="width:140px"></div>' +
     '<button class="btn" onclick="saveScaffoldForWeek()">Save</button></div></div>' +
