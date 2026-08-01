@@ -308,7 +308,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v3.0 — green/orange tab colors, right-aligned grammar group, reorder</div>
+      <div class="version-tag">v3.1 — steady reflections spinner + manual Studied Units tool</div>
     </div>
   </div>
 
@@ -516,7 +516,7 @@ function xhrGet(url) {
     xhr.send();
   });
 }
-async function api(engine, params) {
+async function api(engine, params, opts) {
   const base = engine === 'quiz' ? QUIZ_ENGINE_URL : FORUM_ENGINE_URL;
   // _ts guarantees a unique URL on every single call, so no caching layer —
   // browser, extension, proxy, or Google's own edge — can ever serve a
@@ -524,13 +524,18 @@ async function api(engine, params) {
   // which is exactly the situation repeated testing creates.
   const allParams = Object.assign({}, params, { token: authToken, _ts: Date.now() + '' + Math.random() });
   const url = base + '?' + new URLSearchParams(allParams).toString();
-  showLoading(loadingTextForAction(params.action));
+  // silent: true skips the automatic overlay toggle — for batch operations
+  // (e.g. the Reflections tab fetching 25 students' annotations across
+  // several parallel calls) that manage one steady overlay themselves
+  // instead of flickering it on/off with every individual call finishing.
+  const silent = opts && opts.silent;
+  if (!silent) showLoading(loadingTextForAction(params.action));
   try {
     const data = await xhrGet(url);
     if (!data.ok && !data.requiresPassword) throw new Error(data.error || 'Request failed');
     return data;
   } finally {
-    hideLoading();
+    if (!silent) hideLoading();
   }
 }
 function loadingTextForAction(action) {
@@ -1419,7 +1424,56 @@ function renderRosterGroups() {
     '<div style="font-size:12px;color:var(--ink-mute);margin-bottom:12px">' + activeCount + ' active student' + (activeCount === 1 ? '' : 's') + '</div>' +
     '<button class="btn" onclick="doGenerateGroups()">🎲 Generate fresh groups</button>' +
     '<div class="sub-subhead" style="margin-top:18px">Current groups' + (latestWeek !== null ? ' (Week ' + String(latestWeek).padStart(2, '0') + ')' : '') + '</div>' +
-    (groupsHtml || '<div class="empty-note">No groups yet.</div>') + '</div>';
+    (groupsHtml || '<div class="empty-note">No groups yet.</div>') + '</div>' +
+    '<div class="card"><h3>Studied Units</h3>' +
+    '<p style="font-size:12px;color:var(--ink-mute);margin-bottom:14px">This is what drives the colour-coded grammar feedback — a unit only starts tracking recurring errors once it\'s marked studied here. Use this to backfill a student\'s real history (from before this platform existed) or to correct an entry. This list is permanent per student, not tied to this class.</p>' +
+    '<div class="week-edit-grid" style="margin-bottom:14px"><div><label class="field-label">Student</label>' +
+    '<select id="studiedUnitsStudent" onchange="loadStudiedUnitsFor()">' + forumClassData.roster.map(function(r) { return '<option value="' + esc(r.StudentNumber) + '">' + esc(r.Name) + '</option>'; }).join('') + '</select></div></div>' +
+    '<div id="studiedUnitsList"><div class="empty-note">Loading…</div></div>' +
+    '<label class="field-label" style="margin-top:14px">Add units (comma, space, or newline separated — e.g. B1, B5, B37, I3)</label>' +
+    '<textarea class="text-input" id="studiedUnitsInput" rows="2" placeholder="B1, B5, B37, I3"></textarea>' +
+    '<div class="week-edit-grid" style="margin-top:10px"><div><label class="field-label">First studied week (leave blank = "already known, before this class")</label><input class="text-input" type="number" id="studiedUnitsWeek" placeholder="e.g. 3, or leave blank"></div></div>' +
+    '<button class="btn btn-sm" style="margin-top:10px" onclick="addStudiedUnitsSubmit()">+ Add units</button></div>';
+  loadStudiedUnitsFor();
+}
+
+async function loadStudiedUnitsFor() {
+  const sel = document.getElementById('studiedUnitsStudent');
+  const listEl = document.getElementById('studiedUnitsList');
+  if (!sel || !sel.value) { if (listEl) listEl.innerHTML = '<div class="empty-note">No students yet.</div>'; return; }
+  const studentNumber = sel.value;
+  listEl.innerHTML = '<div class="empty-note">Loading…</div>';
+  const result = await api('forum', { action: 'getStudiedUnits', studentNumber: studentNumber });
+  if (!result.ok) { listEl.innerHTML = '<div class="empty-note">' + esc(result.error) + '</div>'; return; }
+  const units = result.units || [];
+  listEl.innerHTML = units.length
+    ? '<div style="display:flex;flex-wrap:wrap;gap:6px">' + units.map(function(u) {
+        const label = u.FirstStudiedWeek === 0 || u.FirstStudiedWeek === '0' ? 'already known' : ('Week ' + u.FirstStudiedWeek);
+        return '<span class="group-pill" style="display:inline-flex;align-items:center;gap:6px">' + esc(u.Unit) + ' <span style="opacity:0.6;font-size:10px">(' + label + ')</span>' +
+          '<span style="cursor:pointer;font-weight:700" onclick="removeStudiedUnitClick(\'' + studentNumber + '\',\'' + esc(u.Unit) + '\')">✕</span></span>';
+      }).join('') + '</div>'
+    : '<div class="empty-note">No studied units on file yet for this student.</div>';
+}
+
+async function addStudiedUnitsSubmit() {
+  const sel = document.getElementById('studiedUnitsStudent');
+  if (!sel || !sel.value) { alert('Choose a student first.'); return; }
+  const unitsRaw = document.getElementById('studiedUnitsInput').value.trim();
+  if (!unitsRaw) { alert('Enter at least one unit.'); return; }
+  const weekVal = document.getElementById('studiedUnitsWeek').value.trim();
+  const result = await api('forum', { action: 'addStudiedUnits', studentNumber: sel.value, units: unitsRaw, week: weekVal });
+  if (!result.ok) { alert(result.error || "Couldn't add units."); return; }
+  document.getElementById('studiedUnitsInput').value = '';
+  document.getElementById('studiedUnitsWeek').value = '';
+  showToast('✓ Added ' + result.added + ' unit(s).');
+  loadStudiedUnitsFor();
+}
+
+async function removeStudiedUnitClick(studentNumber, unit) {
+  if (!confirm('Remove ' + unit + ' from this student\'s studied units? This resets its recurrence tracking back to unstudied.')) return;
+  const result = await api('forum', { action: 'removeStudiedUnit', studentNumber: studentNumber, unit: unit });
+  if (!result.ok) { alert(result.error || "Couldn't remove."); return; }
+  loadStudiedUnitsFor();
 }
 
 async function toggleRosterActive(studentId, active) {
@@ -2151,7 +2205,7 @@ async function fetchAnnotationsForRoster(roster, week, onProgress) {
   for (let i = 0; i < roster.length; i += BATCH_SIZE) {
     const batch = roster.slice(i, i + BATCH_SIZE);
     const settled = await Promise.allSettled(batch.map(function(r) {
-      return withTimeout(api('forum', { action: 'getAnnotationForWeek', classId: currentClassId, studentNumber: r.studentNumber, week: week }), TIMEOUT_MS);
+      return withTimeout(api('forum', { action: 'getAnnotationForWeek', classId: currentClassId, studentNumber: r.studentNumber, week: week }, { silent: true }), TIMEOUT_MS);
     }));
     batch.forEach(function(r, idx) {
       const res = settled[idx];
@@ -2169,7 +2223,7 @@ async function fetchColourStatesForRoster(roster, week) {
   for (let i = 0; i < roster.length; i += BATCH_SIZE) {
     const batch = roster.slice(i, i + BATCH_SIZE);
     const settled = await Promise.allSettled(batch.map(function(r) {
-      return withTimeout(api('forum', { action: 'getColourStateForWeek', classId: currentClassId, studentNumber: r.studentNumber, week: week }), TIMEOUT_MS);
+      return withTimeout(api('forum', { action: 'getColourStateForWeek', classId: currentClassId, studentNumber: r.studentNumber, week: week }, { silent: true }), TIMEOUT_MS);
     }));
     batch.forEach(function(r, idx) {
       const res = settled[idx];
@@ -2187,16 +2241,18 @@ async function downloadReflectionMerged() {
   const zipBtn = document.getElementById('reflZipBtn');
   const origLabel = mergedBtn.textContent;
   mergedBtn.disabled = true; zipBtn.disabled = true;
+  showLoading('Fetching 0/' + reflectionsData.roster.length + '…');
 
   try {
     mergedBtn.textContent = 'Fetching 0/' + reflectionsData.roster.length + '…';
     const annotations = await fetchAnnotationsForRoster(reflectionsData.roster, reflectionsWeek,
-      function(done, total) { mergedBtn.textContent = 'Fetching ' + done + '/' + total + '…'; });
+      function(done, total) { mergedBtn.textContent = 'Fetching ' + done + '/' + total + '…'; showLoading('Fetching ' + done + '/' + total + '…'); });
     const colourResult = await fetchColourStatesForRoster(reflectionsData.roster, reflectionsWeek);
     const colourStates = colourResult.colours;
     const showUntreatable = colourResult.showUntreatable;
 
     mergedBtn.textContent = 'Building PDF…';
+    showLoading('Building PDF…');
     const doc = new jsPDF({ unit: 'mm', format: 'a4' });
     let first = true;
     const failed = [];
@@ -2222,6 +2278,7 @@ async function downloadReflectionMerged() {
   } finally {
     mergedBtn.disabled = false; zipBtn.disabled = false;
     mergedBtn.textContent = origLabel;
+    hideLoading();
   }
 }
 
@@ -2232,6 +2289,7 @@ async function downloadReflectionZip() {
   const mergedBtn = document.getElementById('reflMergedBtn');
   const origLabel = zipBtn.textContent;
   zipBtn.disabled = true; mergedBtn.disabled = true;
+  showLoading('Fetching 0/' + reflectionsData.roster.length + '…');
 
   try {
     const zip = new JSZip();
@@ -2239,12 +2297,13 @@ async function downloadReflectionZip() {
 
     zipBtn.textContent = 'Fetching 0/' + reflectionsData.roster.length + '…';
     const annotations = await fetchAnnotationsForRoster(reflectionsData.roster, reflectionsWeek,
-      function(done, total) { zipBtn.textContent = 'Fetching ' + done + '/' + total + '…'; });
+      function(done, total) { zipBtn.textContent = 'Fetching ' + done + '/' + total + '…'; showLoading('Fetching ' + done + '/' + total + '…'); });
     const colourResult = await fetchColourStatesForRoster(reflectionsData.roster, reflectionsWeek);
     const colourStates = colourResult.colours;
     const showUntreatable = colourResult.showUntreatable;
 
     zipBtn.textContent = 'Building ZIP…';
+    showLoading('Building ZIP…');
     const failed = [];
     reflectionsData.roster.forEach(function(r) {
       const safeName = r.name.replace(/[^a-zA-Z0-9_\- ]/g, '').trim().replace(/\s+/g, '_');
@@ -2271,6 +2330,7 @@ async function downloadReflectionZip() {
   } finally {
     zipBtn.disabled = false; mergedBtn.disabled = false;
     zipBtn.textContent = origLabel;
+    hideLoading();
   }
 }
 
