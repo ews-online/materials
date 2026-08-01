@@ -285,7 +285,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v2.4 — actually points at the current Forum/Quiz Engines now</div>
+      <div class="version-tag">v2.5 — real Typing/Spelling port (backend renamed to match)</div>
     </div>
   </div>
 
@@ -851,15 +851,15 @@ async function addTypingParagraph() {
 async function populateTypingResultsStudentDropdown() {
   const data = await api('forum', { action: 'getRoster', classId: currentClassId });
   const sel = document.getElementById('typing-results-student');
-  sel.innerHTML = (data.roster || []).map(function(r) { return '<option value="' + r.StudentId + '">' + esc(r.NameEng) + '</option>'; }).join('');
+  sel.innerHTML = (data.roster || []).map(function(r) { return '<option value="' + r.StudentNumber + '">' + esc(r.NameEng) + '</option>'; }).join('');
 }
 async function loadTypingResults() {
-  const studentId = document.getElementById('typing-results-student').value;
-  const data = await api('forum', { action: 'getTypingHistory', studentId: studentId });
-  const rows = data.history || [];
+  const studentNumber = document.getElementById('typing-results-student').value;
+  const data = await api('forum', { action: 'getResults', studentNumber: studentNumber });
+  const rows = data.results || [];
   document.getElementById('typing-results-table').innerHTML = rows.length ? (
     '<table class="data-table"><thead><tr><th>Session</th><th>WPM</th><th>Accuracy</th><th>Score</th></tr></thead><tbody>' +
-    rows.map(function(r) { return '<tr><td>' + esc(r.SessionName) + '</td><td>' + esc(r.WPM) + '</td><td>' + esc(r.Accuracy) + '%</td><td>' + esc(r.Score) + '/' + esc(r.TotalPoints) + '</td></tr>'; }).join('') +
+    rows.map(function(r) { return '<tr><td>' + esc(r.sessionName) + (r.isBaseline ? ' (baseline)' : '') + '</td><td>' + esc(r.wpm) + '</td><td>' + esc(r.accuracy) + '%</td><td>' + (r.isBaseline ? '—' : esc(r.score) + '/' + esc(r.totalPoints)) + '</td></tr>'; }).join('') +
     '</tbody></table>'
   ) : '<div class="empty-note">No results yet.</div>';
 }
