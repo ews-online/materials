@@ -308,7 +308,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v3.5 — block already-studied units + Force Green Coded Unit Selection</div>
+      <div class="version-tag">v3.6 — Typing: session list w/ open-close, per-session results + Moodle CSV</div>
     </div>
   </div>
 
@@ -406,7 +406,16 @@
 
     <div id="typing-sub-results" style="display:none">
       <div class="card">
-        <h3>Look up a student</h3>
+        <h3>Session results</h3>
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px">
+          <div><label class="field-label" style="margin-bottom:6px">Session</label><select id="typing-results-session" onchange="loadTypingSessionResults()"></select></div>
+          <button class="btn btn-ghost btn-sm" onclick="downloadTypingMoodleCsv()">⬇ Download Moodle CSV</button>
+        </div>
+        <div id="typing-session-results-table"><div class="empty-note">Loading…</div></div>
+      </div>
+      <div class="card">
+        <h3>Individual student history</h3>
+        <p style="font-size:12px;color:var(--ink-mute);margin-bottom:12px">Every result a student has ever submitted, across every session and class — typing is deliberately never reset by term.</p>
         <select id="typing-results-student"></select>
         <button class="btn btn-sm" style="margin-top:10px" onclick="loadTypingResults()">Show history</button>
         <div id="typing-results-table" style="margin-top:14px"></div>
@@ -856,18 +865,34 @@ function showTypingSub(name) {
     document.getElementById('typing-sub-' + n).style.display = n === name ? 'block' : 'none';
     document.getElementById('typing-nav-' + n).classList.toggle('active', n === name);
   });
-  if (name === 'results') populateTypingResultsStudentDropdown();
+  if (name === 'results') { populateTypingResultsStudentDropdown(); populateTypingResultsSessionDropdown(); }
 }
 async function loadTypingPanel() { renderTypingSessions(); }
 async function renderTypingSessions() {
-  // No dedicated "list sessions for class" action was built with full CRUD
-  // read yet — reusing getTypingSession's per-class active lookup as a
-  // stand-in; a fuller list view is a natural next enhancement.
   const list = document.getElementById('typing-sessions-list');
-  list.innerHTML = '<div class="empty-note">Session list view — enhancement pending; use "Create session" above and manage status from there for now.</div>';
+  list.innerHTML = '<div class="empty-note">Loading…</div>';
+  const result = await api('forum', { action: 'manageTypingSession', op: 'list', classId: currentClassId });
+  if (!result.ok) { list.innerHTML = '<div class="empty-note">' + esc(result.error || "Couldn't load sessions.") + '</div>'; return; }
+  const sessions = result.sessions || [];
+  list.innerHTML = sessions.length ? (
+    '<table class="data-table"><thead><tr><th>#</th><th>Name</th><th>Baseline</th><th>Threshold</th><th>Points (C/A/W)</th><th>Status</th><th></th></tr></thead><tbody>' +
+    sessions.map(function(s) {
+      const isOpen = s.Status === 'open';
+      const isBaseline = s.IsBaseline === true || String(s.IsBaseline).toUpperCase() === 'TRUE';
+      return '<tr><td>' + esc(s.SessionNumber) + '</td><td>' + esc(s.SessionName) + '</td><td>' + (isBaseline ? 'Yes' : '\u2014') + '</td>' +
+        '<td>' + esc(s.AccuracyThreshold) + '%</td><td>' + esc(s.CompletionPoints) + '/' + esc(s.AccuracyPoints) + '/' + esc(s.WpmPoints) + '</td>' +
+        '<td><span class="chip ' + (isOpen ? 'chip-green' : '') + '">' + esc(s.Status) + '</span></td>' +
+        '<td><button class="btn btn-ghost btn-sm" onclick="toggleTypingSessionStatus(' + s.SessionNumber + ',\'' + (isOpen ? 'closed' : 'open') + '\')">' + (isOpen ? 'Close' : 'Open') + '</button></td></tr>';
+    }).join('') + '</tbody></table>'
+  ) : '<div class="empty-note">No sessions yet for this class — create one above.</div>';
+}
+async function toggleTypingSessionStatus(sessionNumber, newStatus) {
+  const result = await api('forum', { action: 'manageTypingSession', op: 'setStatus', classId: currentClassId, sessionNumber: sessionNumber, status: newStatus });
+  if (!result.ok) { alert(result.error || "Couldn't update status."); return; }
+  renderTypingSessions();
 }
 async function createTypingSession() {
-  await api('forum', {
+  const result = await api('forum', {
     action: 'manageTypingSession', op: 'create', classId: currentClassId,
     sessionName: document.getElementById('ts-name').value,
     sessionNumber: document.getElementById('ts-number').value,
@@ -875,7 +900,9 @@ async function createTypingSession() {
     accuracyThreshold: document.getElementById('ts-threshold').value,
     status: 'open'
   });
-  alert('Session created.');
+  if (!result.ok) { alert(result.error || "Couldn't create session."); return; }
+  showToast('✓ Session created and opened.');
+  renderTypingSessions();
 }
 async function addTypingParagraph() {
   await api('forum', {
@@ -887,6 +914,73 @@ async function addTypingParagraph() {
   document.getElementById('tp-text').value = '';
   alert('Paragraph added.');
 }
+async function populateTypingResultsSessionDropdown() {
+  const result = await api('forum', { action: 'manageTypingSession', op: 'list', classId: currentClassId });
+  const sel = document.getElementById('typing-results-session');
+  const sessions = (result.sessions || []).slice().sort(function(a, b) { return Number(b.SessionNumber) - Number(a.SessionNumber); });
+  sel.innerHTML = sessions.map(function(s) {
+    return '<option value="' + s.SessionNumber + '">#' + s.SessionNumber + ' \u2014 ' + esc(s.SessionName) + '</option>';
+  }).join('');
+  if (sessions.length) loadTypingSessionResults();
+  else document.getElementById('typing-session-results-table').innerHTML = '<div class="empty-note">No sessions yet — create one in the Sessions tab.</div>';
+}
+
+let typingSessionResultsCache = null;
+async function loadTypingSessionResults() {
+  const sessionNumber = document.getElementById('typing-results-session').value;
+  const tableEl = document.getElementById('typing-session-results-table');
+  tableEl.innerHTML = '<div class="empty-note">Loading…</div>';
+  const result = await api('forum', { action: 'getTypingSessionResultsForClass', classId: currentClassId, sessionNumber: sessionNumber });
+  if (!result.ok) { tableEl.innerHTML = '<div class="empty-note">' + esc(result.error || "Couldn't load results.") + '</div>'; return; }
+  typingSessionResultsCache = result.results || [];
+  tableEl.innerHTML = typingSessionResultsCache.length ? (
+    '<table class="data-table"><thead><tr><th>Student</th><th>WPM</th><th>Accuracy</th><th>Completed</th><th>Score</th></tr></thead><tbody>' +
+    typingSessionResultsCache.map(function(r) {
+      return '<tr><td>' + esc(r.name) + '</td>' +
+        (r.hasResult
+          ? '<td>' + esc(r.wpm) + '</td><td>' + esc(r.accuracy) + '%</td><td>' + (r.completed ? 'Yes' : 'No') + '</td><td>' + (r.isBaseline ? '\u2014' : esc(r.score) + '/' + esc(r.totalPoints)) + '</td>'
+          : '<td colspan="4" style="color:var(--ink-mute);font-style:italic">Not yet completed</td>') +
+        '</tr>';
+    }).join('') + '</tbody></table>'
+  ) : '<div class="empty-note">No active students on this class\'s roster.</div>';
+}
+
+// Standard Moodle grade-import CSV shape (Identifier/Full name/Grade/
+// Feedback comments) — Moodle's own CSV upload wizard lets you re-map
+// column names during import, so exact header naming here isn't critical,
+// but this matches the common case closely enough to need no remapping in
+// the typical setup. Feedback comments are simple HTML (a pass/fail
+// breakdown per criterion), which Moodle renders directly when the
+// assignment's feedback field is set to HTML format.
+function downloadTypingMoodleCsv() {
+  if (!typingSessionResultsCache) { alert('Load a session\'s results first.'); return; }
+  const sessionNumber = document.getElementById('typing-results-session').value;
+  const sessionLabel = document.getElementById('typing-results-session').selectedOptions[0].textContent;
+
+  const header = csvRow(['Identifier', 'Full name', 'Grade', 'Maximum Grade', 'Feedback comments']);
+  const rows = typingSessionResultsCache.map(function(r) {
+    if (!r.hasResult) {
+      return csvRow([r.studentNumber, r.name, '', '', '<p><em>Not yet completed.</em></p>']);
+    }
+    if (r.isBaseline) {
+      return csvRow([r.studentNumber, r.name, '', '', '<p>Baseline check \u2014 not graded. WPM: ' + r.wpm + ', Accuracy: ' + r.accuracy + '%.</p>']);
+    }
+    const feedback =
+      '<p><strong>' + r.score + ' / ' + r.totalPoints + ' points</strong></p><ul>' +
+      '<li>' + (r.completed ? '\u2713' : '\u2717') + ' Completed the session</li>' +
+      '<li>' + (r.accuracy >= 0 ? (r.accuracy) : '?') + '% accuracy</li>' +
+      '<li>' + r.wpm + ' WPM</li></ul>';
+    return csvRow([r.studentNumber, r.name, r.score, r.totalPoints, feedback]);
+  });
+
+  const csv = header + '\n' + rows.join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = currentClassId + '_TypingSession' + sessionNumber + '_Moodle.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
 async function populateTypingResultsStudentDropdown() {
   const data = await api('forum', { action: 'getRoster', classId: currentClassId });
   const sel = document.getElementById('typing-results-student');
