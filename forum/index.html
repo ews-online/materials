@@ -385,6 +385,7 @@ let currentStudentName = null; // full name string e.g. "Rei YAMAGUCHI", set at 
 let gotoDestination = null;    // set from ?goto= URL param, consumed once after login
 let currentClassId = null;
 let currentClassLabel = null;
+let currentTextbookTier = 'Basic';
 let currentName = null;
 let activeTab = 'dashboard';
 let currentPostData = null; // cached response from getNewPostData, so we don't refetch on every small render
@@ -420,6 +421,7 @@ function initSessionFromUrl(){
   currentStudentName = params.get('nameEng') || currentStudent;
   currentName = currentStudentName;
   currentProfilePicURL = params.get('profilePicURL') || '';
+  currentTextbookTier = params.get('textbookTier') || 'Basic';
   const goto = params.get('goto');
   if (goto) gotoDestination = goto;
 
@@ -707,15 +709,18 @@ async function renderGrammarFeedback(week){
   const ccfSettings = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.settings : { showUntreatableErrors: true, forceGreenUnitSelection: false };
   const grammarSubmitDeadline = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.grammarSubmitDeadline : null;
   const existingSubmission = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.existingSubmission : { found: false, unit: '', reason: '', submittedAt: '' };
-  // Prefix comes from the student's own textbook tier — the backend already
-  // resolves this, so the display never hardcodes "B" for an Intermediate
-  // student the way this screen used to.
-  const unitPrefix = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success && colourResult.value.textbookTier === 'Intermediate') ? 'I' : 'B';
-  // Bare unit numbers (no prefix) — exactly what would currently render
-  // green in the feedback above. Same computation the server uses to
-  // validate a submission, so there's no risk of the UI showing an option
-  // the server would then reject.
-  const greenUnitsThisWeek = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? (colourResult.value.greenUnitsThisWeek || []) : [];
+  // Prefix comes straight from SSO (set once at hub login), not a live
+  // Roster lookup on every page load — that lookup used to run on every
+  // single grammar-feedback view and was a real contributor to this page
+  // getting slow as the Roster sheet grows over a semester.
+  const unitPrefix = currentTextbookTier === 'Intermediate' ? 'I' : 'B';
+  // Computed client-side from data already being fetched (the annotation
+  // text + colourMap), instead of a separate server round-trip that
+  // re-read and re-parsed the Annotations/StudiedSet sheets a second time
+  // for the exact same week. Reuses ccfUnitState — the same function that
+  // decides on-screen highlight colours — so this can never show a unit as
+  // an option that doesn't actually render green above.
+  const greenUnitsThisWeek = annotation ? computeGreenUnitsThisWeek(annotation.annotatedText, colourMap, unitPrefix) : [];
   const forceGreenMode = ccfSettings.forceGreenUnitSelection;
 
   const hasAnnotation = annotation && annotation.annotatedText;
@@ -1046,6 +1051,26 @@ function ccfUnitState(code, unit, colourMap){
   if(code==='COL'||code==='WC'||code==='IDM'||code==='AWK'||code==='ME') return 'grey';
   if(unit && colourMap && colourMap[unit]) return colourMap[unit].colour;
   return 'green';
+}
+// Which units in this week's annotated text would currently render green —
+// computed client-side from data already fetched (the annotation text +
+// colourMap), rather than a second server round-trip that re-reads and
+// re-parses the same sheets. Reuses ccfUnitState, so this can never
+// disagree with what the student actually sees highlighted above it.
+// Returns bare numbers (no B/I prefix), matching what the submit form and
+// UnitSubmissions both expect.
+function computeGreenUnitsThisWeek(annotatedText, colourMap, prefix){
+  const re = /\{(\^|[^{}|]*)\|([A-Z]+)(?:\|([BI]\d+)(?:\/[BI]\d+)?)?\}/g;
+  const green = new Set();
+  let m;
+  while((m = re.exec(annotatedText || '')) !== null){
+    const code = m[2], unit = m[3];
+    if(!unit) continue;
+    if(ccfUnitState(code, unit, colourMap) === 'green' && unit.charAt(0) === prefix){
+      green.add(unit.slice(1));
+    }
+  }
+  return Array.from(green);
 }
 // Border (CCF §4.5 scaffold-failure flag) is always green when it fires —
 // never coexists with yellow/orange/red (a studied unit is never bordered).

@@ -310,7 +310,7 @@ function tileUrl(base, extra) {
   const params = new URLSearchParams({
     token: session.token, studentNumber: session.studentNumber || '', classId: session.classId || '',
     classLabel: session.classLabel || '', nameEng: session.nameEng || '', nameJP: session.nameJP || '',
-    profilePicURL: session.profilePicURL || ''
+    profilePicURL: session.profilePicURL || '', textbookTier: session.textbookTier || 'Basic'
   });
   if (extra) Object.keys(extra).forEach(function(k) { params.set(k, extra[k]); });
   return base + '?' + params.toString();
