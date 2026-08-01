@@ -308,7 +308,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v3.1 — steady reflections spinner + manual Studied Units tool</div>
+      <div class="version-tag">v3.2 — Unit History as read-only tab in Grammar Settings</div>
     </div>
   </div>
 
@@ -435,6 +435,7 @@
           <button class="tab-grammar" onclick="switchForumTab('grammar')" id="forum-nav-grammar">Grammar Analysis</button>
           <button class="tab-grammar" onclick="switchForumTab('reflections')" id="forum-nav-reflections">Reflections</button>
           <button class="tab-grammar" onclick="switchForumTab('unitSubmissions')" id="forum-nav-unitSubmissions">Unit Submissions</button>
+          <button class="tab-grammar" onclick="switchForumTab('unitHistory')" id="forum-nav-unitHistory">Unit History</button>
         </div>
       </div>
     </div>
@@ -934,7 +935,7 @@ async function loadForumPanel() {
 
 function switchForumTab(tab) {
   currentForumTab = tab;
-  ['grading', 'schedule', 'rosterGroups', 'rubric', 'settings', 'reflections', 'grammar', 'scaffold', 'unitSubmissions'].forEach(function(t) {
+  ['grading', 'schedule', 'rosterGroups', 'rubric', 'settings', 'reflections', 'grammar', 'scaffold', 'unitSubmissions', 'unitHistory'].forEach(function(t) {
     document.getElementById('forum-nav-' + t).classList.toggle('active', t === tab);
   });
   if (!forumClassData) {
@@ -944,7 +945,7 @@ function switchForumTab(tab) {
   const renderFns = {
     grading: renderGrading, schedule: renderSchedule, rosterGroups: renderRosterGroups, rubric: renderRubricTab,
     settings: renderSettings, reflections: renderReflections, grammar: renderGrammarAnalysis,
-    scaffold: renderScaffold, unitSubmissions: renderUnitSubmissions
+    scaffold: renderScaffold, unitSubmissions: renderUnitSubmissions, unitHistory: renderUnitHistory
   };
   const fn = renderFns[tab];
   if (!fn) return;
@@ -1424,56 +1425,41 @@ function renderRosterGroups() {
     '<div style="font-size:12px;color:var(--ink-mute);margin-bottom:12px">' + activeCount + ' active student' + (activeCount === 1 ? '' : 's') + '</div>' +
     '<button class="btn" onclick="doGenerateGroups()">🎲 Generate fresh groups</button>' +
     '<div class="sub-subhead" style="margin-top:18px">Current groups' + (latestWeek !== null ? ' (Week ' + String(latestWeek).padStart(2, '0') + ')' : '') + '</div>' +
-    (groupsHtml || '<div class="empty-note">No groups yet.</div>') + '</div>' +
-    '<div class="card"><h3>Studied Units</h3>' +
-    '<p style="font-size:12px;color:var(--ink-mute);margin-bottom:14px">This is what drives the colour-coded grammar feedback — a unit only starts tracking recurring errors once it\'s marked studied here. Use this to backfill a student\'s real history (from before this platform existed) or to correct an entry. This list is permanent per student, not tied to this class.</p>' +
-    '<div class="week-edit-grid" style="margin-bottom:14px"><div><label class="field-label">Student</label>' +
-    '<select id="studiedUnitsStudent" onchange="loadStudiedUnitsFor()">' + forumClassData.roster.map(function(r) { return '<option value="' + esc(r.StudentNumber) + '">' + esc(r.Name) + '</option>'; }).join('') + '</select></div></div>' +
-    '<div id="studiedUnitsList"><div class="empty-note">Loading…</div></div>' +
-    '<label class="field-label" style="margin-top:14px">Add units (comma, space, or newline separated — e.g. B1, B5, B37, I3)</label>' +
-    '<textarea class="text-input" id="studiedUnitsInput" rows="2" placeholder="B1, B5, B37, I3"></textarea>' +
-    '<div class="week-edit-grid" style="margin-top:10px"><div><label class="field-label">First studied week (leave blank = "already known, before this class")</label><input class="text-input" type="number" id="studiedUnitsWeek" placeholder="e.g. 3, or leave blank"></div></div>' +
-    '<button class="btn btn-sm" style="margin-top:10px" onclick="addStudiedUnitsSubmit()">+ Add units</button></div>';
-  loadStudiedUnitsFor();
+    (groupsHtml || '<div class="empty-note">No groups yet.</div>') + '</div>';
 }
 
-async function loadStudiedUnitsFor() {
-  const sel = document.getElementById('studiedUnitsStudent');
-  const listEl = document.getElementById('studiedUnitsList');
+/* ====================== UNIT HISTORY TAB (read-only) ======================
+   View-only, deliberately — this is meant to be automated and controlled by
+   the Grammar Quiz system once it exists (a unit becomes "studied" on quiz
+   completion). Until then, manually backfilling a student's real history
+   happens by editing the StudiedSet tab directly in the Forum Engine's
+   Google Sheet, not through this page — see the note in the UI itself. */
+async function renderUnitHistory() {
+  const options = forumClassData.roster.map(function(r) { return '<option value="' + esc(r.StudentNumber) + '">' + esc(r.Name) + '</option>'; }).join('');
+  document.getElementById('forum-content').innerHTML =
+    '<div class="card"><h3>Unit History</h3>' +
+    '<p style="font-size:12px;color:var(--ink-mute);margin-bottom:14px">This is what drives the colour-coded grammar feedback — a unit only starts tracking recurring errors once it\'s marked studied. Read-only here on purpose: this is meant to be controlled by the Grammar Quiz system once it exists. To backfill a student\'s real history from before this platform existed, add rows directly to the <b>StudiedSet</b> tab in the Forum Engine\'s Google Sheet (columns: StudentId, Unit, Source, FirstStudiedWeek — find each student\'s StudentId in the System sheet\'s Roster tab; use FirstStudiedWeek 0 for "already known before this class").</p>' +
+    '<div class="week-edit-grid" style="margin-bottom:14px"><div><label class="field-label">Student</label>' +
+    '<select id="unitHistoryStudent" onchange="loadUnitHistoryFor()">' + options + '</select></div></div>' +
+    '<div id="unitHistoryList"><div class="empty-note">Loading…</div></div></div>';
+  loadUnitHistoryFor();
+}
+
+async function loadUnitHistoryFor() {
+  const sel = document.getElementById('unitHistoryStudent');
+  const listEl = document.getElementById('unitHistoryList');
   if (!sel || !sel.value) { if (listEl) listEl.innerHTML = '<div class="empty-note">No students yet.</div>'; return; }
-  const studentNumber = sel.value;
   listEl.innerHTML = '<div class="empty-note">Loading…</div>';
-  const result = await api('forum', { action: 'getStudiedUnits', studentNumber: studentNumber });
+  const result = await api('forum', { action: 'getStudiedUnits', studentNumber: sel.value });
   if (!result.ok) { listEl.innerHTML = '<div class="empty-note">' + esc(result.error) + '</div>'; return; }
   const units = result.units || [];
   listEl.innerHTML = units.length
-    ? '<div style="display:flex;flex-wrap:wrap;gap:6px">' + units.map(function(u) {
-        const label = u.FirstStudiedWeek === 0 || u.FirstStudiedWeek === '0' ? 'already known' : ('Week ' + u.FirstStudiedWeek);
-        return '<span class="group-pill" style="display:inline-flex;align-items:center;gap:6px">' + esc(u.Unit) + ' <span style="opacity:0.6;font-size:10px">(' + label + ')</span>' +
-          '<span style="cursor:pointer;font-weight:700" onclick="removeStudiedUnitClick(\'' + studentNumber + '\',\'' + esc(u.Unit) + '\')">✕</span></span>';
-      }).join('') + '</div>'
+    ? '<table class="data-table"><thead><tr><th>Unit</th><th>Source</th><th>First studied</th></tr></thead><tbody>' +
+      units.map(function(u) {
+        const label = (u.FirstStudiedWeek === 0 || u.FirstStudiedWeek === '0') ? 'Already known' : ('Week ' + u.FirstStudiedWeek);
+        return '<tr><td>' + esc(u.Unit) + '</td><td>' + esc(u.Source) + '</td><td>' + label + '</td></tr>';
+      }).join('') + '</tbody></table>'
     : '<div class="empty-note">No studied units on file yet for this student.</div>';
-}
-
-async function addStudiedUnitsSubmit() {
-  const sel = document.getElementById('studiedUnitsStudent');
-  if (!sel || !sel.value) { alert('Choose a student first.'); return; }
-  const unitsRaw = document.getElementById('studiedUnitsInput').value.trim();
-  if (!unitsRaw) { alert('Enter at least one unit.'); return; }
-  const weekVal = document.getElementById('studiedUnitsWeek').value.trim();
-  const result = await api('forum', { action: 'addStudiedUnits', studentNumber: sel.value, units: unitsRaw, week: weekVal });
-  if (!result.ok) { alert(result.error || "Couldn't add units."); return; }
-  document.getElementById('studiedUnitsInput').value = '';
-  document.getElementById('studiedUnitsWeek').value = '';
-  showToast('✓ Added ' + result.added + ' unit(s).');
-  loadStudiedUnitsFor();
-}
-
-async function removeStudiedUnitClick(studentNumber, unit) {
-  if (!confirm('Remove ' + unit + ' from this student\'s studied units? This resets its recurrence tracking back to unstudied.')) return;
-  const result = await api('forum', { action: 'removeStudiedUnit', studentNumber: studentNumber, unit: unit });
-  if (!result.ok) { alert(result.error || "Couldn't remove."); return; }
-  loadStudiedUnitsFor();
 }
 
 async function toggleRosterActive(studentId, active) {
