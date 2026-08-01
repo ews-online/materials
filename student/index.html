@@ -360,12 +360,12 @@ function showTiles() {
   // getCurrentGrammarCycle instead of a fixed URL.
   if (isToolEnabled('forum')) {
     tiles.push({
-      icon: 'search', iconColor: '#534ab7', title: 'Grammar Analysis',
+      icon: 'search', iconColor: '#534ab7', title: 'Grammar Analysis / Unit Submission',
       desc: 'View feedback on your latest blog entry and choose your next unit.',
       url: tileUrl(TOOL_URLS.forum, { goto: 'grammar' })
     });
   } else {
-    tiles.push({ icon: 'search', iconColor: '#534ab7', title: 'Grammar Analysis', desc: 'Not available yet.', url: null });
+    tiles.push({ icon: 'search', iconColor: '#534ab7', title: 'Grammar Analysis / Unit Submission', desc: 'Not available yet.', url: null });
   }
 
   const container = document.getElementById('tiles-container');

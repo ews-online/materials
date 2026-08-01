@@ -308,7 +308,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v3.4 — ME errors now grey/toggle-controlled, not green</div>
+      <div class="version-tag">v3.5 — block already-studied units + Force Green Coded Unit Selection</div>
     </div>
   </div>
 
@@ -1795,7 +1795,8 @@ async function saveSettingsField(field, value) {
     repliesEnabled: field === 'repliesEnabled' ? value : s.RepliesEnabled,
     pictureEnabled: field === 'pictureEnabled' ? value : s.PictureEnabled,
     scaffoldEnabled: field === 'scaffoldEnabled' ? value : s.ScaffoldEnabled,
-    showUntreatableErrors: field === 'showUntreatableErrors' ? value : s.ShowUntreatableErrors
+    showUntreatableErrors: field === 'showUntreatableErrors' ? value : s.ShowUntreatableErrors,
+    forceGreenUnitSelection: s.ForceGreenUnitSelection
   });
   if (!result.ok) alert(result.error || "Couldn't save.");
 }
@@ -2536,6 +2537,8 @@ async function loadUnitSubmissions() {
     .map(function(s) { return '<option value="' + s.Week + '" ' + (s.Week === unitSubmissionsWeek ? 'selected' : '') + '>' + String(s.Week).padStart(2, '0') + ' \u00b7 ' + esc(s.DateRangeLabel) + '</option>'; }).join('');
 
   document.getElementById('forum-content').innerHTML =
+    '<div class="card" style="margin-bottom:14px"><div class="toggle-row" style="border-bottom:none;padding-bottom:0"><div><div class="tname">Force Green Coded Unit Selection</div><div class="tdesc">Students must pick a unit highlighted green in their own feedback that week — not any unit they like, and not "Other reason." Also always blocks resubmitting a unit already marked studied, regardless of this toggle.</div></div>' +
+    '<label class="switch"><input type="checkbox" ' + (forumClassData.settings.ForceGreenUnitSelection ? 'checked' : '') + ' onchange="saveSettingsField(\'forceGreenUnitSelection\',this.checked)"><span class="slider"></span></label></div></div>' +
     '<div class="card" style="margin-bottom:14px"><div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">' +
     '<div><label class="field-label" style="margin-bottom:6px">Week</label><select id="unitSubmissionsWeekSelect" onchange="unitSubmissionsWeek=parseInt(this.value);loadUnitSubmissions()">' + weekOptions + '</select></div></div></div>' +
     '<div id="unitSubmissionsList"><div class="card empty-note">Loading…</div></div>';

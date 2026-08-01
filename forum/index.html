@@ -704,9 +704,19 @@ async function renderGrammarFeedback(week){
   const annotationData = (annotationResult.status==='fulfilled' && annotationResult.value && annotationResult.value.success) ? annotationResult.value : null;
   const annotation = (annotationData && annotationData.found) ? annotationData : null;
   const colourMap = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.colours : {};
-  const ccfSettings = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.settings : { showUntreatableErrors: true };
+  const ccfSettings = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.settings : { showUntreatableErrors: true, forceGreenUnitSelection: false };
   const grammarSubmitDeadline = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.grammarSubmitDeadline : null;
   const existingSubmission = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.existingSubmission : { found: false, unit: '', reason: '', submittedAt: '' };
+  // Prefix comes from the student's own textbook tier — the backend already
+  // resolves this, so the display never hardcodes "B" for an Intermediate
+  // student the way this screen used to.
+  const unitPrefix = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success && colourResult.value.textbookTier === 'Intermediate') ? 'I' : 'B';
+  // Bare unit numbers (no prefix) — exactly what would currently render
+  // green in the feedback above. Same computation the server uses to
+  // validate a submission, so there's no risk of the UI showing an option
+  // the server would then reject.
+  const greenUnitsThisWeek = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? (colourResult.value.greenUnitsThisWeek || []) : [];
+  const forceGreenMode = ccfSettings.forceGreenUnitSelection;
 
   const hasAnnotation = annotation && annotation.annotatedText;
 
@@ -732,10 +742,17 @@ async function renderGrammarFeedback(week){
          <span style="font-size:0.8rem;">No blog entry was submitted, so there is no grammar feedback.</span>
        </div>`;
 
-  const mistakeOptDisabled = !hasAnnotation ? 'disabled-opt' : '';
+  const mistakeOptDisabled = (!hasAnnotation || (forceGreenMode && greenUnitsThisWeek.length === 0)) ? 'disabled-opt' : '';
   const mistakeOptHint = !hasAnnotation
     ? 'Not available — no entry was submitted this week.'
-    : 'A new unit color coded green that matches one of the errors above.';
+    : (forceGreenMode && greenUnitsThisWeek.length === 0)
+      ? 'No new (green) units in this week\u2019s feedback yet.'
+      : 'A new unit color coded green that matches one of the errors above.';
+  // "Other reason" is only ever available when the teacher hasn't turned on
+  // Force Green Coded Unit Selection — with it on, a student's unit choice
+  // must come from their own green-highlighted errors, full stop.
+  const otherOptDisabled = forceGreenMode ? 'disabled-opt' : '';
+  const bothDisabled = mistakeOptDisabled && otherOptDisabled;
 
   // Unit section — three states: deadline passed, deadline open + already submitted, deadline open fresh
   let unitSectionHtml;
@@ -744,7 +761,7 @@ async function renderGrammarFeedback(week){
     const previousHtml = alreadySubmitted
       ? `<div style="background:var(--paper);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-top:12px;">
            <div style="font-size:0.76rem;color:var(--ink-soft);margin-bottom:6px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;">Your submission</div>
-           <div style="font-size:0.9rem;font-weight:600;">Unit B${existingMain}</div>
+           <div style="font-size:0.9rem;font-weight:600;">Unit ${unitPrefix}${existingMain}</div>
            <div style="font-size:0.76rem;color:var(--ink-soft);margin-top:3px;">Submitted ${submittedAt}</div>
          </div>`
       : `<div style="font-size:0.82rem;color:var(--ink-soft);margin-top:10px;">No unit was submitted for this week.</div>`;
@@ -758,29 +775,44 @@ async function renderGrammarFeedback(week){
   } else {
     const btnLabel = alreadySubmitted ? 'Update submission →' : 'Submit unit →';
     const alreadyNote = alreadySubmitted
-      ? `<div style="font-size:0.76rem;color:var(--ink-soft);margin-bottom:14px;">You submitted Unit B${existingMain} on ${submittedAt} — submitting again will update your choice.</div>`
+      ? `<div style="font-size:0.76rem;color:var(--ink-soft);margin-bottom:14px;">You submitted Unit ${unitPrefix}${existingMain} on ${submittedAt} — submitting again will update your choice.</div>`
       : '';
     const countdownHtml = deadlineDate
       ? `<div id="grammarDeadlineCountdown" style="font-size:0.76rem;color:var(--ink-soft);margin-top:8px;font-family:'IBM Plex Mono',monospace;"></div>`
       : '';
+    const bothDisabledNote = bothDisabled
+      ? `<div style="background:var(--paper);border:1.5px solid var(--stamp-red);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:0.84rem;">
+           Your teacher requires choosing a unit from this week\u2019s new (green) errors, and there aren\u2019t any yet — so there\u2019s nothing to submit for this week right now. Check back after your entry has been analysed, or ask your teacher.
+         </div>`
+      : '';
+    // Force Green mode: the free-text box becomes a dropdown of exactly the
+    // units the server will actually accept — removes any chance of typing
+    // something that gets rejected after the fact.
+    const unitInputHtml = (forceGreenMode && greenUnitsThisWeek.length > 0)
+      ? `<select class="unit-num-inp" id="grammarMainUnit" style="flex:1;">
+           ${greenUnitsThisWeek.map(u => `<option value="${u}" ${u===existingMain?'selected':''}>${unitPrefix}${u}</option>`).join('')}
+         </select>`
+      : `<input class="unit-num-inp" type="text" id="grammarMainUnit" inputmode="numeric" placeholder="e.g. 11" autocomplete="off" value="${existingMain}" ${bothDisabled?'disabled':''}>`;
+
     unitSectionHtml = `
       <div class="section-label">Choose your grammar unit</div>
       <div class="unit-selection-card">
         <div class="unit-sel-title">Which unit do you want to study?</div>
         <div class="unit-sel-desc">Look at the feedback above. Choose a new grammar unit to study and tell your teacher why you chose it.</div>
         ${alreadyNote}
+        ${bothDisabledNote}
         <label class="reason-opt ${mistakeOptDisabled}">
-          <input type="radio" name="grammar-reason" value="mistake" ${!hasAnnotation?'disabled':''} onchange="handleGrammarReason(this)">
+          <input type="radio" name="grammar-reason" value="mistake" ${(!hasAnnotation||mistakeOptDisabled)?'disabled':''} onchange="handleGrammarReason(this)">
           <div>
             <span class="ro-strong">A mistake in my blog entry</span>
             <span class="ro-soft">${mistakeOptHint}</span>
           </div>
         </label>
-        <label class="reason-opt">
-          <input type="radio" name="grammar-reason" value="other" onchange="handleGrammarReason(this)">
+        <label class="reason-opt ${otherOptDisabled}">
+          <input type="radio" name="grammar-reason" value="other" ${otherOptDisabled?'disabled':''} onchange="handleGrammarReason(this)">
           <div>
             <span class="ro-strong">Other reason</span>
-            <span class="ro-soft">You will need to explain your reason.</span>
+            <span class="ro-soft">${forceGreenMode ? 'Not available — your teacher requires a green-highlighted unit.' : 'You will need to explain your reason.'}</span>
           </div>
         </label>
         <div class="other-reason-wrap" id="otherReasonWrap">
@@ -790,8 +822,8 @@ async function renderGrammarFeedback(week){
         <div style="margin:14px 0 18px;">
           <label for="grammarMainUnit" style="display:block;font-family:'IBM Plex Mono',monospace;font-size:0.64rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">New unit <span style="color:var(--stamp-red)">*</span></label>
           <div style="display:flex;gap:10px;">
-            <input class="unit-num-inp" type="text" id="grammarMainUnit" inputmode="numeric" placeholder="e.g. 11" autocomplete="off" value="${existingMain}">
-            <button class="btn btn-primary" id="grammarSubmitBtn" onclick="submitGrammarUnit(${week})" style="white-space:nowrap;">${btnLabel}</button>
+            ${unitInputHtml}
+            <button class="btn btn-primary" id="grammarSubmitBtn" ${bothDisabled?'disabled':''} onclick="submitGrammarUnit(${week})" style="white-space:nowrap;">${btnLabel}</button>
           </div>
           ${countdownHtml}
         </div>
@@ -823,6 +855,7 @@ async function renderGrammarFeedback(week){
   // attribute above — no annotation content (quotes, apostrophes, anything)
   // ever has to survive HTML-attribute escaping this way.
   window._ccfPdfData = { week, annotation: Object.assign({}, annotation||{}, {colourMap, showUntreatable: ccfSettings.showUntreatableErrors}), existingMain };
+  window._ccfUnitPrefix = unitPrefix;
   if(windowOpen && deadlineDate) startGrammarDeadlineCountdown(deadlineDate, week);
   } finally {
     hideLoading();
@@ -894,7 +927,7 @@ async function submitGrammarUnit(week){
       btn.disabled = false;
       btn.textContent = 'Update submission →';
       const el = document.getElementById('grammarSubmitSuccess');
-      el.textContent = `Unit B${mainUnit} submitted — your teacher can see your choice.`;
+      el.textContent = `Unit ${window._ccfUnitPrefix||'B'}${mainUnit} submitted — your teacher can see your choice.`;
       el.classList.add('show');
     } else {
       btn.disabled = false;
