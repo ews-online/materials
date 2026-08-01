@@ -50,6 +50,9 @@
   }
   .text-input:focus, textarea:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-lt); }
   textarea { min-height: 90px; resize: vertical; font-family: 'DM Sans', monospace; font-size: 13px; }
+  /* Auto-growing single-field textareas (rubric tier descriptions etc.) —
+     starts at input height, grows to fit content via JS, no scrollbar. */
+  textarea.autogrow { min-height: 44px; resize: none; overflow: hidden; font-family: 'DM Sans', sans-serif; font-size: 15px; line-height: 1.4; }
   .btn {
     display: inline-flex; align-items: center; gap: 6px; height: 42px; padding: 0 18px;
     background: var(--accent); color: #fff; border: none; border-radius: 9px;
@@ -118,9 +121,13 @@
   .card { background: #fff; border: 1px solid var(--rule); border-radius: 14px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px; }
   /* Grading tab specifically needs the space back — blog entries and rubric
      criteria are dense, wordy content, unlike the rest of the app's cards. */
-  .submission-card, .grade-sidebar { padding: 10px 14px; }
-  .grade-sidebar .criterion-body { padding: 4px 4px 8px; }
-  .grade-sidebar .tier-option { padding: 6px 4px; }
+  .submission-card, .grade-sidebar { padding: 6px 10px; }
+  .submission-card .sub-meta { margin: 4px 0 8px; }
+  .submission-card .sub-body { margin-bottom: 4px; }
+  .grade-sidebar .criterion-body { padding: 2px 2px 6px; }
+  .grade-sidebar .tier-option { padding: 4px 2px; }
+  .grade-sidebar .student-nav { margin-bottom: 8px; }
+  .grade-sidebar .grade-total-strip { padding: 2px 0; }
   .card h3 { font-family: 'Fraunces', serif; font-size: 15px; font-weight: 600; margin-bottom: 12px; }
   .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .data-table th { text-align: left; padding: 8px 10px; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-mute); border-bottom: 1px solid var(--rule); }
@@ -290,7 +297,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v2.7 — Rubric tab crash fix + Grading padding tightened</div>
+      <div class="version-tag">v2.8 — grading padding cut further + auto-growing rubric text</div>
     </div>
   </div>
 
@@ -1397,6 +1404,18 @@ async function doGenerateGroups() {
 /* ====================== RUBRIC TAB ====================== */
 let rubricEditorVersionIdx = null;
 
+// Sizes a textarea's height to exactly fit its current content, so long
+// rubric descriptions are fully visible instead of scrolling within a
+// single-line box. Called once right after render (so pre-filled content
+// is already sized correctly) and again on every keystroke.
+function autoGrowTextarea(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+function autoGrowAll(selector) {
+  (selector ? document.querySelectorAll(selector) : document.querySelectorAll('textarea.autogrow')).forEach(autoGrowTextarea);
+}
+
 // Proper CSV parsing (handles quoted fields containing commas/newlines) —
 // rubric descriptions routinely contain commas, so a naive split(',') would
 // silently corrupt them.
@@ -1562,7 +1581,7 @@ function renderRubricTab() {
     const tiersHtml = tiers.map(function(t, ti) {
       return '<div class="editor-tier-row">' +
         '<input class="text-input" value="' + esc(t.label || '') + '" placeholder="Tier label" onchange="updateTier(' + ci + ',' + ti + ',\'label\',this.value)">' +
-        '<input class="text-input" value="' + esc(t.desc || '') + '" placeholder="Description (optional)" onchange="updateTier(' + ci + ',' + ti + ',\'desc\',this.value)">' +
+        '<textarea class="text-input autogrow" rows="1" placeholder="Description (optional)" oninput="autoGrowTextarea(this)" onchange="updateTier(' + ci + ',' + ti + ',\'desc\',this.value)">' + esc(t.desc || '') + '</textarea>' +
         '<input class="text-input" type="number" value="' + (Number(t.points) || 0) + '" placeholder="Pts" onchange="updateTier(' + ci + ',' + ti + ',\'points\',parseInt(this.value)||0)">' +
         '<div style="display:flex;gap:4px"><button class="icon-btn" ' + (ti === 0 ? 'disabled' : '') + ' onclick="moveTier(' + ci + ',' + ti + ',-1)">↑</button>' +
         '<button class="icon-btn" ' + (ti === tiers.length - 1 ? 'disabled' : '') + ' onclick="moveTier(' + ci + ',' + ti + ',1)">↓</button>' +
@@ -1587,6 +1606,7 @@ function renderRubricTab() {
     '<div class="new-version-row"><div><label class="field-label">Start a new version from week</label><input class="text-input" type="number" id="newVersionWeek" min="1" placeholder="e.g. 9"></div>' +
     '<button class="btn btn-ghost" onclick="saveAsNewVersion()">Save as new version →</button></div></div>' +
     csvControlsHtml;
+  autoGrowAll();
 }
 
 async function startBlankRubric() {
