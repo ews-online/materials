@@ -742,17 +742,20 @@ async function renderGrammarFeedback(week){
          <span style="font-size:0.8rem;">No blog entry was submitted, so there is no grammar feedback.</span>
        </div>`;
 
-  const mistakeOptDisabled = (!hasAnnotation || (forceGreenMode && greenUnitsThisWeek.length === 0)) ? 'disabled-opt' : '';
+  const hasGreenThisWeek = greenUnitsThisWeek.length > 0;
+  const forcingNow = forceGreenMode && hasGreenThisWeek; // the restriction only actually bites when there's something green to enforce
+  const mistakeOptDisabled = (!hasAnnotation || (forceGreenMode && !hasGreenThisWeek)) ? 'disabled-opt' : '';
   const mistakeOptHint = !hasAnnotation
     ? 'Not available — no entry was submitted this week.'
-    : (forceGreenMode && greenUnitsThisWeek.length === 0)
-      ? 'No new (green) units in this week\u2019s feedback yet.'
+    : (forceGreenMode && !hasGreenThisWeek)
+      ? 'No new (green) units in this week\u2019s feedback yet — use "Other reason" instead.'
       : 'A new unit color coded green that matches one of the errors above.';
-  // "Other reason" is only ever available when the teacher hasn't turned on
-  // Force Green Coded Unit Selection — with it on, a student's unit choice
-  // must come from their own green-highlighted errors, full stop.
-  const otherOptDisabled = forceGreenMode ? 'disabled-opt' : '';
-  const bothDisabled = mistakeOptDisabled && otherOptDisabled;
+  // "Other reason" is only disabled when Force Green is actually forcing
+  // something — i.e. green units genuinely exist to choose from instead.
+  // If there aren't any this week, "Other reason" is the fallback, not
+  // something to also grey out — otherwise a student with no fresh errors
+  // could never submit anything at all.
+  const otherOptDisabled = forcingNow ? 'disabled-opt' : '';
 
   // Unit section — three states: deadline passed, deadline open + already submitted, deadline open fresh
   let unitSectionHtml;
@@ -780,19 +783,16 @@ async function renderGrammarFeedback(week){
     const countdownHtml = deadlineDate
       ? `<div id="grammarDeadlineCountdown" style="font-size:0.76rem;color:var(--ink-soft);margin-top:8px;font-family:'IBM Plex Mono',monospace;"></div>`
       : '';
-    const bothDisabledNote = bothDisabled
-      ? `<div style="background:var(--paper);border:1.5px solid var(--stamp-red);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:0.84rem;">
-           Your teacher requires choosing a unit from this week\u2019s new (green) errors, and there aren\u2019t any yet — so there\u2019s nothing to submit for this week right now. Check back after your entry has been analysed, or ask your teacher.
-         </div>`
-      : '';
     // Force Green mode: the free-text box becomes a dropdown of exactly the
-    // units the server will actually accept — removes any chance of typing
-    // something that gets rejected after the fact.
-    const unitInputHtml = (forceGreenMode && greenUnitsThisWeek.length > 0)
+    // units the server will actually accept, but only while there's
+    // actually something green to restrict to. With nothing green this
+    // week, this falls back to the normal free-text box — "Other reason"
+    // is the intended path in that case, not a dead end.
+    const unitInputHtml = forcingNow
       ? `<select class="unit-num-inp" id="grammarMainUnit" style="flex:1;">
            ${greenUnitsThisWeek.map(u => `<option value="${u}" ${u===existingMain?'selected':''}>${unitPrefix}${u}</option>`).join('')}
          </select>`
-      : `<input class="unit-num-inp" type="text" id="grammarMainUnit" inputmode="numeric" placeholder="e.g. 11" autocomplete="off" value="${existingMain}" ${bothDisabled?'disabled':''}>`;
+      : `<input class="unit-num-inp" type="text" id="grammarMainUnit" inputmode="numeric" placeholder="e.g. 11" autocomplete="off" value="${existingMain}">`;
 
     unitSectionHtml = `
       <div class="section-label">Choose your grammar unit</div>
@@ -800,9 +800,8 @@ async function renderGrammarFeedback(week){
         <div class="unit-sel-title">Which unit do you want to study?</div>
         <div class="unit-sel-desc">Look at the feedback above. Choose a new grammar unit to study and tell your teacher why you chose it.</div>
         ${alreadyNote}
-        ${bothDisabledNote}
         <label class="reason-opt ${mistakeOptDisabled}">
-          <input type="radio" name="grammar-reason" value="mistake" ${(!hasAnnotation||mistakeOptDisabled)?'disabled':''} onchange="handleGrammarReason(this)">
+          <input type="radio" name="grammar-reason" value="mistake" ${(!hasAnnotation||mistakeOptDisabled)?'disabled':''} ${forcingNow?'checked':''} onchange="handleGrammarReason(this)">
           <div>
             <span class="ro-strong">A mistake in my blog entry</span>
             <span class="ro-soft">${mistakeOptHint}</span>
@@ -812,7 +811,7 @@ async function renderGrammarFeedback(week){
           <input type="radio" name="grammar-reason" value="other" ${otherOptDisabled?'disabled':''} onchange="handleGrammarReason(this)">
           <div>
             <span class="ro-strong">Other reason</span>
-            <span class="ro-soft">${forceGreenMode ? 'Not available — your teacher requires a green-highlighted unit.' : 'You will need to explain your reason.'}</span>
+            <span class="ro-soft">${forcingNow ? 'Not available — your teacher requires a green-highlighted unit this week.' : 'You will need to explain your reason.'}</span>
           </div>
         </label>
         <div class="other-reason-wrap" id="otherReasonWrap">
@@ -823,7 +822,7 @@ async function renderGrammarFeedback(week){
           <label for="grammarMainUnit" style="display:block;font-family:'IBM Plex Mono',monospace;font-size:0.64rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">New unit <span style="color:var(--stamp-red)">*</span></label>
           <div style="display:flex;gap:10px;">
             ${unitInputHtml}
-            <button class="btn btn-primary" id="grammarSubmitBtn" ${bothDisabled?'disabled':''} onclick="submitGrammarUnit(${week})" style="white-space:nowrap;">${btnLabel}</button>
+            <button class="btn btn-primary" id="grammarSubmitBtn" onclick="submitGrammarUnit(${week})" style="white-space:nowrap;">${btnLabel}</button>
           </div>
           ${countdownHtml}
         </div>
@@ -908,6 +907,16 @@ async function submitGrammarUnit(week){
   if(!mainUnit){ showToast('Please enter a unit number.'); return; }
   if(reason.value === 'other' && !otherText){ showToast('Please explain your reason.'); return; }
 
+  // Real range for each textbook (B1-B113 / I1-I142) — same boundaries the
+  // server enforces, checked here first so an obvious typo like "1001"
+  // doesn't need a round-trip to get caught.
+  const maxUnit = (window._ccfUnitPrefix === 'I') ? 142 : 113;
+  const unitNum = Number(mainUnit);
+  if(!Number.isInteger(unitNum) || unitNum < 1 || unitNum > maxUnit){
+    showTabWarningModal('Not a real unit', `Unit ${window._ccfUnitPrefix||'B'}${mainUnit} doesn't exist — ${window._ccfUnitPrefix||'B'}1 through ${window._ccfUnitPrefix||'B'}${maxUnit} are the real range for your textbook.`);
+    return;
+  }
+
   const btn = document.getElementById('grammarSubmitBtn');
   btn.disabled = true;
   btn.textContent = 'Submitting…';
@@ -932,7 +941,17 @@ async function submitGrammarUnit(week){
     } else {
       btn.disabled = false;
       btn.textContent = 'Submit unit →';
-      showToast(data.error || "Couldn't submit. Try again.");
+      const msg = data.error || "Couldn't submit. Try again.";
+      // The two server-side rejections that actually matter get the
+      // centered modal (same one used for the tab-switch warning) — easy
+      // to miss a toast for something this important, since it means the
+      // student picked a unit that can't be accepted at all, not just a
+      // typo to fix in place.
+      if (/already studied|requires choosing a unit highlighted green/i.test(msg)) {
+        showTabWarningModal('Choose a different unit', msg);
+      } else {
+        showToast(msg);
+      }
     }
   }catch(e){
     btn.disabled = false;
