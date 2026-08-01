@@ -308,7 +308,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v3.7 — Typing session dropdown reaches back through class lineage (EWSI/II/III)</div>
+      <div class="version-tag">v3.8 — Typing: Grade Settings tab, paragraph browser + copy, Moodle CSV cleanup</div>
     </div>
   </div>
 
@@ -376,6 +376,7 @@
       <button class="active" onclick="showTypingSub('sessions')" id="typing-nav-sessions">Sessions</button>
       <button onclick="showTypingSub('paragraphs')" id="typing-nav-paragraphs">Paragraphs</button>
       <button onclick="showTypingSub('results')" id="typing-nav-results">Results</button>
+      <button onclick="showTypingSub('gradesettings')" id="typing-nav-gradesettings">Grade Settings</button>
     </div>
 
     <div id="typing-sub-sessions">
@@ -386,6 +387,12 @@
           <div class="field"><label class="field-label">Number</label><input class="text-input" id="ts-number" type="number" value="1"></div>
           <div class="field"><label class="field-label">Threshold %</label><input class="text-input" id="ts-threshold" type="number" value="80"></div>
         </div>
+        <div class="row-flex" style="margin-top:10px">
+          <div class="field"><label class="field-label">Completion pts</label><input class="text-input" id="ts-completion-pts" type="number" value="30"></div>
+          <div class="field"><label class="field-label">Accuracy pts</label><input class="text-input" id="ts-accuracy-pts" type="number" value="30"></div>
+          <div class="field"><label class="field-label">WPM pts</label><input class="text-input" id="ts-wpm-pts" type="number" value="40"></div>
+        </div>
+        <div style="font-size:11px;color:var(--ink-mute);margin-top:6px">Defaults come from Grade Settings — change them there if you want every new session to start differently.</div>
         <div style="margin-top:10px"><label style="font-size:13px"><input type="checkbox" id="ts-baseline"> This is the baseline session</label></div>
         <button class="btn btn-sm" style="margin-top:12px" onclick="createTypingSession()">Create</button>
       </div>
@@ -401,6 +408,27 @@
         </div>
         <div class="field" style="margin-top:10px"><label class="field-label">Text</label><textarea id="tp-text"></textarea></div>
         <button class="btn btn-sm" onclick="addTypingParagraph()">Add</button>
+      </div>
+      <div class="card">
+        <h3>Previous paragraphs</h3>
+        <p style="font-size:12px;color:var(--ink-mute);margin-bottom:12px">Every paragraph ever added, across every session — copy one and paste it into the Text field above for a new session. (Paragraphs aren't tied to a specific class, so this list is shared across EWS I/II/III.)</p>
+        <div id="typing-paragraphs-list"><div class="empty-note">Loading…</div></div>
+      </div>
+    </div>
+
+    <div id="typing-sub-gradesettings" style="display:none">
+      <div class="card">
+        <h3>Grade Settings — <span id="gs-class-label"></span></h3>
+        <p style="font-size:12px;color:var(--ink-mute);margin-bottom:14px">How a graded (non-baseline) session's 100 points split across the three categories. These become the default for every new session you create — doesn't touch sessions that already exist unless you use "Apply to all existing sessions" below.</p>
+        <div class="row-flex">
+          <div class="field"><label class="field-label">Completion pts</label><input class="text-input" id="gs-completion-pts" type="number"></div>
+          <div class="field"><label class="field-label">Accuracy pts</label><input class="text-input" id="gs-accuracy-pts" type="number"></div>
+          <div class="field"><label class="field-label">WPM pts</label><input class="text-input" id="gs-wpm-pts" type="number"></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="saveTypingGradeSettings()">Save as default</button>
+          <button class="btn btn-ghost btn-sm" onclick="applyTypingGradeSettingsToAll()">Apply to all existing sessions in this class</button>
+        </div>
       </div>
     </div>
 
@@ -861,11 +889,13 @@ async function archiveResetClass() {
 //  TYPING SKILLS PANEL
 // ════════════════════════════════════════════════════════
 function showTypingSub(name) {
-  ['sessions', 'paragraphs', 'results'].forEach(function(n) {
+  ['sessions', 'paragraphs', 'results', 'gradesettings'].forEach(function(n) {
     document.getElementById('typing-sub-' + n).style.display = n === name ? 'block' : 'none';
     document.getElementById('typing-nav-' + n).classList.toggle('active', n === name);
   });
   if (name === 'results') { populateTypingResultsStudentDropdown(); populateTypingResultsSessionDropdown(); }
+  if (name === 'paragraphs') loadTypingParagraphsList();
+  if (name === 'gradesettings') loadTypingGradeSettings();
 }
 async function loadTypingPanel() { renderTypingSessions(); }
 async function renderTypingSessions() {
@@ -898,6 +928,9 @@ async function createTypingSession() {
     sessionNumber: document.getElementById('ts-number').value,
     isBaseline: document.getElementById('ts-baseline').checked ? 'true' : 'false',
     accuracyThreshold: document.getElementById('ts-threshold').value,
+    completionPoints: document.getElementById('ts-completion-pts').value,
+    accuracyPoints: document.getElementById('ts-accuracy-pts').value,
+    wpmPoints: document.getElementById('ts-wpm-pts').value,
     status: 'open'
   });
   if (!result.ok) { alert(result.error || "Couldn't create session."); return; }
@@ -977,7 +1010,7 @@ async function loadTypingSessionResults() {
       return '<tr><td>' + esc(r.name) + '</td>' +
         (r.hasResult
           ? '<td>' + esc(r.wpm) + '</td><td>' + esc(r.accuracy) + '%</td><td>' + (r.completed ? 'Yes' : 'No') + '</td><td>' + (r.isBaseline ? '\u2014' : esc(r.score) + '/' + esc(r.totalPoints)) + '</td>'
-          : '<td colspan="4" style="color:var(--ink-mute);font-style:italic">Not yet completed</td>') +
+          : '<td colspan="4" style="color:var(--ink-mute);font-style:italic">Incomplete</td>') +
         '</tr>';
     }).join('') + '</tbody></table>'
   ) : '<div class="empty-note">No active students on this class\'s roster.</div>';
@@ -995,20 +1028,20 @@ function downloadTypingMoodleCsv() {
   const [sessionClassId, sessionNumber] = document.getElementById('typing-results-session').value.split('|');
   const sessionLabel = document.getElementById('typing-results-session').selectedOptions[0].textContent;
 
-  const header = csvRow(['Identifier', 'Full name', 'Grade', 'Maximum Grade', 'Feedback comments']);
+  const header = csvRow(['Identifier', 'Full name', 'Grade', 'Feedback comments']);
   const rows = typingSessionResultsCache.map(function(r) {
     if (!r.hasResult) {
-      return csvRow([r.studentNumber, r.name, '', '', '<p><em>Not yet completed.</em></p>']);
+      return csvRow([r.studentNumber, r.name, '', 'Incomplete']);
     }
     if (r.isBaseline) {
-      return csvRow([r.studentNumber, r.name, '', '', '<p>Baseline check \u2014 not graded. WPM: ' + r.wpm + ', Accuracy: ' + r.accuracy + '%.</p>']);
+      return csvRow([r.studentNumber, r.name, '', '<p>Baseline check \u2014 not graded. WPM: ' + r.wpm + ', Accuracy: ' + r.accuracy + '%.</p>']);
     }
     const feedback =
       '<p><strong>' + r.score + ' / ' + r.totalPoints + ' points</strong></p><ul>' +
       '<li>' + (r.completed ? '\u2713' : '\u2717') + ' Completed the session</li>' +
       '<li>' + (r.accuracy >= 0 ? (r.accuracy) : '?') + '% accuracy</li>' +
       '<li>' + r.wpm + ' WPM</li></ul>';
-    return csvRow([r.studentNumber, r.name, r.score, r.totalPoints, feedback]);
+    return csvRow([r.studentNumber, r.name, r.score, feedback]);
   });
 
   const csv = header + '\n' + rows.join('\n');
@@ -1033,6 +1066,101 @@ async function loadTypingResults() {
     rows.map(function(r) { return '<tr><td>' + esc(r.sessionName) + (r.isBaseline ? ' (baseline)' : '') + '</td><td>' + esc(r.wpm) + '</td><td>' + esc(r.accuracy) + '%</td><td>' + (r.isBaseline ? '—' : esc(r.score) + '/' + esc(r.totalPoints)) + '</td></tr>'; }).join('') +
     '</tbody></table>'
   ) : '<div class="empty-note">No results yet.</div>';
+}
+
+async function loadTypingParagraphsList() {
+  const listEl = document.getElementById('typing-paragraphs-list');
+  listEl.innerHTML = '<div class="empty-note">Loading…</div>';
+  const result = await api('forum', { action: 'manageTypingParagraph', op: 'list' });
+  if (!result.ok) { listEl.innerHTML = '<div class="empty-note">' + esc(result.error || "Couldn't load paragraphs.") + '</div>'; return; }
+  const paras = result.paragraphs || [];
+  if (!paras.length) { listEl.innerHTML = '<div class="empty-note">No paragraphs added yet.</div>'; return; }
+
+  // Group by SessionNumber (already sorted newest-first, order-ascending
+  // within each session, by the backend).
+  const groups = [];
+  paras.forEach(function(p) {
+    let g = groups[groups.length - 1];
+    if (!g || g.sessionNumber !== p.SessionNumber) { g = { sessionNumber: p.SessionNumber, isBaseline: p.IsBaseline, items: [] }; groups.push(g); }
+    g.items.push(p);
+  });
+
+  listEl.innerHTML = groups.map(function(g) {
+    const isBaseline = g.isBaseline === true || String(g.isBaseline).toUpperCase() === 'TRUE';
+    return '<div style="margin-bottom:18px"><div class="sub-subhead">Session ' + esc(g.sessionNumber) + (isBaseline ? ' (baseline)' : '') + '</div>' +
+      g.items.map(function(p) {
+        // esc() only handles &/</>. This value sits inside a JS string
+        // literal (single-quoted) that's itself inside an HTML attribute
+        // (double-quoted) - both quote characters need their own escaping,
+        // or a paragraph containing either one breaks out of one context
+        // or the other.
+        const jsEscapedText = String(p.Text || '')
+          .replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/"/g, '&quot;');
+        return '<div class="toggle-row"><div style="flex:1;margin-right:12px"><div style="font-size:11px;color:var(--ink-mute);margin-bottom:2px">Paragraph ' + esc(p.ParagraphOrder) + '</div><div style="font-size:13px">' + esc(p.Text) + '</div></div>' +
+          '<button class="btn btn-ghost btn-sm" onclick="copyTypingParagraph(\'' + jsEscapedText + '\')">Copy</button></div>';
+      }).join('') + '</div>';
+  }).join('');
+}
+
+function copyTypingParagraph(text) {
+  navigator.clipboard.writeText(text).then(function() {
+    document.getElementById('tp-text').value = text;
+    showToast('✓ Copied — also pasted into the Text field above.');
+  }).catch(function() {
+    document.getElementById('tp-text').value = text;
+    showToast('Pasted into the Text field above (clipboard copy wasn\'t available).');
+  });
+}
+
+async function loadTypingGradeSettings() {
+  document.getElementById('gs-class-label').textContent = currentClassLabel;
+  // Independent fetch rather than assuming forumClassData is already
+  // loaded — Typing can be opened directly from the Hub without ever
+  // visiting the Forum/CCF panel first.
+  const data = await api('forum', { action: 'getClassData', classId: currentClassId });
+  if (!data.ok) { showToast(data.error || "Couldn't load grade settings."); return; }
+  const s = data.settings || {};
+  document.getElementById('gs-completion-pts').value = s.TypingCompletionPoints || 30;
+  document.getElementById('gs-accuracy-pts').value = s.TypingAccuracyPoints || 30;
+  document.getElementById('gs-wpm-pts').value = s.TypingWpmPoints || 40;
+  // Also prime the Create Session form's defaults, so a session created
+  // right after visiting here starts from the same numbers.
+  document.getElementById('ts-completion-pts').value = s.TypingCompletionPoints || 30;
+  document.getElementById('ts-accuracy-pts').value = s.TypingAccuracyPoints || 30;
+  document.getElementById('ts-wpm-pts').value = s.TypingWpmPoints || 40;
+}
+
+async function saveTypingGradeSettings() {
+  const completion = document.getElementById('gs-completion-pts').value;
+  const accuracy = document.getElementById('gs-accuracy-pts').value;
+  const wpm = document.getElementById('gs-wpm-pts').value;
+  const data = await api('forum', { action: 'getClassData', classId: currentClassId });
+  const s = data.settings || {};
+  const result = await api('forum', {
+    action: 'saveSettings', classId: currentClassId,
+    groupSize: s.GroupSize, groupsEnabled: s.GroupsEnabled, commentsEnabled: s.CommentsEnabled,
+    repliesEnabled: s.RepliesEnabled, pictureEnabled: s.PictureEnabled, scaffoldEnabled: s.ScaffoldEnabled,
+    showUntreatableErrors: s.ShowUntreatableErrors, forceGreenUnitSelection: s.ForceGreenUnitSelection,
+    typingCompletionPoints: completion, typingAccuracyPoints: accuracy, typingWpmPoints: wpm
+  });
+  if (!result.ok) { alert(result.error || "Couldn't save."); return; }
+  showToast('✓ Saved — new sessions will default to these.');
+  document.getElementById('ts-completion-pts').value = completion;
+  document.getElementById('ts-accuracy-pts').value = accuracy;
+  document.getElementById('ts-wpm-pts').value = wpm;
+}
+
+async function applyTypingGradeSettingsToAll() {
+  if (!confirm('This changes the point weights on every existing session in this class — including ones students have already completed (their earned scores stay recorded, but re-downloading a Moodle CSV for a past session will reflect the new weights). Continue?')) return;
+  const completion = document.getElementById('gs-completion-pts').value;
+  const accuracy = document.getElementById('gs-accuracy-pts').value;
+  const wpm = document.getElementById('gs-wpm-pts').value;
+  const result = await api('forum', {
+    action: 'manageTypingSession', op: 'bulkApplyPoints', classId: currentClassId,
+    completionPoints: completion, accuracyPoints: accuracy, wpmPoints: wpm
+  });
+  if (!result.ok) { alert(result.error || "Couldn't apply."); return; }
+  showToast('✓ Applied to ' + result.updated + ' session(s).');
 }
 
 // ════════════════════════════════════════════════════════
