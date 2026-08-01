@@ -16,6 +16,7 @@
     --red: #b03030; --red-lt: #fce8e8;
     --green: #2a7a4e; --green-lt: #e3f3ea;
     --gold: #c9a227; --gold-lt: #f7f0d8;
+    --orange: #c2661a; --orange-lt: #fae3d0;
     --rule: rgba(26,26,46,0.10);
     --shadow: 0 2px 16px rgba(26,26,46,0.08);
   }
@@ -118,10 +119,15 @@
     font-size: 11.5px; font-weight: 600; color: var(--ink-soft); cursor: pointer; white-space: nowrap;
   }
   .subpanel-nav button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-  .subpanel-nav button.tab-grammar.active { background: var(--gold); color: #fff; border-color: var(--gold); }
-  .subpanel-group-row { display: flex; flex-wrap: wrap; gap: 24px; margin-bottom: 20px; align-items: flex-start; }
+  .subpanel-nav button.tab-forum { background: var(--green-lt); color: var(--green); border-color: var(--green-lt); }
+  .subpanel-nav button.tab-forum.active { background: var(--green); color: #fff; border-color: var(--green); }
+  .subpanel-nav button.tab-grammar { background: var(--orange-lt); color: var(--orange); border-color: var(--orange-lt); }
+  .subpanel-nav button.tab-grammar.active { background: var(--orange); color: #fff; border-color: var(--orange); }
+  .subpanel-group-row { display: flex; flex-wrap: wrap; gap: 24px; margin-bottom: 20px; align-items: flex-start; justify-content: space-between; }
   .subpanel-group { display: flex; flex-direction: column; gap: 8px; }
-  .subpanel-group-heading { font-size: 10.5px; font-weight: 700; text-align: center; color: var(--ink-mute); text-transform: uppercase; letter-spacing: 0.08em; }
+  .subpanel-group-heading { font-size: 10.5px; font-weight: 700; text-align: center; text-transform: uppercase; letter-spacing: 0.08em; }
+  .subpanel-group-heading.heading-forum { color: var(--green); }
+  .subpanel-group-heading.heading-grammar { color: var(--orange); }
   .subpanel-group .subpanel-nav { margin-bottom: 0; }
   .card { background: #fff; border: 1px solid var(--rule); border-radius: 14px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px; }
   /* Grading tab specifically needs the space back — blog entries and rubric
@@ -302,7 +308,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v2.9 — tab reorg/color-coding, moved toggles, single-version rubric, smart group defaults</div>
+      <div class="version-tag">v3.0 — green/orange tab colors, right-aligned grammar group, reorder</div>
     </div>
   </div>
 
@@ -413,22 +419,22 @@
     <div class="panel-header"><button class="back-btn" onclick="goHub()">← Hub</button><h2>Forum / CCF</h2></div>
     <div class="subpanel-group-row">
       <div class="subpanel-group">
-        <div class="subpanel-group-heading">Forum Settings</div>
+        <div class="subpanel-group-heading heading-forum">Forum Settings</div>
         <div class="subpanel-nav">
-          <button class="active" onclick="switchForumTab('grading')" id="forum-nav-grading">Grading</button>
-          <button onclick="switchForumTab('schedule')" id="forum-nav-schedule">Schedule</button>
-          <button onclick="switchForumTab('rosterGroups')" id="forum-nav-rosterGroups">Groups</button>
-          <button onclick="switchForumTab('rubric')" id="forum-nav-rubric">Rubric</button>
-          <button onclick="switchForumTab('settings')" id="forum-nav-settings">Settings</button>
+          <button class="tab-forum active" onclick="switchForumTab('grading')" id="forum-nav-grading">Grading</button>
+          <button class="tab-forum" onclick="switchForumTab('schedule')" id="forum-nav-schedule">Schedule</button>
+          <button class="tab-forum" onclick="switchForumTab('rosterGroups')" id="forum-nav-rosterGroups">Groups</button>
+          <button class="tab-forum" onclick="switchForumTab('rubric')" id="forum-nav-rubric">Rubric</button>
+          <button class="tab-forum" onclick="switchForumTab('settings')" id="forum-nav-settings">Settings</button>
         </div>
       </div>
       <div class="subpanel-group">
-        <div class="subpanel-group-heading">Grammar Settings</div>
+        <div class="subpanel-group-heading heading-grammar">Grammar Settings</div>
         <div class="subpanel-nav">
           <button class="tab-grammar" onclick="switchForumTab('scaffold')" id="forum-nav-scaffold">Scaffold</button>
           <button class="tab-grammar" onclick="switchForumTab('grammar')" id="forum-nav-grammar">Grammar Analysis</button>
-          <button class="tab-grammar" onclick="switchForumTab('unitSubmissions')" id="forum-nav-unitSubmissions">Unit Submissions</button>
           <button class="tab-grammar" onclick="switchForumTab('reflections')" id="forum-nav-reflections">Reflections</button>
+          <button class="tab-grammar" onclick="switchForumTab('unitSubmissions')" id="forum-nav-unitSubmissions">Unit Submissions</button>
         </div>
       </div>
     </div>
