@@ -116,6 +116,11 @@
   }
   .subpanel-nav button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
   .card { background: #fff; border: 1px solid var(--rule); border-radius: 14px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px; }
+  /* Grading tab specifically needs the space back — blog entries and rubric
+     criteria are dense, wordy content, unlike the rest of the app's cards. */
+  .submission-card, .grade-sidebar { padding: 10px 14px; }
+  .grade-sidebar .criterion-body { padding: 4px 4px 8px; }
+  .grade-sidebar .tier-option { padding: 6px 4px; }
   .card h3 { font-family: 'Fraunces', serif; font-size: 15px; font-weight: 600; margin-bottom: 12px; }
   .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
   .data-table th { text-align: left; padding: 8px 10px; font-size: 10px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-mute); border-bottom: 1px solid var(--rule); }
@@ -285,7 +290,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v2.6 — Schedule explicit save + Rubric CSV import/template</div>
+      <div class="version-tag">v2.7 — Rubric tab crash fix + Grading padding tightened</div>
     </div>
   </div>
 
@@ -910,9 +915,17 @@ function switchForumTab(tab) {
   };
   const fn = renderFns[tab];
   if (!fn) return;
-  Promise.resolve(fn()).catch(function(e) {
+  try {
+    Promise.resolve(fn()).catch(function(e) {
+      document.getElementById('forum-content').innerHTML = '<div class="card empty-note">Something went wrong loading this tab: ' + esc(e.message) + '<br><br>Open the browser console (F12) for the full error.</div>';
+    });
+  } catch (e) {
+    // fn() itself threw synchronously (e.g. a rendering bug), which
+    // Promise.resolve(fn()) can never catch since the throw happens before
+    // there's a return value to wrap — without this, the tab silently just
+    // keeps showing whatever was there before, with no visible error at all.
     document.getElementById('forum-content').innerHTML = '<div class="card empty-note">Something went wrong loading this tab: ' + esc(e.message) + '<br><br>Open the browser console (F12) for the full error.</div>';
-  });
+  }
 }
 
 function getRubricVersionForWeek(week) {
@@ -1084,7 +1097,7 @@ async function renderGrading() {
 
   let bodyHtml;
   if (!sub.title) {
-    bodyHtml = '<div class="card"><div class="empty-note">No submission from this student for this week.</div></div>';
+    bodyHtml = '<div class="card submission-card"><div class="empty-note">No submission from this student for this week.</div></div>';
   } else {
     const wc = wordCount(sub.text);
     const postTs = sub.postCreatedAt ? '<span class="ts">' + formatTs(sub.postCreatedAt) + '</span>' : '';
@@ -1420,7 +1433,7 @@ function parseRubricCsv(text) {
   let order = 0;
   rows.forEach(function(row) {
     const name = (row[0] || '').trim();
-    if (!name) return;
+    if (!name || name.toLowerCase() === 'criterion') return; // backstop: skip the header row even if it ended up somewhere other than row 0
     let crit = criteriaMap.get(name);
     if (!crit) {
       order++;
@@ -1478,7 +1491,8 @@ async function uploadRubricCsv() {
   const fileInput = document.getElementById('rubric-csv-file');
   const file = fileInput.files[0];
   if (!file) { alert('Choose a CSV file first.'); return; }
-  const text = await readTextFileAutoEncoding(file);
+  let text = await readTextFileAutoEncoding(file);
+  text = text.replace(/^\uFEFF/, ''); // strip a leading BOM explicitly — .trim() does NOT remove it, so a BOM-prefixed first line could dodge the "#" comment filter below and get parsed as a bogus data row
   const cleaned = text.split('\n').filter(function(line) { return !line.trim().startsWith('#'); }).join('\n');
   const criteria = parseRubricCsv(cleaned);
   if (!criteria.length) { alert("Couldn't find any valid rows in that CSV — check it matches the template's columns."); return; }
@@ -1506,8 +1520,15 @@ function version_label_for_confirm() {
 }
 
 function renderRubricTab() {
-  if (rubricEditorVersionIdx === null) rubricEditorVersionIdx = forumClassData.rubricVersions.length - 1;
   const sorted = forumClassData.rubricVersions;
+  // Clamp every time, not just once — a version list that shrank or
+  // reordered since the index was last set (e.g. after a CSV import) would
+  // otherwise leave this pointing past the end of the array, and
+  // `sorted[outOfBoundsIdx]` is `undefined`, not an error — the crash
+  // happens one line later reading `.criteria` off of it.
+  if (rubricEditorVersionIdx === null || rubricEditorVersionIdx >= sorted.length || rubricEditorVersionIdx < 0) {
+    rubricEditorVersionIdx = sorted.length - 1;
+  }
 
   const csvControlsHtml =
     '<div class="card"><h3 style="margin-bottom:6px">Import from CSV</h3>' +
@@ -1533,21 +1554,23 @@ function renderRubricTab() {
   }).join('');
 
   const version = sorted[rubricEditorVersionIdx];
-  const totalPts = version.criteria.reduce(function(s, cr) { return s + cr.maxPoints; }, 0);
+  const criteria = version.criteria || [];
+  const totalPts = criteria.reduce(function(s, cr) { return s + (Number(cr.maxPoints) || 0); }, 0);
 
-  const criteriaHtml = version.criteria.map(function(crit, ci) {
-    const tiersHtml = crit.tiers.map(function(t, ti) {
+  const criteriaHtml = criteria.map(function(crit, ci) {
+    const tiers = crit.tiers || [];
+    const tiersHtml = tiers.map(function(t, ti) {
       return '<div class="editor-tier-row">' +
-        '<input class="text-input" value="' + esc(t.label) + '" placeholder="Tier label" onchange="updateTier(' + ci + ',' + ti + ',\'label\',this.value)">' +
-        '<input class="text-input" value="' + esc(t.desc) + '" placeholder="Description (optional)" onchange="updateTier(' + ci + ',' + ti + ',\'desc\',this.value)">' +
-        '<input class="text-input" type="number" value="' + t.points + '" placeholder="Pts" onchange="updateTier(' + ci + ',' + ti + ',\'points\',parseInt(this.value)||0)">' +
+        '<input class="text-input" value="' + esc(t.label || '') + '" placeholder="Tier label" onchange="updateTier(' + ci + ',' + ti + ',\'label\',this.value)">' +
+        '<input class="text-input" value="' + esc(t.desc || '') + '" placeholder="Description (optional)" onchange="updateTier(' + ci + ',' + ti + ',\'desc\',this.value)">' +
+        '<input class="text-input" type="number" value="' + (Number(t.points) || 0) + '" placeholder="Pts" onchange="updateTier(' + ci + ',' + ti + ',\'points\',parseInt(this.value)||0)">' +
         '<div style="display:flex;gap:4px"><button class="icon-btn" ' + (ti === 0 ? 'disabled' : '') + ' onclick="moveTier(' + ci + ',' + ti + ',-1)">↑</button>' +
-        '<button class="icon-btn" ' + (ti === crit.tiers.length - 1 ? 'disabled' : '') + ' onclick="moveTier(' + ci + ',' + ti + ',1)">↓</button>' +
+        '<button class="icon-btn" ' + (ti === tiers.length - 1 ? 'disabled' : '') + ' onclick="moveTier(' + ci + ',' + ti + ',1)">↓</button>' +
         '<button class="icon-btn" onclick="removeTier(' + ci + ',' + ti + ')">✕</button></div></div>';
     }).join('');
     return '<div class="editor-criterion"><div class="editor-criterion-head">' +
-      '<div><label class="field-label">Criterion name</label><input class="text-input" value="' + esc(crit.name) + '" onchange="updateCriterion(' + ci + ',\'name\',this.value)"></div>' +
-      '<div><label class="field-label">Max points</label><input class="text-input" value="' + crit.maxPoints + '" disabled></div>' +
+      '<div><label class="field-label">Criterion name</label><input class="text-input" value="' + esc(crit.name || '') + '" onchange="updateCriterion(' + ci + ',\'name\',this.value)"></div>' +
+      '<div><label class="field-label">Max points</label><input class="text-input" value="' + (Number(crit.maxPoints) || 0) + '" disabled></div>' +
       '<div><label class="field-label">Auto-grade by</label><select onchange="updateCriterion(' + ci + ',\'autoType\',this.value)">' +
       ['Manual', 'WordCount', 'PictureTimeliness', 'CommentCompletion', 'ReplyCompletion'].map(function(t) { return '<option value="' + t + '" ' + (crit.autoType === t ? 'selected' : '') + '>' + t + '</option>'; }).join('') +
       '</select></div><button class="icon-btn" onclick="removeCriterion(' + ci + ')">✕</button></div>' +
@@ -1558,7 +1581,7 @@ function renderRubricTab() {
   document.getElementById('forum-content').innerHTML =
     '<p style="font-size:13px;color:var(--ink-mute);margin-bottom:14px">Editing a version changes grading for every week mapped to it — including past weeks. To change the rubric going forward only, use "Save as new version" below instead.</p>' +
     pillsHtml +
-    '<div class="card" style="margin-top:14px"><div class="total-pts-note">Total: ' + totalPts + ' points across ' + version.criteria.length + ' criteria</div>' +
+    '<div class="card" style="margin-top:14px"><div class="total-pts-note">Total: ' + totalPts + ' points across ' + criteria.length + ' criteria</div>' +
     criteriaHtml + '<button class="btn btn-ghost" onclick="addCriterion()">+ Add criterion</button>' +
     '<div class="editor-actions"><button class="btn" onclick="saveCurrentRubricVersion()">Save changes to this version</button></div>' +
     '<div class="new-version-row"><div><label class="field-label">Start a new version from week</label><input class="text-input" type="number" id="newVersionWeek" min="1" placeholder="e.g. 9"></div>' +
