@@ -308,7 +308,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v3.2 — Unit History as read-only tab in Grammar Settings</div>
+      <div class="version-tag">v3.3 — fix Unit History stuck-on-loading (unhandled rejection)</div>
     </div>
   </div>
 
@@ -1442,7 +1442,13 @@ async function renderUnitHistory() {
     '<div class="week-edit-grid" style="margin-bottom:14px"><div><label class="field-label">Student</label>' +
     '<select id="unitHistoryStudent" onchange="loadUnitHistoryFor()">' + options + '</select></div></div>' +
     '<div id="unitHistoryList"><div class="empty-note">Loading…</div></div></div>';
-  loadUnitHistoryFor();
+  // Awaited on purpose — this function is called from switchForumTab's
+  // Promise.resolve(fn()).catch(...) wrapper, which can only catch errors
+  // from a promise it's actually watching. A fire-and-forget call here
+  // (previously: no await) meant any failure inside loadUnitHistoryFor()
+  // became a silent unhandled rejection — logged to console, but the DOM
+  // never updated past "Loading…", with no visible error at all.
+  await loadUnitHistoryFor();
 }
 
 async function loadUnitHistoryFor() {
@@ -1450,16 +1456,20 @@ async function loadUnitHistoryFor() {
   const listEl = document.getElementById('unitHistoryList');
   if (!sel || !sel.value) { if (listEl) listEl.innerHTML = '<div class="empty-note">No students yet.</div>'; return; }
   listEl.innerHTML = '<div class="empty-note">Loading…</div>';
-  const result = await api('forum', { action: 'getStudiedUnits', studentNumber: sel.value });
-  if (!result.ok) { listEl.innerHTML = '<div class="empty-note">' + esc(result.error) + '</div>'; return; }
-  const units = result.units || [];
-  listEl.innerHTML = units.length
-    ? '<table class="data-table"><thead><tr><th>Unit</th><th>Source</th><th>First studied</th></tr></thead><tbody>' +
-      units.map(function(u) {
-        const label = (u.FirstStudiedWeek === 0 || u.FirstStudiedWeek === '0') ? 'Already known' : ('Week ' + u.FirstStudiedWeek);
-        return '<tr><td>' + esc(u.Unit) + '</td><td>' + esc(u.Source) + '</td><td>' + label + '</td></tr>';
-      }).join('') + '</tbody></table>'
-    : '<div class="empty-note">No studied units on file yet for this student.</div>';
+  try {
+    const result = await api('forum', { action: 'getStudiedUnits', studentNumber: sel.value });
+    if (!result.ok) { listEl.innerHTML = '<div class="empty-note">' + esc(result.error) + '</div>'; return; }
+    const units = result.units || [];
+    listEl.innerHTML = units.length
+      ? '<table class="data-table"><thead><tr><th>Unit</th><th>Source</th><th>First studied</th></tr></thead><tbody>' +
+        units.map(function(u) {
+          const label = (u.FirstStudiedWeek === 0 || u.FirstStudiedWeek === '0') ? 'Already known' : ('Week ' + u.FirstStudiedWeek);
+          return '<tr><td>' + esc(u.Unit) + '</td><td>' + esc(u.Source) + '</td><td>' + label + '</td></tr>';
+        }).join('') + '</tbody></table>'
+      : '<div class="empty-note">No studied units on file yet for this student.</div>';
+  } catch (e) {
+    listEl.innerHTML = '<div class="empty-note">Something went wrong loading this: ' + esc(e.message) + '<br><br>Open the browser console (F12) for the full error.</div>';
+  }
 }
 
 async function toggleRosterActive(studentId, active) {
