@@ -335,6 +335,7 @@
   <div class="card empty-note" id="sessionErrorScreen" style="display:none;max-width:400px;margin:80px auto;">
     Couldn't find your session — please go back and open this from your dashboard.
     <div style="margin-top:14px;"><button class="btn btn-primary" onclick="location.href='../student/'">← Back to dashboard</button></div>
+    <div class="version-tag" style="text-align:center;margin-top:12px;">v1.2 — AI-check prompt copy button restored</div>
   </div>
 </div>
 
@@ -511,7 +512,7 @@ function renderProfilePage(){
         ${currentProfilePicURL ? `<button class="btn btn-ghost" onclick="removeProfilePic()">Remove picture</button>` : ''}
       </div>
     </div>
-    <div class="version-tag" style="text-align:center;">v1.1 — Force Green unit selection, faster page load</div>
+    <div class="version-tag" style="text-align:center;">v1.2 — AI-check prompt copy button restored</div>
   `;
 }
 
@@ -855,6 +856,13 @@ async function renderGrammarFeedback(week){
       </div>
       <button class="btn-pdf" ${!hasAnnotation?'disabled title="No entry was submitted this week."':''} onclick="downloadCCFReflectionSheet()">📄 Download Reflection Sheet</button>
     </div>
+    <div class="card pdf-download-row">
+      <div class="info">
+        <div class="ttl">Copy AI-check prompt</div>
+        <div class="sub">Copies a ready-to-paste prompt for the weekend homework step — paste into Gemini, then add your two corrected sentences at the bottom.</div>
+      </div>
+      <button class="btn-pdf" ${!hasAnnotation?'disabled title="No entry was submitted this week."':''} onclick="copyAICheckPrompt()">📋 Copy Prompt</button>
+    </div>
   `;
   // Stored in a plain JS variable rather than serialized into the onclick
   // attribute above — no annotation content (quotes, apostrophes, anything)
@@ -973,6 +981,99 @@ async function submitGrammarUnit(week){
    deliberately shows only the unit number, not the title — this lookup
    is for the on-screen tooltip only. ── */
 const UNIT_TITLES = {B1:{jp:"am/is/are (be 動詞の肯定文、否定文)",en:null},B2:{jp:"am/is/are (be 動詞の疑問文)",en:null},B3:{jp:"I am doing (現在進行形)",en:null},B4:{jp:"are you doing? (現在進行形の疑問文)",en:null},B5:{jp:"I do/work/like など (単純現在形)",en:null},B6:{jp:"I don't ... (単純現在形の否定文)",en:null},B7:{jp:"Do you ... ? (単純現在形の疑問文)",en:null},B8:{jp:"I am doing と I do (現在進行形と単純現在形)",en:null},B9:{jp:"I have ... と I've got ...",en:null},B10:{jp:"was/were (be 動詞の過去形)",en:null},B11:{jp:"worked/got/went など (単純過去形)",en:null},B12:{jp:"I didn't ... Did you ... ? (単純過去形の否定文と疑問文)",en:null},B13:{jp:"I was doing (過去進行形)",en:null},B14:{jp:"I was doing と I did (過去進行形と単純過去形)",en:null},B15:{jp:"I used to + 動詞の原形",en:null},B16:{jp:"Have you ... ? (現在完了形：現在までの経験)",en:null},B17:{jp:"How long have you ... ? (現在完了形：現在までの動作や状態の継続)",en:null},B18:{jp:"for since ago",en:null},B19:{jp:"I have done と I did (現在完了形と単純過去形)",en:null},B20:{jp:"is done was done (受動態 1)",en:null},B21:{jp:"is being done has been done (受動態 2)",en:null},B22:{jp:"be/have/do (現在形と過去形における助動詞)",en:null},B23:{jp:"規則動詞と不規則動詞",en:null},B24:{jp:"What are you doing tomorrow? (未来を表す be + -ing)",en:null},B25:{jp:"I'm going to + 動詞の原形",en:null},B26:{jp:"will",en:null},B27:{jp:"might",en:null},B28:{jp:"can と could",en:null},B29:{jp:"must",en:null},B30:{jp:"should",en:null},B31:{jp:"I have to + 動詞の原形",en:null},B32:{jp:"Would you like ... ? I'd like ...",en:null},B33:{jp:"I'd rather + 動詞の原形",en:null},B34:{jp:"Do this! Don't do that! Let's do this! (命令文)",en:null},B35:{jp:"there is there are (there + be 動詞構文 1)",en:null},B36:{jp:"there was/were there has/have been there will be (there + be 動詞構文 2)",en:null},B37:{jp:"「それ」という意味を持たない it",en:null},B38:{jp:"I am, I don't など (肯定文、否定文の後に続く語句の省略)",en:null},B39:{jp:"Have you?/Are you? など (聞き返し疑問と付加疑問)",en:null},B40:{jp:"too/either so am I/neither do I など",en:null},B41:{jp:"isn't, haven't, don't など (様々な否定文)",en:null},B42:{jp:"Is it ... ? Have you ... ? Do they ... ? など (疑問文 1)",en:null},B43:{jp:"Who saw you? Who did you see? (疑問文 2)",en:null},B44:{jp:"Who is she talking to? What is it like? (疑問文 3)",en:null},B45:{jp:"What ... ? Which ... ? How ... ? (疑問文 4)",en:null},B46:{jp:"How long does it take to + 動詞の原形 (…にはどのくらい時間がかかりますか)",en:null},B47:{jp:"Do you know where ... ? I don't know what ... など (間接疑問文)",en:null},B48:{jp:"She said that ... He told me that ... (間接話法)",en:null},B49:{jp:"work/working go/going do/doing (動詞の原形と -ing)",en:null},B50:{jp:"I want to do I enjoy doing (動詞の後ろに入る「to + 動詞の原形」と -ing)",en:null},B51:{jp:"I want you to ... / I told you to ... (want/tell + 人 + to + 動詞の原形)",en:null},B52:{jp:"I went to the store to + 動詞の原形 (目的を表す不定詞)",en:null},B53:{jp:"go to/on/for + 名詞句 go + -ing",en:null},B54:{jp:"get",en:null},B55:{jp:"do と make",en:null},B56:{jp:"have",en:null},B57:{jp:"I/me he/him they/them など (代名詞の主格と目的格)",en:null},B58:{jp:"my/his/their など (代名詞の所有格)",en:null},B59:{jp:"Whose is this? It's mine/yours/hers など (代名詞の所有格と独立所有格)",en:null},B60:{jp:"I/me/my/mine など (代名詞の格)",en:null},B61:{jp:"myself/yourself/themselves など (再帰代名詞)",en:null},B62:{jp:"-'s (Kate's camera/my brother's car など)",en:null},B63:{jp:"a/an (不定冠詞)",en:null},B64:{jp:"train(s) bus(es) (単数形と複数形)",en:null},B65:{jp:"a bottle / some water (可算名詞と不可算名詞 1)",en:null},B66:{jp:"a cake / some cake / some cakes (可算名詞と不可算名詞 2)",en:null},B67:{jp:"a/an と the (不定冠詞と定冠詞)",en:null},B68:{jp:"the ... (the の付く名詞と付かない名詞 1)",en:null},B69:{jp:"go to work go home go to the hospital (the の付く名詞と付かない名詞 2)",en:null},B70:{jp:"I like music I hate exams (the の付く名詞と付かない名詞 3)",en:null},B71:{jp:"the + 場所の名前",en:null},B72:{jp:"this/that/these/those",en:null},B73:{jp:"one/ones",en:null},B74:{jp:"some と any",en:null},B75:{jp:"not + any / no + 名詞 / none",en:null},B76:{jp:"not + anybody/anyone/anything nobody / no one / nothing",en:null},B77:{jp:"somebody/anything/nowhere など",en:null},B78:{jp:"every と all",en:null},B79:{jp:"all most some any no/none",en:null},B80:{jp:"both/either/neither",en:null},B81:{jp:"a lot / much / many",en:null},B82:{jp:"(a) little / (a) few",en:null},B83:{jp:"old/nice/interesting など (形容詞)",en:null},B84:{jp:"quickly/badly/suddenly など (副詞)",en:null},B85:{jp:"old / older expensive / more expensive (比較級 1)",en:null},B86:{jp:"older than ... more expensive than ... (比較級 2)",en:null},B87:{jp:"not as ... as (原級を用いた比較)",en:null},B88:{jp:"the oldest the most expensive (最上級)",en:null},B89:{jp:"enough",en:null},B90:{jp:"too",en:null},B91:{jp:"He speaks English very well. (語順 1：動詞─目的語、場所─時)",en:null},B92:{jp:"always/usually/often など (語順 2：時を表す副詞)",en:null},B93:{jp:"still yet already",en:null},B94:{jp:"Give me that book! Give it to me! (「動詞 + 物 + to 人」と「動詞 + 人 + 物」)",en:null},B95:{jp:"and but or so because (2 つの文をつなぐ接続詞)",en:null},B96:{jp:"when ... (時を表す節)",en:null},B97:{jp:"If we go ... If you see ... など (起きるかもしれない出来事を仮定する if 節)",en:null},B98:{jp:"If I had ... If we went ... など (事実に反することを仮定する if 節)",en:null},B99:{jp:"a person who ... a thing that/which ... (関係詞節 1：主語であることを示す関係代名詞)",en:null},B100:{jp:"the people we met the hotel you stayed at (関係詞節 2：目的語を示す関係代名詞の省略)",en:null},B101:{jp:"at 8:00 on Monday in April (時を表す前置詞)",en:null},B102:{jp:"from ... to until since for (期間を表す前置詞)",en:null},B103:{jp:"before after during while (「前・後・間」を表す前置詞／接続詞)",en:null},B104:{jp:"in/at/on (場所を表す前置詞 1)",en:null},B105:{jp:"in/at/on (場所を表す前置詞 2)",en:null},B106:{jp:"to/in/at (場所を表す前置詞 3)",en:null},B107:{jp:"next to, between, under など (位置関係を表す前置詞)",en:null},B108:{jp:"up, over, through など (方向を表す前置詞)",en:null},B109:{jp:"on/at/by/with/about (前置詞のその他の用法)",en:null},B110:{jp:"afraid of ... , good at ... など of/at/for など + -ing (「形容詞 + 前置詞」と「前置詞 + -ing」)",en:null},B111:{jp:"listen to ... , look at ... など (動詞 + 前置詞)",en:null},B112:{jp:"go in, fall off, run away など (句動詞 1：句動詞と動作の方向)",en:null},B113:{jp:"put on your shoes put your shoes on (句動詞 2：句動詞と目的語)",en:null},I1:{jp:"現在進行形 (I am doing)",en:null},I2:{jp:"単純現在形 (I do)",en:null},I3:{jp:"現在進行形と単純現在形 1 (I am doing と I do)",en:null},I4:{jp:"現在進行形と単純現在形 2 (I am doing と I do)",en:null},I5:{jp:"単純過去形 (I did)",en:null},I6:{jp:"過去進行形 (I was doing)",en:null},I7:{jp:"現在完了形 (I have done)",en:null},I8:{jp:"現在完了形と過去形 1 (I have done と I did)",en:null},I9:{jp:"現在完了進行形 (I have been doing)",en:null},I10:{jp:"現在完了進行形と現在完了形 (I have been doing と I have done)",en:null},I11:{jp:"How long have you (been) ... ?",en:null},I12:{jp:"for と since　When ... ? と How long ... ?",en:null},I13:{jp:"現在完了形と過去形 2 (I have done と I did)",en:null},I14:{jp:"過去完了形 (I had done)",en:null},I15:{jp:"過去完了進行形 (I had been doing)",en:null},I16:{jp:"have と have got",en:null},I17:{jp:"used to + 動詞の原形",en:null},I18:{jp:"未来の意味を表す現在時制 (I am doing / I do)",en:null},I19:{jp:"I'm going to (do)",en:null},I20:{jp:"will 1",en:null},I21:{jp:"will 2",en:null},I22:{jp:"I will と I'm going to",en:null},I23:{jp:"will be doing と will have done",en:null},I24:{jp:"when I do / when I've done　if と when (従属節内の時制)",en:null},I25:{jp:"can, could と (be) able to",en:null},I26:{jp:"could (do) と could have (done)",en:null},I27:{jp:"must と can't",en:null},I28:{jp:"may と might 1",en:null},I29:{jp:"may と might 2",en:null},I30:{jp:"have to と must",en:null},I31:{jp:"should",en:null},I32:{jp:"仮定法 (I suggest you do)",en:null},I33:{jp:"I'd better ... It's time ...",en:null},I34:{jp:"would",en:null},I35:{jp:"Can/Could/Would you ... ? など (要求・申し出・許可・勧誘)",en:null},I36:{jp:"if I do ... , if I did ...",en:null},I37:{jp:"if I knew ... , I wish I knew ...",en:null},I38:{jp:"if I had known ... , I wish I had known ...",en:null},I39:{jp:"wish",en:null},I40:{jp:"受動態 1 (is done / was done)",en:null},I41:{jp:"受動態 2 (be done / been done / being done)",en:null},I42:{jp:"受動態 3",en:null},I43:{jp:"It is said that ...　He is said to ...　He is supposed to ...",en:null},I44:{jp:"have/get ～ done",en:null},I45:{jp:"間接話法 1 (He said that ...)",en:null},I46:{jp:"間接話法 2",en:null},I47:{jp:"疑問文 1",en:null},I48:{jp:"疑問文 2 (間接疑問文) Do you know where ... ? / He asked me where ...",en:null},I49:{jp:"助動詞 (have/do/can など) I think so / I hope so などを用いて繰り返しを避ける表現",en:null},I50:{jp:"付加疑問 (..., do you? / ..., isn't it? など)",en:null},I51:{jp:"動詞 + -ing (enjoy doing / stop doing など)",en:null},I52:{jp:"動詞 + to ～ (decide to + 動詞の原形 / forget to + 動詞の原形 など)",en:null},I53:{jp:"動詞 + (目的語) + to ～ (I want you to + 動詞の原形 など)",en:null},I54:{jp:"動詞 + -ing と 動詞 + to + 動詞の原形 1 (remember/regret など)",en:null},I55:{jp:"動詞 + -ing と 動詞 + to + 動詞の原形 2 (try/need/help)",en:null},I56:{jp:"動詞 + -ing と 動詞 + to + 動詞の原形 3 (like / would like など)",en:null},I57:{jp:"prefer と would rather",en:null},I58:{jp:"前置詞 (in/for/about など) + -ing",en:null},I59:{jp:"be/get used to do ... (I'm used to ...)",en:null},I60:{jp:"動詞 + 前置詞 + -ing (succeed in -ing / insist on -ing など)",en:null},I61:{jp:"There is no point in -ing, it's worth -ing など",en:null},I62:{jp:"to + 動詞の原形, for ... と so that ... (目的を表す表現)",en:null},I63:{jp:"形容詞 + to + 動詞の原形",en:null},I64:{jp:"to + 動詞の原形 (afraid to do) と前置詞 + -ing (afraid of -ing)",en:null},I65:{jp:"see ～ do と see ～ doing",en:null},I66:{jp:"-ing 句 (分詞構文：He hurt his knee playing football.)",en:null},I67:{jp:"可算名詞と不可算名詞 1",en:null},I68:{jp:"可算名詞と不可算名詞 2",en:null},I69:{jp:"可算名詞の前に置く a/an や some の用法",en:null},I70:{jp:"a/an と the",en:null},I71:{jp:"the の用法 1",en:null},I72:{jp:"the の用法 2 (school / the school など)",en:null},I73:{jp:"the の用法 3 (children / the children など)",en:null},I74:{jp:"the の用法 4 (the giraffe / the telephone / the old など)",en:null},I75:{jp:"the の付く固有名詞、付かない固有名詞 1",en:null},I76:{jp:"the の付く固有名詞、付かない固有名詞 2",en:null},I77:{jp:"単数か複数か注意すべき名詞",en:null},I78:{jp:"名詞 + 名詞で作られる名詞 (a bus driver/ a headache など)",en:null},I79:{jp:"-'s (your sister's name) と of ... (the name of the book)",en:null},I80:{jp:"myself/yourself/themselves などの再帰代名詞",en:null},I81:{jp:"a friend of mine　my own house　on my own / by myself",en:null},I82:{jp:"there ... と it ...",en:null},I83:{jp:"some と any",en:null},I84:{jp:"no/none/any　nothing/nobody など",en:null},I85:{jp:"much, many, little, few, a lot, plenty",en:null},I86:{jp:"all / all of　most / most of　no / none of など",en:null},I87:{jp:"both / both of　neither / neither of　either / either of",en:null},I88:{jp:"all　every　whole",en:null},I89:{jp:"each と every",en:null},I90:{jp:"関係代名詞 1：主格の who/that/which を持つ関係代名詞",en:null},I91:{jp:"関係代名詞 2：目的格の who/that/which を持つ関係代名詞とその省略",en:null},I92:{jp:"関係代名詞 3：whose/whom/where を持つ関係代名詞",en:null},I93:{jp:"関係代名詞 4：(追加情報を示す)継続用法としての関係代名詞(1)",en:null},I94:{jp:"関係代名詞 5：(追加情報を示す)継続用法としての関係代名詞(2)",en:null},I95:{jp:"-ing 句 と -ed 句 (the woman talking to Tom, the boy injured in the accident)",en:null},I96:{jp:"-ing や -ed の語尾を持つ形容詞 (boring/bored など)",en:null},I97:{jp:"形容詞の語順：a nice new house, you look tired",en:null},I98:{jp:"形容詞と副詞 1 (quick/quickly)",en:null},I99:{jp:"形容詞と副詞 2 (well, fast, late, hard/hardly)",en:null},I100:{jp:"so と such",en:null},I101:{jp:"enough と too",en:null},I102:{jp:"比較 1 (cheaper, more expensive など)",en:null},I103:{jp:"比較 2 (much better / any better など)",en:null},I104:{jp:"比較 3 (as ～ as ... / than)",en:null},I105:{jp:"最上級 (the longest / the most enjoyable など)",en:null},I106:{jp:"語順 1：「動詞＋目的語」と「場所＋時」の語順",en:null},I107:{jp:"語順 2：副詞と結び付く動詞の語順",en:null},I108:{jp:"still　anymore　yet　already",en:null},I109:{jp:"even",en:null},I110:{jp:"although　though　even though　in spite of　despite",en:null},I111:{jp:"in case",en:null},I112:{jp:"unless　as long as　provided",en:null},I113:{jp:"as (as I walked ... / as I was ... など)",en:null},I114:{jp:"like と as",en:null},I115:{jp:"like　as if",en:null},I116:{jp:"during　for　while",en:null},I117:{jp:"by と until　by the time ...",en:null},I118:{jp:"at/on/in (時を表す前置詞)",en:null},I119:{jp:"on time と in time　at the end と in the end",en:null},I120:{jp:"in/at/on (場所を表す前置詞) 1",en:null},I121:{jp:"in/at/on (場所を表す前置詞) 2",en:null},I122:{jp:"in/at/on (場所を表す前置詞) 3",en:null},I123:{jp:"to, at, in と into",en:null},I124:{jp:"in/on/at (その他の用法)",en:null},I125:{jp:"by",en:null},I126:{jp:"名詞 + 前置詞 (reason for, cause of などの前置詞と結び付く名詞)",en:null},I127:{jp:"形容詞 + 前置詞 1",en:null},I128:{jp:"形容詞 + 前置詞 2",en:null},I129:{jp:"動詞 + 前置詞 1：to と at",en:null},I130:{jp:"動詞 + 前置詞 2：about/for/of/after",en:null},I131:{jp:"動詞 + 前置詞 3：about と of",en:null},I132:{jp:"動詞 + 前置詞 4：of/for/from/on",en:null},I133:{jp:"動詞 + 前置詞 5：in/into/with/to/on",en:null},I134:{jp:"句動詞 1：「句動詞」とは？",en:null},I135:{jp:"句動詞 2：in/out",en:null},I136:{jp:"句動詞 3：out",en:null},I137:{jp:"句動詞 4：on/off (1)",en:null},I138:{jp:"句動詞 5：on/off (2)",en:null},I139:{jp:"句動詞 6：up/down",en:null},I140:{jp:"句動詞 7：up (1)",en:null},I141:{jp:"句動詞 8：up (2)",en:null},I142:{jp:"句動詞 9：away/back",en:null}};
+
+function ccfBuildUnitLegend(annotatedText){
+  const unitsUsed = [];
+  const seen = {};
+  const re = /\|([A-Z]?\d+)\}/g;
+  let m;
+  while((m = re.exec(annotatedText))){
+    const u = m[1];
+    if(!seen[u] && UNIT_TITLES[u]){ seen[u] = true; unitsUsed.push(u); }
+  }
+  unitsUsed.sort((a,b) => {
+    const pa = a[0], pb = b[0];
+    if(pa !== pb) return pa < pb ? -1 : 1;
+    return parseInt(a.slice(1)) - parseInt(b.slice(1));
+  });
+  return unitsUsed.map(u => `${u} = ${UNIT_TITLES[u].jp}`).join('\n');
+}
+
+function ccfBuildAICheckPrompt(annotatedText){
+  const legend = ccfBuildUnitLegend(annotatedText);
+  return `私は英語のライティングの授業を受けている学生です。以下は私が書いたブログ記事の全文です。
+文中の { } の部分は、先生のシステムが文法の間違いを見つけて印をつけた場所です。
+例:{is|SVA|B1} は「is という単語が、SVA(主語と動詞の一致)という種類の間違いで、
+B1という文法ユニットに関係しています」という意味です。{ } の中に記号だけで単語が
+ない場合は、「そこに何かが抜けている(足りない)」という意味です。
+
+このブログ記事で使われている文法ユニット番号の意味は下の「ユニット一覧」に
+書いてあります。修正や説明をするときは、必ずその文についている印のユニット番号を
+確認し、「ユニット一覧」でそのユニットが何を扱っているかを見てから答えてください。
+たとえ他にも直せる部分があるように見えても、印がついた箇所に集中し、説明は
+そのユニットが扱っている文法ポイントについて書いてください。修正した文を作る
+ときは、そのユニットが教えている文法の形を実際に使ってください。説明の中で
+ユニットの内容に触れるだけでなく、直した文自体がそのユニットの正しい形に
+なっている必要があります。
+
+このメッセージの最後に、私が授業中に自分で直した文を2つ書きます
+(「My Finished Attempt」)。それぞれについて、まず、ブログ記事全文の中から
+どの印つきの文を直したものか探してください(似ている文を探せば分かります)。
+見つけたら、その文についている印(いくつあるか)を確認し、私の直した文が
+その印を全部正しく直せているかチェックしてください。
+
+チェックの結果:
+・印を全部正しく直せていれば、「合っています」と伝えて、なぜ合っているのか
+  簡単に説明してください。
+・直しきれていない印がある場合(直し忘れ、または直したけどまだ間違っている)は、
+  どの印がまだ問題か具体的に指摘し、正しい文を教えてください。
+
+修正するときは、できるだけ元の文の形を残して、最小限の変更にしてください。
+もっと自然に聞こえる別の言い方があったとしても、大きく書き換えないでください。
+
+下の「ブログ記事全文」を文脈として使って、私が本当は何を言いたかったのかを
+考えてください。文だけを見ても意味がわからない場合があります。
+
+文脈を見てもよく分からない場合や、判断が難しい場合は、それでも構いません。
+一番近いと思う判断を教えてください。ただし、自信がない場合は「自信がない」と
+正直に言ってください。間違っているのに自信満々に答えるより、その方がいいです。
+
+答えは下の形式で書いてください。そうすればワークシートにそのまま書き写せます:
+
+文1 (SENTENCE 1)
+Confirmed correct sentence: [正しい文。私の直した文が合っていればそのまま、
+間違っていれば正しく直したもの]
+Explanation: [説明(日本語でOK)。関係するユニットの文法ポイントに触れること]
+
+文2 (SENTENCE 2)
+Confirmed correct sentence: [同上]
+Explanation: [同上]
+
+---ユニット一覧---
+${legend}
+
+---ブログ記事全文(印つき)---
+${annotatedText}
+
+---私が直した2つの文(My Finished Attempt)---
+文1: (ここに1つ目の直した文を貼り付けてください)
+文2: (ここに2つ目の直した文を貼り付けてください)`;
+}
+
+async function copyAICheckPrompt(){
+  const stored = window._ccfPdfData;
+  if(!stored || !stored.annotation || !stored.annotation.annotatedText){
+    showToast('No entry available to build a prompt from.');
+    return;
+  }
+  const prompt = ccfBuildAICheckPrompt(stored.annotation.annotatedText);
+  try{
+    await navigator.clipboard.writeText(prompt);
+    showToast('Copied! Paste into Gemini, then add your two sentences at the bottom.');
+  }catch(err){
+    showToast("Couldn't copy — try again or copy manually.");
+  }
+}
 
 /* ── Annotation renderer — CCF format. Uses ccfTokenize (also used by
    downloadCCFReflectionSheet) so the on-screen view and the printed sheet
