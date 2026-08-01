@@ -285,7 +285,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v2.5 — real Typing/Spelling port (backend renamed to match)</div>
+      <div class="version-tag">v2.6 — Schedule explicit save + Rubric CSV import/template</div>
     </div>
   </div>
 
@@ -1236,39 +1236,50 @@ function renderSchedule() {
       const pad = function(n) { return String(n).padStart(2, '0'); };
       return dt.getFullYear() + '-' + pad(dt.getMonth() + 1) + '-' + pad(dt.getDate()) + 'T' + pad(dt.getHours()) + ':' + pad(dt.getMinutes());
     };
-    return '<div class="card"><div class="sub-title" style="font-family:\'Fraunces\',serif;font-size:16px;font-weight:600">Week ' + String(w).padStart(2, '0') + '</div>' +
-      '<label class="field-label" style="margin-top:10px">Date range label</label><input class="text-input" value="' + esc(s.DateRangeLabel || '') + '" onchange="saveScheduleField(' + w + ',\'dateRangeLabel\',this.value)">' +
-      '<label class="field-label" style="margin-top:10px">Prompt</label><input class="text-input" value="' + esc(s.Prompt || '') + '" onchange="saveScheduleField(' + w + ',\'prompt\',this.value)">' +
+    return '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center">' +
+      '<div class="sub-title" style="font-family:\'Fraunces\',serif;font-size:16px;font-weight:600">Week ' + String(w).padStart(2, '0') + '</div>' +
+      '<span class="chip chip-green" id="sched-saved-' + w + '" style="display:none">✓ Saved</span></div>' +
+      '<label class="field-label" style="margin-top:10px">Date range label</label><input class="text-input" id="sched-' + w + '-dateRangeLabel" value="' + esc(s.DateRangeLabel || '') + '">' +
+      '<label class="field-label" style="margin-top:10px">Prompt</label><input class="text-input" id="sched-' + w + '-prompt" value="' + esc(s.Prompt || '') + '">' +
       '<div class="week-edit-grid" style="margin-top:12px">' +
-      '<div><label class="field-label">Post opens</label><input class="text-input" type="datetime-local" value="' + toLocal(s.PostOpen) + '" onchange="saveScheduleField(' + w + ',\'postOpen\',this.value)"></div>' +
-      '<div><label class="field-label">Post closes</label><input class="text-input" type="datetime-local" value="' + toLocal(s.PostClose) + '" onchange="saveScheduleField(' + w + ',\'postClose\',this.value)"></div>' +
-      '<div><label class="field-label">Picture deadline</label><input class="text-input" type="datetime-local" value="' + toLocal(s.PictureDeadline) + '" onchange="saveScheduleField(' + w + ',\'pictureDeadline\',this.value)"></div>' +
-      '<div><label class="field-label">Comment deadline</label><input class="text-input" type="datetime-local" value="' + toLocal(s.CommentDeadline) + '" onchange="saveScheduleField(' + w + ',\'commentDeadline\',this.value)"></div>' +
-      '<div><label class="field-label">Reply deadline</label><input class="text-input" type="datetime-local" value="' + toLocal(s.ReplyDeadline) + '" onchange="saveScheduleField(' + w + ',\'replyDeadline\',this.value)"></div>' +
-      '<div><label class="field-label">Grammar unit submission</label><input class="text-input" type="datetime-local" value="' + toLocal(s.GrammarSubmitDeadline) + '" onchange="saveScheduleField(' + w + ',\'grammarSubmitDeadline\',this.value)"></div>' +
-      '</div></div>';
+      '<div><label class="field-label">Post opens</label><input class="text-input" type="datetime-local" id="sched-' + w + '-postOpen" value="' + toLocal(s.PostOpen) + '"></div>' +
+      '<div><label class="field-label">Post closes</label><input class="text-input" type="datetime-local" id="sched-' + w + '-postClose" value="' + toLocal(s.PostClose) + '"></div>' +
+      '<div><label class="field-label">Picture deadline</label><input class="text-input" type="datetime-local" id="sched-' + w + '-pictureDeadline" value="' + toLocal(s.PictureDeadline) + '"></div>' +
+      '<div><label class="field-label">Comment deadline</label><input class="text-input" type="datetime-local" id="sched-' + w + '-commentDeadline" value="' + toLocal(s.CommentDeadline) + '"></div>' +
+      '<div><label class="field-label">Reply deadline</label><input class="text-input" type="datetime-local" id="sched-' + w + '-replyDeadline" value="' + toLocal(s.ReplyDeadline) + '"></div>' +
+      '<div><label class="field-label">Grammar unit submission</label><input class="text-input" type="datetime-local" id="sched-' + w + '-grammarSubmitDeadline" value="' + toLocal(s.GrammarSubmitDeadline) + '"></div>' +
+      '</div>' +
+      '<button class="btn btn-sm" style="margin-top:14px" onclick="saveScheduleWeek(' + w + ')">Save changes</button></div>';
   }).join('');
   document.getElementById('forum-content').innerHTML =
-    '<div class="total-pts-note" style="margin-bottom:14px">Weekly deadlines — ' + esc(currentClassLabel) + '</div>' +
+    '<div class="total-pts-note" style="margin-bottom:14px">Weekly deadlines — ' + esc(currentClassLabel) + '. Edit as many fields as you like, then click Save changes for that week.</div>' +
     (weeksHtml || '<div class="card empty-note">No weeks yet.</div>') +
     '<div class="card"><label class="field-label">Add a new week</label><input class="text-input" type="number" id="newWeekNum" placeholder="Week number" style="margin-bottom:8px">' +
     '<button class="btn btn-ghost btn-sm" onclick="addNewWeek()">+ Add week</button></div>';
 }
 
-async function saveScheduleField(week, field, value) {
-  const s = forumClassData.schedule.find(function(s) { return s.Week === week; });
+async function saveScheduleWeek(week) {
+  const val = function(field) { return document.getElementById('sched-' + week + '-' + field).value; };
   const payload = {
-    classId: currentClassId, week: week,
-    dateRangeLabel: s.DateRangeLabel, prompt: s.Prompt, postOpen: s.PostOpen, postClose: s.PostClose,
-    pictureDeadline: s.PictureDeadline, commentDeadline: s.CommentDeadline, replyDeadline: s.ReplyDeadline,
-    grammarSubmitDeadline: s.GrammarSubmitDeadline
+    action: 'saveSchedule', classId: currentClassId, week: week,
+    dateRangeLabel: val('dateRangeLabel'), prompt: val('prompt'),
+    postOpen: val('postOpen'), postClose: val('postClose'),
+    pictureDeadline: val('pictureDeadline'), commentDeadline: val('commentDeadline'),
+    replyDeadline: val('replyDeadline'), grammarSubmitDeadline: val('grammarSubmitDeadline')
   };
-  payload[field] = value;
-  const fieldMap = { dateRangeLabel: 'DateRangeLabel', prompt: 'Prompt', postOpen: 'PostOpen', postClose: 'PostClose',
-    pictureDeadline: 'PictureDeadline', commentDeadline: 'CommentDeadline', replyDeadline: 'ReplyDeadline', grammarSubmitDeadline: 'GrammarSubmitDeadline' };
-  s[fieldMap[field]] = value;
-  const result = await api('forum', payload && Object.assign({ action: 'saveSchedule' }, payload));
-  if (!result.ok) alert(result.error || "Couldn't save.");
+  const result = await api('forum', payload);
+  if (!result.ok) { alert(result.error || "Couldn't save."); return; }
+
+  const s = forumClassData.schedule.find(function(s) { return s.Week === week; });
+  s.DateRangeLabel = payload.dateRangeLabel; s.Prompt = payload.prompt;
+  s.PostOpen = payload.postOpen; s.PostClose = payload.postClose;
+  s.PictureDeadline = payload.pictureDeadline; s.CommentDeadline = payload.commentDeadline;
+  s.ReplyDeadline = payload.replyDeadline; s.GrammarSubmitDeadline = payload.grammarSubmitDeadline;
+
+  const badge = document.getElementById('sched-saved-' + week);
+  badge.style.display = 'inline-block';
+  clearTimeout(badge._hideTimer);
+  badge._hideTimer = setTimeout(function() { badge.style.display = 'none'; }, 2000);
 }
 
 async function addNewWeek() {
@@ -1373,9 +1384,146 @@ async function doGenerateGroups() {
 /* ====================== RUBRIC TAB ====================== */
 let rubricEditorVersionIdx = null;
 
+// Proper CSV parsing (handles quoted fields containing commas/newlines) —
+// rubric descriptions routinely contain commas, so a naive split(',') would
+// silently corrupt them.
+function parseCsvText(text) {
+  const rows = []; let row = [], field = '', inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else { inQuotes = false; } }
+      else field += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',') { row.push(field); field = ''; }
+      else if (c === '\r') { /* skip */ }
+      else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else field += c;
+    }
+  }
+  if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+  return rows;
+}
+function csvField(val) {
+  val = String(val === null || val === undefined ? '' : val);
+  return /[",\n]/.test(val) ? '"' + val.replace(/"/g, '""') + '"' : val;
+}
+function csvRow(fields) { return fields.map(csvField).join(','); }
+
+// Groups consecutive rows sharing the same criterion name into one
+// criterion with multiple tiers — one row per tier, matching the template's
+// shape exactly.
+function parseRubricCsv(text) {
+  const rows = parseCsvText(text).slice(1).filter(function(r) { return r.length && r.some(function(c) { return c.trim(); }); });
+  const criteriaMap = new Map();
+  let order = 0;
+  rows.forEach(function(row) {
+    const name = (row[0] || '').trim();
+    if (!name) return;
+    let crit = criteriaMap.get(name);
+    if (!crit) {
+      order++;
+      crit = { id: 'crit_csv_' + order + '_' + Date.now(), name: name, order: order, autoType: (row[1] || 'Manual').trim(), maxPoints: 0, tiers: [] };
+      criteriaMap.set(name, crit);
+    }
+    crit.tiers.push({ label: (row[2] || '').trim(), desc: (row[3] || '').trim(), points: parseInt(row[4]) || 0, autoMin: (row[5] || '').trim(), autoMax: (row[6] || '').trim() });
+  });
+  const criteria = Array.from(criteriaMap.values());
+  criteria.forEach(function(c) { c.maxPoints = c.tiers.length ? Math.max.apply(null, c.tiers.map(function(t) { return t.points; })) : 0; });
+  return criteria;
+}
+
+function downloadRubricCsvTemplate() {
+  const headerRow = csvRow(['Criterion', 'AutoType', 'TierLabel', 'TierDescription', 'TierPoints', 'AutoMin', 'AutoMax']);
+  const note = ['# AutoType must be exactly one of: Manual, WordCount, PictureTimeliness, CommentCompletion, ReplyCompletion',
+    '# AutoMin/AutoMax only apply to WordCount tiers (the word-count range that earns that tier) — leave blank otherwise.',
+    '# Repeat the Criterion name on every tier row that belongs to it — rows are grouped by that name, in the order they first appear.'];
+  const sampleRows = [
+    ['Word Count', 'WordCount', 'No submission', '', '0', '', ''],
+    ['Word Count', 'WordCount', '1\u201339 words', '', '2', '1', '39'],
+    ['Word Count', 'WordCount', '40\u201379 words', '', '6', '40', '79'],
+    ['Word Count', 'WordCount', '80+ words', '', '10', '80', ''],
+    ['Content', 'Manual', 'No submission', '', '0', '', ''],
+    ['Content', 'Manual', 'Needs improvement', 'Does not clearly address the topic, or provides so little detail that the reader cannot engage with it.', '6', '', ''],
+    ['Content', 'Manual', 'Average', 'Addresses the topic but lacks detail, or provides detail without any personal connection or opinion.', '18', '', ''],
+    ['Content', 'Manual', 'Good', 'Addresses the topic with some detail. May be missing personal experience or opinion but not both.', '24', '', ''],
+    ['Content', 'Manual', 'Excellent', 'Clearly addresses the topic with sufficient detail for the reader to understand and engage. Includes both personal experience and opinion.', '30', '', ''],
+    ['Paragraph Structure', 'Manual', 'No submission', '', '0', '', ''],
+    ['Paragraph Structure', 'Manual', 'Needs Improvement', 'Paragraphs lack focus or ideas are presented as an unorganized list.', '3', '', ''],
+    ['Paragraph Structure', 'Manual', 'Average', 'Most paragraphs have a clear focus but some drift off topic or mix unrelated ideas.', '9', '', ''],
+    ['Paragraph Structure', 'Manual', 'Good', 'Each paragraph has a clear focus. Ideas within each paragraph are related and stay on topic.', '15', '', ''],
+    ['Format', 'Manual', 'No submission', '', '0', '', ''],
+    ['Format', 'Manual', 'Needs Improvement', 'Significant formatting issues that affect readability.', '0', '', ''],
+    ['Format', 'Manual', 'Average', 'Mostly appropriate indentation, spacing between words and paragraphs, capitalization and punctuation.', '5', '', ''],
+    ['Format', 'Manual', 'Good', 'Properly indented, appropriate spacing between words and paragraphs, reasonable capitalization and punctuation.', '10', '', ''],
+    ['Engagement', 'Manual', 'No submission', '', '0', '', ''],
+    ['Engagement', 'Manual', 'Needs Improvement', 'No question or call to action, or it feels disconnected from the content.', '0', '', ''],
+    ['Engagement', 'Manual', 'Good', 'Ends with a question or call to action that connects naturally to the content.', '10', '', ''],
+    ['Picture', 'PictureTimeliness', 'Late / missing / irrelevant', 'No photo, wrong photo, or past deadline.', '0', '', ''],
+    ['Picture', 'PictureTimeliness', 'On time', 'Relevant photo uploaded by deadline.', '5', '', ''],
+    ['Comments', 'CommentCompletion', 'Needs improvement', 'Missing comments, under 30 words, or past deadline.', '0', '', ''],
+    ['Comments', 'CommentCompletion', 'Good', "Commented on all members' blogs with 30+ words by deadline.", '10', '', ''],
+    ['Replies', 'ReplyCompletion', 'Needs improvement', 'Missing replies, under 30 words, or past deadline.', '0', '', ''],
+    ['Replies', 'ReplyCompletion', 'Good', 'Replied to all comments on own blog with 30+ words by deadline.', '10', '', '']
+  ];
+  const csv = note.join('\n') + '\n' + headerRow + '\n' + sampleRows.map(csvRow).join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }); // BOM so Excel opens it as UTF-8, not Shift-JIS-guessed
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'rubric_template.csv'; a.click(); URL.revokeObjectURL(url);
+}
+
+async function uploadRubricCsv() {
+  const fileInput = document.getElementById('rubric-csv-file');
+  const file = fileInput.files[0];
+  if (!file) { alert('Choose a CSV file first.'); return; }
+  const text = await readTextFileAutoEncoding(file);
+  const cleaned = text.split('\n').filter(function(line) { return !line.trim().startsWith('#'); }).join('\n');
+  const criteria = parseRubricCsv(cleaned);
+  if (!criteria.length) { alert("Couldn't find any valid rows in that CSV — check it matches the template's columns."); return; }
+  fileInput.value = '';
+
+  if (!forumClassData.rubricVersions.length) {
+    const result = await api('forum', { action: 'createRubricVersion', classId: currentClassId, startWeek: 1, criteria: JSON.stringify(criteria) });
+    if (!result.ok) { alert(result.error || "Couldn't create rubric."); return; }
+    forumClassData.rubricVersions.push({ versionId: result.versionId, startWeek: 1, criteria: criteria });
+    rubricEditorVersionIdx = 0;
+    renderRubricTab();
+    return;
+  }
+
+  if (!confirm('This replaces every criterion in the currently open version (' + version_label_for_confirm() + ') with what\'s in the CSV. Continue?')) return;
+  const version = forumClassData.rubricVersions[rubricEditorVersionIdx];
+  const result = await api('forum', { action: 'saveRubricVersion', classId: currentClassId, versionId: version.versionId, criteria: JSON.stringify(criteria) });
+  if (!result.ok) { alert(result.error || "Couldn't save rubric."); return; }
+  version.criteria = criteria;
+  renderRubricTab();
+}
+function version_label_for_confirm() {
+  const idx = rubricEditorVersionIdx;
+  return idx !== null && forumClassData.rubricVersions[idx] ? ('Version ' + (idx + 1)) : 'this version';
+}
+
 function renderRubricTab() {
   if (rubricEditorVersionIdx === null) rubricEditorVersionIdx = forumClassData.rubricVersions.length - 1;
   const sorted = forumClassData.rubricVersions;
+
+  const csvControlsHtml =
+    '<div class="card"><h3 style="margin-bottom:6px">Import from CSV</h3>' +
+    '<p style="font-size:12px;color:var(--ink-mute);margin-bottom:12px">Rubrics can get long — build one in a spreadsheet instead and upload it here. Download the template below for the exact column layout (with a full sample rubric already filled in, ready to edit or use as-is).</p>' +
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">' +
+    '<button class="btn btn-ghost btn-sm" onclick="downloadRubricCsvTemplate()">⬇ Download CSV template</button>' +
+    '<input type="file" id="rubric-csv-file" accept=".csv" style="max-width:220px">' +
+    '<button class="btn btn-sm" onclick="uploadRubricCsv()">Upload CSV</button></div></div>';
+
+  if (!sorted.length) {
+    document.getElementById('forum-content').innerHTML =
+      '<div class="card empty-note">No rubric set up for this class yet.<br><br>' +
+      '<button class="btn" onclick="startBlankRubric()">Start from scratch →</button></div>' +
+      csvControlsHtml;
+    return;
+  }
 
   const pillsHtml = sorted.map(function(v, i) {
     const next = sorted[i + 1];
@@ -1384,10 +1532,6 @@ function renderRubricTab() {
       'Version ' + (i + 1) + ' <span class="vrange">\u00b7 ' + range + '</span></button>';
   }).join('');
 
-  if (!sorted.length) {
-    document.getElementById('forum-content').innerHTML = '<div class="card empty-note">No rubric versions yet.</div>';
-    return;
-  }
   const version = sorted[rubricEditorVersionIdx];
   const totalPts = version.criteria.reduce(function(s, cr) { return s + cr.maxPoints; }, 0);
 
@@ -1418,7 +1562,17 @@ function renderRubricTab() {
     criteriaHtml + '<button class="btn btn-ghost" onclick="addCriterion()">+ Add criterion</button>' +
     '<div class="editor-actions"><button class="btn" onclick="saveCurrentRubricVersion()">Save changes to this version</button></div>' +
     '<div class="new-version-row"><div><label class="field-label">Start a new version from week</label><input class="text-input" type="number" id="newVersionWeek" min="1" placeholder="e.g. 9"></div>' +
-    '<button class="btn btn-ghost" onclick="saveAsNewVersion()">Save as new version →</button></div></div>';
+    '<button class="btn btn-ghost" onclick="saveAsNewVersion()">Save as new version →</button></div></div>' +
+    csvControlsHtml;
+}
+
+async function startBlankRubric() {
+  const result = await api('forum', { action: 'createRubricVersion', classId: currentClassId, startWeek: 1, criteria: JSON.stringify([]) });
+  if (!result.ok) { alert(result.error || "Couldn't create rubric."); return; }
+  forumClassData.rubricVersions.push({ versionId: result.versionId, startWeek: 1, criteria: [] });
+  rubricEditorVersionIdx = 0;
+  renderRubricTab();
+  addCriterion(); // gives them one criterion to start editing right away rather than a bare empty editor
 }
 
 function updateCriterion(ci, field, value) {
@@ -1466,7 +1620,8 @@ function addTier(ci) {
 async function saveCurrentRubricVersion() {
   const version = forumClassData.rubricVersions[rubricEditorVersionIdx];
   const result = await api('forum', { action: 'saveRubricVersion', classId: currentClassId, versionId: version.versionId, criteria: JSON.stringify(version.criteria) });
-  if (!result.ok) alert(result.error || "Couldn't save rubric.");
+  if (!result.ok) { alert(result.error || "Couldn't save rubric."); return; }
+  showToast('✓ Saved.');
 }
 
 async function saveAsNewVersion() {
