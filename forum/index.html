@@ -581,7 +581,7 @@ async function renderPreviousWeekDetail(week){
 
     let membersHtml = '';
     if(data.settings.GroupsEnabled){
-      membersHtml = data.groupMembers.filter(m=>m.studentNumber!==currentStudent).map(m=>{
+      membersHtml = data.groupMembers.filter(m=>String(m.studentNumber)!==String(currentStudent)).map(m=>{
         if(m.postId){
           return `
             <div class="member-row" onclick="openPostDetail('${m.postId}', {type:'previousWeek', week:${week}})">
@@ -1366,7 +1366,7 @@ async function renderNewPostTab(){
 
   let membersHtml = '';
   if(data.settings.GroupsEnabled){
-    membersHtml = data.groupMembers.filter(m=>m.studentNumber!==currentStudent).map(m=>{
+    membersHtml = data.groupMembers.filter(m=>String(m.studentNumber)!==String(currentStudent)).map(m=>{
       const isMe = m.studentNumber===currentStudent;
       if(m.postId){
         return `
