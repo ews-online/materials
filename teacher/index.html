@@ -308,7 +308,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v3.6 — Typing: session list w/ open-close, per-session results + Moodle CSV</div>
+      <div class="version-tag">v3.7 — Typing session dropdown reaches back through class lineage (EWSI/II/III)</div>
     </div>
   </div>
 
@@ -914,23 +914,61 @@ async function addTypingParagraph() {
   document.getElementById('tp-text').value = '';
   alert('Paragraph added.');
 }
+// Walks backward through the PromotesFrom chain (EWSII -> EWSI, etc.) so a
+// teacher viewing the current class can still pull up a session that was
+// created back when these same students were in an earlier class —
+// TypingResults follows the student permanently, so the session data
+// should be reachable the same way, not hidden just because the session
+// record itself lives under an older ClassId.
+function getClassLineageIds(startClassId) {
+  const chain = [startClassId];
+  let cursor = startClassId;
+  for (let i = 0; i < 10; i++) { // hard cap - never trust a graph to not have a cycle
+    const cls = classes.find(function(c) { return c.ClassId === cursor; });
+    if (!cls || !cls.PromotesFrom) break;
+    chain.push(cls.PromotesFrom);
+    cursor = cls.PromotesFrom;
+  }
+  return chain;
+}
+
 async function populateTypingResultsSessionDropdown() {
-  const result = await api('forum', { action: 'manageTypingSession', op: 'list', classId: currentClassId });
+  const lineage = getClassLineageIds(currentClassId);
+  const perClassSessions = await Promise.all(lineage.map(function(cid) {
+    return api('forum', { action: 'manageTypingSession', op: 'list', classId: cid });
+  }));
+  const allSessions = [];
+  lineage.forEach(function(cid, idx) {
+    const result = perClassSessions[idx];
+    (result.sessions || []).forEach(function(s) { allSessions.push(Object.assign({}, s, { _lineageIndex: idx })); });
+  });
+  // Current class's sessions first (newest first within it), then each
+  // ancestor class in turn — keeps "always defaults to newest" true for the
+  // common case while still surfacing history below it, not mixed in.
+  allSessions.sort(function(a, b) {
+    if (a._lineageIndex !== b._lineageIndex) return a._lineageIndex - b._lineageIndex;
+    return Number(b.SessionNumber) - Number(a.SessionNumber);
+  });
+
   const sel = document.getElementById('typing-results-session');
-  const sessions = (result.sessions || []).slice().sort(function(a, b) { return Number(b.SessionNumber) - Number(a.SessionNumber); });
-  sel.innerHTML = sessions.map(function(s) {
-    return '<option value="' + s.SessionNumber + '">#' + s.SessionNumber + ' \u2014 ' + esc(s.SessionName) + '</option>';
+  sel.innerHTML = allSessions.map(function(s) {
+    const classLabel = s._lineageIndex === 0 ? '' : (' (' + esc(getClassLabelById(s.ClassId)) + ')');
+    return '<option value="' + s.ClassId + '|' + s.SessionNumber + '">#' + s.SessionNumber + ' \u2014 ' + esc(s.SessionName) + classLabel + '</option>';
   }).join('');
-  if (sessions.length) loadTypingSessionResults();
+  if (allSessions.length) loadTypingSessionResults();
   else document.getElementById('typing-session-results-table').innerHTML = '<div class="empty-note">No sessions yet — create one in the Sessions tab.</div>';
+}
+function getClassLabelById(classId) {
+  const c = classes.find(function(c) { return c.ClassId === classId; });
+  return c ? c.Label : classId;
 }
 
 let typingSessionResultsCache = null;
 async function loadTypingSessionResults() {
-  const sessionNumber = document.getElementById('typing-results-session').value;
+  const [sessionClassId, sessionNumber] = document.getElementById('typing-results-session').value.split('|');
   const tableEl = document.getElementById('typing-session-results-table');
   tableEl.innerHTML = '<div class="empty-note">Loading…</div>';
-  const result = await api('forum', { action: 'getTypingSessionResultsForClass', classId: currentClassId, sessionNumber: sessionNumber });
+  const result = await api('forum', { action: 'getTypingSessionResultsForClass', classId: currentClassId, sessionClassId: sessionClassId, sessionNumber: sessionNumber });
   if (!result.ok) { tableEl.innerHTML = '<div class="empty-note">' + esc(result.error || "Couldn't load results.") + '</div>'; return; }
   typingSessionResultsCache = result.results || [];
   tableEl.innerHTML = typingSessionResultsCache.length ? (
@@ -954,7 +992,7 @@ async function loadTypingSessionResults() {
 // assignment's feedback field is set to HTML format.
 function downloadTypingMoodleCsv() {
   if (!typingSessionResultsCache) { alert('Load a session\'s results first.'); return; }
-  const sessionNumber = document.getElementById('typing-results-session').value;
+  const [sessionClassId, sessionNumber] = document.getElementById('typing-results-session').value.split('|');
   const sessionLabel = document.getElementById('typing-results-session').selectedOptions[0].textContent;
 
   const header = csvRow(['Identifier', 'Full name', 'Grade', 'Maximum Grade', 'Feedback comments']);
@@ -977,7 +1015,7 @@ function downloadTypingMoodleCsv() {
   const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = currentClassId + '_TypingSession' + sessionNumber + '_Moodle.csv'; a.click();
+  a.href = url; a.download = currentClassId + '_TypingSession' + sessionNumber + (sessionClassId !== currentClassId ? '_from-' + sessionClassId : '') + '_Moodle.csv'; a.click();
   URL.revokeObjectURL(url);
 }
 
