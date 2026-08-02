@@ -308,7 +308,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v4.1 — Student View panel ported (quiz/answer toggle, history, teacher flagging)</div>
+      <div class="version-tag">v4.2 — Units tab rebuilt to match the real system exactly (wide 20-week table)</div>
     </div>
   </div>
 
@@ -475,14 +475,17 @@
 
     <div id="quiz-sub-units">
       <div class="card">
+        <h3>Unit Entry</h3>
+        <p style="font-size:12px;color:var(--ink-mute);margin-bottom:12px">Enter unit numbers separated by semicolons (e.g. <code>9;67</code>). Enter <code>0</code> for review-only. Leave blank to skip. Editing any cell doesn't save on its own — <b>Generate Quizzes</b> saves everything and generates together, same as before.</p>
         <div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap">
-          <div><label class="field-label" style="margin-bottom:6px">Week</label><input class="text-input" type="number" id="quiz-units-week" value="1" style="width:90px" onchange="loadQuizUnits()"></div>
-          <button class="btn" onclick="generateQuizzes()">🎲 Generate quizzes for this week</button>
+          <div><label class="field-label" style="margin-bottom:6px">Week</label><input class="text-input" type="number" id="quiz-units-week" value="1" style="width:90px" onchange="highlightCurrentWeekColumn()"></div>
+          <button class="btn btn-ghost btn-sm" onclick="loadQuizUnits()">↺ Refresh</button>
+          <button class="btn" id="generate-quizzes-btn" onclick="generateQuizzes()">⚡ Generate Quizzes</button>
         </div>
+        <div id="duplicate-unit-warning"></div>
         <div id="quiz-generate-result" style="margin-top:12px"></div>
       </div>
-      <div class="card"><h3>Weekly unit assignment</h3>
-        <p style="font-size:12px;color:var(--ink-mute);margin-bottom:12px">Units as plain numbers, semicolon-separated — e.g. "1;4". No B/I prefix here, that's resolved automatically from each student's textbook tier.</p>
+      <div class="card" style="overflow-x:auto">
         <div id="quiz-units-table"><div class="empty-note">Loading…</div></div>
       </div>
     </div>
@@ -2844,36 +2847,126 @@ function showQuizSub(name) {
 async function loadQuizPanel() { showQuizSub('units'); }
 
 /* ====================== UNITS TAB ====================== */
+let quizUnitsCache = null;
+
 async function loadQuizUnits() {
-  const week = document.getElementById('quiz-units-week').value;
   const tableEl = document.getElementById('quiz-units-table');
   tableEl.innerHTML = '<div class="empty-note">Loading…</div>';
-  const result = await api('quiz', { action: 'getWeeklyUnitAssignments', classId: currentClassId, week: week });
+  const result = await api('quiz', { action: 'getWeeklyUnitAssignments', classId: currentClassId });
   if (!result.ok) { tableEl.innerHTML = '<div class="empty-note">' + esc(result.error) + '</div>'; return; }
-  const students = result.students || [];
-  tableEl.innerHTML = students.length ? (
-    '<table class="data-table"><thead><tr><th>Student</th><th>Tier</th><th>Units</th><th>Review only</th><th></th></tr></thead><tbody>' +
-    students.map(function(s) {
-      return '<tr><td>' + esc(s.nameEng) + '</td><td>' + esc(s.textbookTier) + '</td>' +
-        '<td><input class="text-input" style="width:120px" id="qu-units-' + s.studentId + '" value="' + esc(s.units.join(';')) + '" placeholder="e.g. 1;4"></td>' +
-        '<td><input type="checkbox" id="qu-review-' + s.studentId + '" ' + (s.reviewOnly ? 'checked' : '') + '></td>' +
-        '<td><button class="btn btn-ghost btn-sm" onclick="saveQuizUnit(\'' + s.studentId + '\',\'' + s.studentNumber + '\')">Save</button></td></tr>';
-    }).join('') + '</tbody></table>'
-  ) : '<div class="empty-note">No active students on this class\'s roster.</div>';
+  quizUnitsCache = result;
+  renderQuizUnitsTable();
 }
-async function saveQuizUnit(studentId, studentNumber) {
-  const week = document.getElementById('quiz-units-week').value;
-  const units = document.getElementById('qu-units-' + studentId).value;
-  const reviewOnly = document.getElementById('qu-review-' + studentId).checked;
-  const result = await api('quiz', { action: 'saveWeeklyUnitAssignment', classId: currentClassId, studentNumber: studentNumber, week: week, units: units, reviewOnly: reviewOnly });
-  if (!result.ok) { alert(result.error || "Couldn't save."); return; }
-  showToast('✓ Saved.');
+
+function renderQuizUnitsTable() {
+  const tableEl = document.getElementById('quiz-units-table');
+  const students = (quizUnitsCache && quizUnitsCache.students) || [];
+  const maxWeeks = (quizUnitsCache && quizUnitsCache.maxWeeks) || 20;
+  const currentWeek = Number(document.getElementById('quiz-units-week').value) || 0;
+  if (!students.length) { tableEl.innerHTML = '<div class="empty-note">No active students on this class\'s roster.</div>'; return; }
+
+  let thead = '<tr><th>Student #</th><th>Name (JPN)</th><th>Name (ENG)</th><th>Tier</th>';
+  for (let w = 1; w <= maxWeeks; w++) {
+    thead += '<th style="' + (w === currentWeek ? 'color:var(--accent);background:var(--accent-lt)' : '') + '">Wk ' + w + '</th>';
+  }
+  thead += '</tr>';
+
+  const rows = students.map(function(s) {
+    let cells = '<td style="font-family:monospace;font-size:12px;color:var(--ink-mute)">' + esc(s.studentNumber) + '</td>' +
+      '<td style="font-size:12px;color:var(--ink-mute)">' + esc(s.nameJP) + '</td><td style="font-weight:500">' + esc(s.nameEng) + '</td>' +
+      '<td style="font-size:12px;color:var(--ink-mute)">' + esc(s.textbookTier) + '</td>';
+    s.weeks.forEach(function(val, idx) {
+      const w = idx + 1;
+      const isCurrent = w === currentWeek;
+      const color = val === '0' ? '#b03030' : (val.split(';').filter(Boolean).length >= 2 ? '#1f8a4c' : '');
+      cells += '<td><input class="text-input" style="width:80px;' + (isCurrent ? 'border-color:var(--accent);' : '') + (color ? 'color:' + color + ';font-weight:600;' : '') +
+        '" data-student="' + s.studentId + '" data-week="' + w + '" value="' + esc(val) + '" title="Week ' + w + ' units"></td>';
+    });
+    return '<tr>' + cells + '</tr>';
+  }).join('');
+
+  tableEl.innerHTML = '<table class="data-table"><thead>' + thead + '</thead><tbody>' + rows + '</tbody></table>';
 }
+
+function highlightCurrentWeekColumn() {
+  if (quizUnitsCache) renderQuizUnitsTable();
+}
+
+// Same check the real system runs before allowing Generate Quizzes: has
+// this student already been assigned any of this week's units in an
+// earlier week? Skipped entirely once a quiz has clearly already been
+// generated for the week (3+ units present), matching the original exactly.
+function getDuplicateWarnings() {
+  const currentWeek = Number(document.getElementById('quiz-units-week').value);
+  if (!currentWeek) return [];
+  const students = (quizUnitsCache && quizUnitsCache.students) || [];
+  const inputs = {};
+  document.querySelectorAll('#quiz-units-table input[data-student]').forEach(function(inp) {
+    inputs[inp.dataset.student + '|' + inp.dataset.week] = inp.value.trim();
+  });
+
+  const quizAlreadyGenerated = students.some(function(s) {
+    const entry = (inputs[s.studentId + '|' + currentWeek] || '').trim();
+    return entry.split(';').filter(function(u) { return u.trim(); }).length >= 3;
+  });
+  if (quizAlreadyGenerated) return [];
+
+  const warnings = [];
+  students.forEach(function(s) {
+    const currentEntry = (inputs[s.studentId + '|' + currentWeek] || '').trim();
+    if (!currentEntry || currentEntry === '0') return;
+    const unitsToCheck = currentEntry.split(';').map(function(u) { return u.trim(); }).filter(function(u) { return u && u !== '0'; });
+    if (!unitsToCheck.length) return;
+
+    const prevAllUnits = new Set();
+    for (let w = 1; w < currentWeek; w++) {
+      const entry = (inputs[s.studentId + '|' + w] || '').trim();
+      if (!entry || entry === '0') continue;
+      entry.split(';').forEach(function(u) { const t = u.trim(); if (t) prevAllUnits.add(t); });
+    }
+    const dupes = unitsToCheck.filter(function(u) { return prevAllUnits.has(u); });
+    if (dupes.length) warnings.push({ name: s.nameEng, units: dupes });
+  });
+  return warnings;
+}
+
 async function generateQuizzes() {
   const week = document.getElementById('quiz-units-week').value;
+  if (!week) { alert('Enter a week number first.'); return; }
+
+  const warningEl = document.getElementById('duplicate-unit-warning');
+  const warnings = getDuplicateWarnings();
+  if (warnings.length) {
+    warningEl.innerHTML = '<div style="background:var(--paper);border:1.5px solid var(--stamp-red,#b03030);border-radius:10px;padding:12px 14px;margin-top:12px;">' +
+      '<b>⚠️ Duplicate unit(s) detected — please fix before generating:</b>' +
+      warnings.map(function(w) { return '<div style="margin-top:4px">' + esc(w.name) + ' — unit(s) <b>' + w.units.map(esc).join(', ') + '</b> already studied in a previous week</div>'; }).join('') +
+      '</div>';
+    return;
+  }
+  warningEl.innerHTML = '';
+
+  if (!confirm('Save units and generate quizzes for Week ' + week + '? This will overwrite existing quiz data for that week.')) return;
+
+  const btn = document.getElementById('generate-quizzes-btn');
+  btn.disabled = true; btn.textContent = 'Saving units…';
+
+  // Save every cell for the target week (not just changed ones - simplest
+  // and safest, matches the real system reading every .mgmt-input on submit
+  // rather than tracking a dirty-diff).
+  const inputs = document.querySelectorAll('#quiz-units-table input[data-week="' + week + '"]');
+  const students = (quizUnitsCache && quizUnitsCache.students) || [];
+  const byId = {}; students.forEach(function(s) { byId[s.studentId] = s; });
+  for (const inp of inputs) {
+    const s = byId[inp.dataset.student];
+    if (!s) continue;
+    await api('quiz', { action: 'saveWeeklyUnitAssignment', classId: currentClassId, studentNumber: s.studentNumber, week: week, units: inp.value.trim() });
+  }
+
+  btn.textContent = 'Generating…';
   const resultEl = document.getElementById('quiz-generate-result');
-  resultEl.innerHTML = '<div class="empty-note">Generating…</div>';
   const result = await api('quiz', { action: 'generateQuizzes', classId: currentClassId, week: week });
+  btn.disabled = false; btn.textContent = '⚡ Generate Quizzes';
+
   if (!result.ok) { resultEl.innerHTML = '<div class="empty-note">' + esc(result.error) + '</div>'; return; }
   let html = '<div class="total-pts-note">Generated for ' + result.generated.length + ' student(s).</div>';
   if (result.blocked && result.blocked.length) {
@@ -2885,6 +2978,7 @@ async function generateQuizzes() {
     html += '<div class="total-pts-note" style="margin-top:8px">No unit assignment entered yet: ' + result.skippedNoAssignment.map(esc).join(', ') + '</div>';
   }
   resultEl.innerHTML = html;
+  loadQuizUnits();
 }
 
 /* ====================== STUDENT VIEW TAB ======================
