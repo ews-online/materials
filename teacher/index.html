@@ -308,7 +308,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v3.9 — Typing: dropped Grade Settings tab, editable grading right on each session</div>
+      <div class="version-tag">v4.1 — Student View panel ported (quiz/answer toggle, history, teacher flagging)</div>
     </div>
   </div>
 
@@ -465,39 +465,97 @@
   <div class="screen" id="screen-panel-quiz">
     <div class="panel-header"><button class="back-btn" onclick="goHub()">← Hub</button><h2>Grammar Quiz</h2></div>
     <div class="subpanel-nav">
-      <button class="active" onclick="showQuizSub('control')" id="quiz-nav-control">Test Control</button>
+      <button class="active" onclick="showQuizSub('units')" id="quiz-nav-units">Units</button>
+      <button onclick="showQuizSub('preview')" id="quiz-nav-preview">Student View</button>
+      <button onclick="showQuizSub('control')" id="quiz-nav-control">Test Control</button>
       <button onclick="showQuizSub('flags')" id="quiz-nav-flags">Flags</button>
+      <button onclick="showQuizSub('grades')" id="quiz-nav-grades">Grades</button>
       <button onclick="showQuizSub('qb')" id="quiz-nav-qb">Question Bank</button>
     </div>
 
-    <div id="quiz-sub-control">
+    <div id="quiz-sub-units">
       <div class="card">
-        <h3>This week's quiz</h3>
-        <div id="test-control-status"><div class="empty-note">Loading…</div></div>
-        <div style="margin-top:12px;display:flex;gap:8px">
-          <button class="btn btn-sm" onclick="setTestControl('open')">Open quiz</button>
-          <button class="btn btn-ghost btn-sm" onclick="setTestControl('closed')">Close quiz</button>
+        <div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap">
+          <div><label class="field-label" style="margin-bottom:6px">Week</label><input class="text-input" type="number" id="quiz-units-week" value="1" style="width:90px" onchange="loadQuizUnits()"></div>
+          <button class="btn" onclick="generateQuizzes()">🎲 Generate quizzes for this week</button>
         </div>
+        <div id="quiz-generate-result" style="margin-top:12px"></div>
+      </div>
+      <div class="card"><h3>Weekly unit assignment</h3>
+        <p style="font-size:12px;color:var(--ink-mute);margin-bottom:12px">Units as plain numbers, semicolon-separated — e.g. "1;4". No B/I prefix here, that's resolved automatically from each student's textbook tier.</p>
+        <div id="quiz-units-table"><div class="empty-note">Loading…</div></div>
       </div>
     </div>
 
+    <div id="quiz-sub-preview" style="display:none">
+      <div class="card">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+          <div class="field"><label class="field-label">Student</label><select id="preview-student-select" onchange="loadPreview()" style="min-width:200px"><option value="">— Select a student —</option></select></div>
+          <div class="field"><label class="field-label">Week</label><select id="preview-week-select" onchange="loadPreview()" style="width:110px"><option value="">Current</option></select></div>
+          <div style="display:flex;gap:4px">
+            <button class="btn btn-sm" id="preview-mode-quiz" onclick="setPreviewMode('quiz')">Quiz view</button>
+            <button class="btn btn-ghost btn-sm" id="preview-mode-answers" onclick="setPreviewMode('answers')">Answer view</button>
+          </div>
+          <span id="preview-results-badge" style="font-size:12px;color:var(--ink-mute)"></span>
+        </div>
+      </div>
+      <div id="preview-content"><div class="card empty-note">Select a student to preview their quiz.</div></div>
+    </div>
+
+    <div id="quiz-sub-control" style="display:none">
+      <div class="card">
+        <div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap">
+          <div><label class="field-label" style="margin-bottom:6px">Week</label><input class="text-input" type="number" id="quiz-control-week" value="1" style="width:90px" onchange="loadTestControl()"></div>
+        </div>
+        <div id="test-control-status" style="margin-top:12px"><div class="empty-note">Loading…</div></div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="doStartQuiz()">▶ Start quiz</button>
+          <button class="btn btn-ghost btn-sm" onclick="doStopQuiz()">⏹ Force-end quiz</button>
+          <button class="btn btn-ghost btn-sm" onclick="doResetTestControl()">↺ Reset</button>
+        </div>
+      </div>
+      <div class="card"><h3>Live status</h3><div id="test-control-roster"><div class="empty-note">Loading…</div></div></div>
+    </div>
+
     <div id="quiz-sub-flags" style="display:none">
+      <div class="card">
+        <div><label class="field-label" style="margin-bottom:6px">Week</label><input class="text-input" type="number" id="quiz-flags-week" value="1" style="width:90px" onchange="loadFlags()"></div>
+      </div>
       <div class="card"><h3>Flagged questions</h3><div id="flags-table"><div class="empty-note">Loading…</div></div></div>
+    </div>
+
+    <div id="quiz-sub-grades" style="display:none">
+      <div class="card">
+        <h3>Point weights</h3>
+        <p style="font-size:12px;color:var(--ink-mute);margin-bottom:12px">Applied live to every week's total — change these and past weeks' totals update automatically too.</p>
+        <div class="row-flex">
+          <div class="field"><label class="field-label">Practice Q</label><input class="text-input" type="number" id="gw-practiceq"></div>
+          <div class="field"><label class="field-label">Flashcard</label><input class="text-input" type="number" id="gw-flashcard"></div>
+          <div class="field"><label class="field-label">Quiz (new)</label><input class="text-input" type="number" id="gw-quiznew"></div>
+          <div class="field"><label class="field-label">Quiz (review)</label><input class="text-input" type="number" id="gw-quizreview"></div>
+        </div>
+        <button class="btn btn-sm" style="margin-top:10px" onclick="saveGradeWeights()">Save weights</button>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap">
+          <div><label class="field-label" style="margin-bottom:6px">Week</label><input class="text-input" type="number" id="quiz-grades-week" value="1" style="width:90px" onchange="loadGrades()"></div>
+          <button class="btn btn-ghost btn-sm" onclick="downloadQuizMoodleCsv()">⬇ Download Moodle CSV</button>
+        </div>
+        <div id="grades-table" style="margin-top:14px"><div class="empty-note">Loading…</div></div>
+      </div>
     </div>
 
     <div id="quiz-sub-qb" style="display:none">
       <div class="card">
-        <h3>Add question</h3>
         <div class="row-flex">
           <div class="field"><label class="field-label">Tier</label>
             <select id="qb-tier"><option>Basic</option><option>Intermediate</option><option>Advanced</option></select>
           </div>
-          <div class="field"><label class="field-label">Unit</label><input class="text-input" id="qb-unit"></div>
+          <div class="field"><label class="field-label">Unit</label><input class="text-input" type="number" id="qb-unit"></div>
+          <div class="field" style="display:flex;align-items:flex-end"><button class="btn btn-sm" onclick="loadQBUnit()">Load</button></div>
         </div>
-        <div class="field" style="margin-top:10px"><label class="field-label">Question</label><input class="text-input" id="qb-question"></div>
-        <div class="field" style="margin-top:10px"><label class="field-label">Answer</label><input class="text-input" id="qb-answer"></div>
-        <button class="btn btn-sm" style="margin-top:10px" onclick="addQuestion()">Add</button>
       </div>
+      <div id="qb-editor"><div class="empty-note">Choose a tier and unit, then Load.</div></div>
     </div>
   </div>
 
@@ -508,7 +566,7 @@
 //  CONFIG — stamped in automatically by Genesis, see Decision Log §9
 // ════════════════════════════════════════════════════════
 const FORUM_ENGINE_URL = 'https://script.google.com/macros/s/AKfycbw5J9WRH-wsUVkFLaTI18MBMnjv3K8WHdF3l7_GwtXTADyHPheHDxHt8E4sqbGxXz8M/exec';
-const QUIZ_ENGINE_URL  = 'https://script.google.com/macros/s/AKfycbzvcDXQzrmVl_2EFheKCnTeke4Cd06jm7HzpNrwB6jk1G1v0ZmOFFmbBYDZ37GS1ww3vg/exec';
+const QUIZ_ENGINE_URL  = 'https://script.google.com/macros/s/AKfycbwl3JTLm5TZPX6YixmU_ALo37IKGUlUpwhNS8XZnBHuCqoCakOdRn0pP1mJRyt6DLHMew/exec';
 
 // ════════════════════════════════════════════════════════
 //  STATE
@@ -2772,48 +2830,551 @@ async function loadUnitSubmissions() {
 //  GRAMMAR QUIZ PANEL
 // ════════════════════════════════════════════════════════
 function showQuizSub(name) {
-  ['control', 'flags', 'qb'].forEach(function(n) {
+  ['units', 'preview', 'control', 'flags', 'grades', 'qb'].forEach(function(n) {
     document.getElementById('quiz-sub-' + n).style.display = n === name ? 'block' : 'none';
     document.getElementById('quiz-nav-' + n).classList.toggle('active', n === name);
   });
+  if (name === 'units') loadQuizUnits();
+  if (name === 'preview') loadPreviewStudentList();
+  if (name === 'control') loadTestControl();
   if (name === 'flags') loadFlags();
+  if (name === 'grades') { loadGradeWeights(); loadGrades(); }
+  if (name === 'qb') { /* waits for explicit Load click - tier+unit not chosen yet */ }
 }
-async function loadQuizPanel() {
-  const data = await api('quiz', { action: 'getTestControl', classId: currentClassId });
-  const el = document.getElementById('test-control-status');
-  const tc = data.testControl;
-  el.innerHTML = tc
-    ? 'Status: <span class="chip ' + (tc.Status === 'open' ? 'chip-green' : 'chip-red') + '">' + esc(tc.Status) + '</span>'
-    : '<div class="empty-note">No test control record yet for this class.</div>';
+async function loadQuizPanel() { showQuizSub('units'); }
+
+/* ====================== UNITS TAB ====================== */
+async function loadQuizUnits() {
+  const week = document.getElementById('quiz-units-week').value;
+  const tableEl = document.getElementById('quiz-units-table');
+  tableEl.innerHTML = '<div class="empty-note">Loading…</div>';
+  const result = await api('quiz', { action: 'getWeeklyUnitAssignments', classId: currentClassId, week: week });
+  if (!result.ok) { tableEl.innerHTML = '<div class="empty-note">' + esc(result.error) + '</div>'; return; }
+  const students = result.students || [];
+  tableEl.innerHTML = students.length ? (
+    '<table class="data-table"><thead><tr><th>Student</th><th>Tier</th><th>Units</th><th>Review only</th><th></th></tr></thead><tbody>' +
+    students.map(function(s) {
+      return '<tr><td>' + esc(s.nameEng) + '</td><td>' + esc(s.textbookTier) + '</td>' +
+        '<td><input class="text-input" style="width:120px" id="qu-units-' + s.studentId + '" value="' + esc(s.units.join(';')) + '" placeholder="e.g. 1;4"></td>' +
+        '<td><input type="checkbox" id="qu-review-' + s.studentId + '" ' + (s.reviewOnly ? 'checked' : '') + '></td>' +
+        '<td><button class="btn btn-ghost btn-sm" onclick="saveQuizUnit(\'' + s.studentId + '\',\'' + s.studentNumber + '\')">Save</button></td></tr>';
+    }).join('') + '</tbody></table>'
+  ) : '<div class="empty-note">No active students on this class\'s roster.</div>';
 }
-async function setTestControl(status) {
-  await api('quiz', { action: 'setTestControl', classId: currentClassId, status: status });
-  loadQuizPanel();
+async function saveQuizUnit(studentId, studentNumber) {
+  const week = document.getElementById('quiz-units-week').value;
+  const units = document.getElementById('qu-units-' + studentId).value;
+  const reviewOnly = document.getElementById('qu-review-' + studentId).checked;
+  const result = await api('quiz', { action: 'saveWeeklyUnitAssignment', classId: currentClassId, studentNumber: studentNumber, week: week, units: units, reviewOnly: reviewOnly });
+  if (!result.ok) { alert(result.error || "Couldn't save."); return; }
+  showToast('✓ Saved.');
 }
+async function generateQuizzes() {
+  const week = document.getElementById('quiz-units-week').value;
+  const resultEl = document.getElementById('quiz-generate-result');
+  resultEl.innerHTML = '<div class="empty-note">Generating…</div>';
+  const result = await api('quiz', { action: 'generateQuizzes', classId: currentClassId, week: week });
+  if (!result.ok) { resultEl.innerHTML = '<div class="empty-note">' + esc(result.error) + '</div>'; return; }
+  let html = '<div class="total-pts-note">Generated for ' + result.generated.length + ' student(s).</div>';
+  if (result.blocked && result.blocked.length) {
+    html += '<div style="background:var(--paper);border:1.5px solid var(--stamp-red,#b03030);border-radius:10px;padding:12px 14px;margin-top:10px;">' +
+      '<b>Blocked (no questions available yet):</b><ul style="margin:6px 0 0 18px;">' +
+      result.blocked.map(function(b) { return '<li>' + esc(b.name) + ' — ' + esc(b.reason) + '</li>'; }).join('') + '</ul></div>';
+  }
+  if (result.skippedNoAssignment && result.skippedNoAssignment.length) {
+    html += '<div class="total-pts-note" style="margin-top:8px">No unit assignment entered yet: ' + result.skippedNoAssignment.map(esc).join(', ') + '</div>';
+  }
+  resultEl.innerHTML = html;
+}
+
+/* ====================== STUDENT VIEW TAB ======================
+   Faithful port of the real TeacherPortal.html "Student View" panel —
+   same double-blank ①② markers, same color-coded result boxes, same
+   teacher-flag-queue-then-batch-submit interaction. Adapted to this
+   platform's action names and data shapes only. */
+let previewMode = 'quiz';
+let previewQuestions = null;
+let previewData = null;
+let teacherFlagQueue = {};
+
+async function loadPreviewStudentList() {
+  const rosterResult = await api('forum', { action: 'getRoster', classId: currentClassId });
+  const roster = rosterResult.roster || [];
+  const sel = document.getElementById('preview-student-select');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— Select a student —</option>' +
+    roster.map(function(r) { return '<option value="' + esc(r.StudentNumber) + '" ' + (String(r.StudentNumber) === cur ? 'selected' : '') + '>' + esc(r.NameEng) + ' (' + esc(r.StudentNumber) + ')</option>'; }).join('');
+
+  const weekSel = document.getElementById('preview-week-select');
+  const curWeek = weekSel.value;
+  const weeksResult = await api('quiz', { action: 'getWeeksWithQuizData', classId: currentClassId });
+  weekSel.innerHTML = '<option value="">Current</option>' +
+    (weeksResult.weeks || []).map(function(w) { return '<option value="' + w + '" ' + (String(w) === curWeek ? 'selected' : '') + '>Week ' + w + '</option>'; }).join('');
+}
+
+async function loadPreview() {
+  const num = document.getElementById('preview-student-select').value;
+  const contentEl = document.getElementById('preview-content');
+  if (!num) {
+    contentEl.innerHTML = '<div class="card empty-note">Select a student to preview their quiz.</div>';
+    previewQuestions = null; previewData = null;
+    return;
+  }
+  teacherFlagQueue = {};
+  updatePreviewFlagBtn();
+
+  const weekOverride = document.getElementById('preview-week-select').value;
+  contentEl.innerHTML = '<div class="card empty-note">Loading…</div>';
+
+  try {
+    if (weekOverride) {
+      const results = await api('quiz', { action: 'getStudentResultsForWeek', classId: currentClassId, studentNumber: num, week: weekOverride });
+      if (!results.found) {
+        contentEl.innerHTML = '<div class="card empty-note">No results found for this student in Week ' + esc(weekOverride) + '.</div>';
+        previewQuestions = null; previewData = null;
+        return;
+      }
+      const reconstructed = results.questions.map(function(q, idx, arr) {
+        let blankIndex = null;
+        const prev = arr[idx - 1], next = arr[idx + 1];
+        if (next && next.question === q.question) blankIndex = 0;
+        else if (prev && prev.question === q.question) blankIndex = 1;
+        return Object.assign({}, q, { answer: q.correctAnswer, blankIndex: blankIndex, isExample: false });
+      });
+      const rosterResult = await api('forum', { action: 'getRoster', classId: currentClassId });
+      const studentRow = (rosterResult.roster || []).find(function(r) { return String(r.StudentNumber) === String(num); });
+      previewData = { studentNumber: num, name: studentRow ? studentRow.NameEng : num, week: weekOverride, studentResults: results.questions, resultsWeek: weekOverride, questions: reconstructed };
+      previewQuestions = previewData.questions;
+      setPreviewMode('answers');
+      return; // setPreviewMode already calls renderPreview
+    } else {
+      const data = await api('quiz', { action: 'getQuizDataForTeacher', classId: currentClassId, studentNumber: num });
+      if (!data.ok) { contentEl.innerHTML = '<div class="card empty-note">' + esc(data.error) + '</div>'; previewQuestions = null; previewData = null; return; }
+      previewQuestions = data.questions;
+      previewData = data;
+      previewData.studentResults = null;
+      try {
+        const results = await api('quiz', { action: 'getStudentResultsForWeek', classId: currentClassId, studentNumber: num, week: data.week });
+        if (results.found) { previewData.studentResults = results.questions; previewData.resultsWeek = data.week; }
+      } catch (e) { /* not submitted yet */ }
+    }
+    renderPreview();
+  } catch (e) {
+    contentEl.innerHTML = '<div class="card empty-note">' + esc(e.message) + '</div>';
+  }
+}
+
+function setPreviewMode(mode) {
+  previewMode = mode;
+  document.getElementById('preview-mode-quiz').className = 'btn btn-sm' + (mode === 'quiz' ? '' : ' btn-ghost');
+  document.getElementById('preview-mode-answers').className = 'btn btn-sm' + (mode === 'answers' ? '' : ' btn-ghost');
+  if (previewQuestions) renderPreview();
+}
+
+function teacherToggleFlag(qKey, week, studentNum, studentName, resRow) {
+  const btn = document.getElementById('preview-flag-' + qKey);
+  const currentlyFlagged = teacherFlagQueue[qKey] ? teacherFlagQueue[qKey].shouldFlag : resRow.flagged;
+  const nowFlagged = !currentlyFlagged;
+  teacherFlagQueue[qKey] = {
+    shouldFlag: nowFlagged, week: week, studentNum: studentNum, studentName: studentName,
+    qNum: resRow.number || '', unit: resRow.unit || '', question: resRow.question || '',
+    studentAnswer: resRow.studentAnswer || '', correctAnswer: resRow.correctAnswer || '', score: resRow.score || 0
+  };
+  if (btn) {
+    btn.textContent = nowFlagged ? '🚩 Flagged' : '🚩 Flag';
+    btn.style.background = nowFlagged ? 'var(--red-lt, #fce8e8)' : 'none';
+    btn.style.borderColor = nowFlagged ? 'var(--red, #b03030)' : '#ccc';
+    btn.style.color = nowFlagged ? 'var(--red, #b03030)' : '#999';
+  }
+  updatePreviewFlagBtn();
+}
+
+function updatePreviewFlagBtn() {
+  const pending = Object.values(teacherFlagQueue);
+  let btn = document.getElementById('preview-submit-flags-btn');
+  if (!btn && pending.length > 0) {
+    btn = document.createElement('button');
+    btn.id = 'preview-submit-flags-btn';
+    btn.className = 'btn';
+    btn.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:50;box-shadow:0 4px 20px rgba(0,0,0,0.3);background:var(--red,#b03030);border-color:var(--red,#b03030);';
+    btn.onclick = submitTeacherFlags;
+    document.body.appendChild(btn);
+  }
+  if (btn) {
+    const count = Object.values(teacherFlagQueue).filter(function(f) { return f.shouldFlag; }).length;
+    btn.textContent = '🚩 Submit ' + count + ' Flag' + (count !== 1 ? 's' : '') + ' for This Student';
+    btn.style.display = pending.length > 0 ? 'block' : 'none';
+  }
+}
+
+async function submitTeacherFlags() {
+  const entries = Object.values(teacherFlagQueue);
+  if (!entries.length) return;
+  for (const f of entries) {
+    await api('quiz', {
+      action: 'flagForStudent', classId: currentClassId, week: f.week, studentNumber: f.studentNum,
+      qNum: f.qNum, unit: f.unit, question: f.question, studentAnswer: f.studentAnswer, correctAnswer: f.correctAnswer,
+      score: f.score, unflag: !f.shouldFlag
+    });
+  }
+  showToast('✓ ' + entries.filter(function(f) { return f.shouldFlag; }).length + ' flag(s) submitted.');
+  teacherFlagQueue = {};
+  updatePreviewFlagBtn();
+  loadPreview();
+}
+
+function renderPreview() {
+  const qs = previewQuestions;
+  if (!qs || !qs.length) return;
+  const showAnswers = previewMode === 'answers';
+  const badge = document.getElementById('preview-results-badge');
+  const weekLabel = previewData.resultsWeek ? ' (Week ' + previewData.resultsWeek + ')' : '';
+  badge.textContent = previewData.studentResults ? '✓ Submitted' + weekLabel + ' — showing student answers' : 'Not yet submitted — showing correct answers';
+  badge.style.color = previewData.studentResults ? 'var(--green, #2a7a4e)' : 'var(--ink-mute)';
+
+  let html = '<div class="card"><div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;border-bottom:1px solid var(--rule);padding-bottom:10px">' +
+    '<div style="font-family:\'Fraunces\',serif;font-size:17px;font-weight:600">Week ' + esc(previewData.week) + ' — Grammar Quiz</div>' +
+    '<div style="font-size:12px;color:var(--ink-mute)">' + esc(previewData.name) + '</div></div>';
+
+  let lastUnit = null, lastPart = null, displayNum = 0, i = 0;
+  while (i < qs.length) {
+    const q = qs[i];
+    if (q.unit !== lastUnit || q.part !== lastPart) {
+      if (q.unit !== lastUnit) { html += '<div style="font-weight:600;font-size:14px;margin:14px 0 4px;color:var(--accent)">' + esc(q.unit) + '</div>'; lastUnit = q.unit; }
+      html += '<div style="font-size:12px;color:var(--ink-mute);margin-bottom:8px"><b>' + esc(q.part) + '</b> — ' + esc(q.instruction) + '</div>';
+      lastPart = q.part;
+    }
+
+    if (q.isExample) {
+      const blankCount = (q.question.match(/_{3,}/g) || []).length;
+      let exAnsHtml;
+      if (blankCount >= 2 && q.answer && q.answer.indexOf(',') !== -1) {
+        const parts = q.answer.split(',');
+        const a1 = parts[0].trim().split(' / ')[0], a2 = parts.slice(1).join(',').trim().split(' / ')[0];
+        exAnsHtml = '<div style="display:flex;flex-direction:column;gap:4px;margin-top:6px">' +
+          '<div>①&nbsp;<span style="background:var(--accent-lt);color:var(--accent);padding:2px 8px;border-radius:4px;font-size:13px">' + esc(a1) + '</span></div>' +
+          '<div>②&nbsp;<span style="background:var(--accent-lt);color:var(--accent);padding:2px 8px;border-radius:4px;font-size:13px">' + esc(a2) + '</span></div></div>';
+      } else {
+        exAnsHtml = '<span style="background:var(--accent);color:#fff;padding:1px 8px;border-radius:4px;font-size:13px;margin-top:4px;display:inline-block">' + esc((q.answer || '').split(' / ')[0]) + '</span>';
+      }
+      html += '<div style="background:var(--paper-2);border-radius:8px;padding:10px 12px;margin-bottom:8px">' +
+        '<div style="font-size:11px;color:var(--ink-mute);margin-bottom:4px">📝 Example（例）</div>' +
+        '<div style="font-size:14px;margin-bottom:6px">' + formatQPreview(q.question, 'auto') + '</div>' + exAnsHtml + '</div>';
+      i++; continue;
+    }
+
+    const isPair = q.blankIndex === 0 && i + 1 < qs.length && qs[i + 1].blankIndex === 1 && qs[i + 1].question === q.question;
+    displayNum++;
+
+    if (isPair) {
+      const q2 = qs[i + 1];
+      html += '<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--rule)"><div style="font-weight:600;color:var(--ink-mute)">' + displayNum + '.</div><div style="flex:1">' +
+        '<div style="font-size:14px;margin-bottom:6px">' + formatQPreview(q.question, 'double') + '</div>';
+      if (showAnswers) {
+        const sr = previewData.studentResults;
+        html += sr ? (sr.filter(function(r) { return r.question === q.question; }).slice(0, 2).length ? renderStudentAnswerBoxes(sr.filter(function(r) { return r.question === q.question; }).slice(0, 2), true) : renderAnswerBoxes([q, q2], true))
+                   : renderAnswerBoxes([q, q2], true);
+      } else {
+        html += '<div style="display:flex;flex-direction:column;gap:5px">' +
+          '<div style="display:flex;align-items:center;gap:6px"><span style="font-weight:600;color:var(--accent)">①</span><div style="flex:1;height:34px;border:1.5px solid var(--rule);border-radius:6px;background:#fff"></div></div>' +
+          '<div style="display:flex;align-items:center;gap:6px"><span style="font-weight:600;color:var(--accent)">②</span><div style="flex:1;height:34px;border:1.5px solid var(--rule);border-radius:6px;background:#fff"></div></div></div>';
+      }
+      html += '</div></div>';
+      i += 2;
+    } else {
+      html += '<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--rule)"><div style="font-weight:600;color:var(--ink-mute)">' + displayNum + '.</div><div style="flex:1">' +
+        '<div style="font-size:14px;margin-bottom:6px">' + formatQPreview(q.question, 'single') + '</div>';
+      if (showAnswers) {
+        const sr = previewData.studentResults;
+        const resRow = sr ? sr.find(function(r) { return r.question === q.question; }) : null;
+        if (resRow) {
+          const bg = resRow.result === 'correct' ? '#e6f4ec' : resRow.result === 'half' ? '#fef6e4' : '#faeaea';
+          const border = resRow.result === 'correct' ? '#a3d4b8' : resRow.result === 'half' ? '#f0d080' : '#f0b0b0';
+          const col = resRow.result === 'correct' ? '#2d7a4f' : resRow.result === 'half' ? '#b87a00' : '#b83232';
+          const qKey = 'q' + (resRow.number || i) + '_s';
+          html += '<div style="background:' + bg + ';border:1.5px solid ' + border + ';border-radius:6px;padding:8px 12px;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:8px">' +
+            '<div style="flex:1"><div style="font-weight:500;color:' + col + '">' + esc(resRow.studentAnswer || '(no answer)') + '</div>' +
+            (resRow.result !== 'correct' ? '<div style="font-size:12px;color:var(--ink-mute)">Correct: <span style="color:#2d7a4f;font-weight:500">' + esc(resRow.correctAnswer) + '</span></div>' : '') + '</div>' +
+            '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0"><span style="font-size:12px;font-weight:600;color:' + col + '">' + (resRow.score > 0 ? '+' + resRow.score + ' pt' : '0 pt') + '</span>' +
+            '<button id="preview-flag-' + qKey + '" onclick=\'teacherToggleFlag("' + qKey + '","' + previewData.week + '","' + previewData.studentNumber + '","' + esc(previewData.name) + '",' + JSON.stringify(resRow).replace(/'/g, "&#39;") + ')\' ' +
+            'style="background:' + (resRow.flagged ? 'var(--red-lt,#fce8e8)' : 'none') + ';border:1px solid ' + (resRow.flagged ? 'var(--red,#b03030)' : '#ccc') + ';border-radius:4px;padding:2px 6px;font-size:11px;color:' + (resRow.flagged ? 'var(--red,#b03030)' : '#999') + ';cursor:pointer;white-space:nowrap">' +
+            (resRow.flagged ? '🚩 Flagged' : '🚩 Flag') + '</button></div></div>';
+        } else {
+          html += '<div style="background:var(--accent-lt);color:var(--accent);padding:8px 12px;border-radius:6px;font-size:13px;font-weight:500">' + esc(q.answer) + '</div>';
+        }
+      } else {
+        html += '<div style="height:34px;border:1.5px solid var(--rule);border-radius:6px;background:#fff"></div>';
+      }
+      html += '</div></div>';
+      i++;
+    }
+  }
+  html += '</div>';
+  document.getElementById('preview-content').innerHTML = html;
+}
+
+function renderStudentAnswerBoxes(resultRows, double) {
+  const markers = ['①', '②'];
+  return resultRows.map(function(r, idx) {
+    const bg = r.result === 'correct' ? '#e6f4ec' : r.result === 'half' ? '#fef6e4' : '#faeaea';
+    const border = r.result === 'correct' ? '#a3d4b8' : r.result === 'half' ? '#f0d080' : '#f0b0b0';
+    const col = r.result === 'correct' ? '#2d7a4f' : r.result === 'half' ? '#b87a00' : '#b83232';
+    const qKey = 'q' + (r.number || idx) + '_' + idx;
+    return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">' + (double ? '<span style="font-weight:600;color:var(--accent)">' + markers[idx] + '</span>' : '') +
+      '<div style="flex:1;background:' + bg + ';border:1.5px solid ' + border + ';border-radius:6px;padding:6px 10px;font-size:12px;display:flex;justify-content:space-between;align-items:center;gap:8px">' +
+      '<div style="flex:1"><div style="font-weight:500;color:' + col + '">' + esc(r.studentAnswer || '(no answer)') + '</div>' +
+      (r.result !== 'correct' ? '<div style="font-size:11px;color:var(--ink-mute)">Correct: <span style="color:#2d7a4f;font-weight:500">' + esc(r.correctAnswer) + '</span></div>' : '') + '</div>' +
+      '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0"><span style="font-size:11px;font-weight:600;color:' + col + '">' + (r.score > 0 ? '+' + r.score + ' pt' : '0 pt') + '</span>' +
+      '<button id="preview-flag-' + qKey + '" onclick=\'teacherToggleFlag("' + qKey + '","' + previewData.week + '","' + previewData.studentNumber + '","' + esc(previewData.name) + '",' + JSON.stringify(r).replace(/'/g, "&#39;") + ')\' ' +
+      'style="background:' + (r.flagged ? 'var(--red-lt,#fce8e8)' : 'none') + ';border:1px solid ' + (r.flagged ? 'var(--red,#b03030)' : '#ccc') + ';border-radius:4px;padding:2px 6px;font-size:11px;color:' + (r.flagged ? 'var(--red,#b03030)' : '#999') + ';cursor:pointer;white-space:nowrap">' +
+      (r.flagged ? '🚩 Flagged' : '🚩 Flag') + '</button></div></div></div>';
+  }).join('');
+}
+
+function renderAnswerBoxes(qs, double) {
+  const markers = ['①', '②'];
+  return qs.map(function(q, idx) {
+    return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">' + (double ? '<span style="font-weight:600;color:var(--accent)">' + markers[idx] + '</span>' : '') +
+      '<div style="flex:1;background:#e6f4ec;border:1.5px solid #a3d4b8;border-radius:6px;padding:6px 10px;font-size:12px;color:#2d7a4f;font-weight:500">' + esc(q.answer) + '</div></div>';
+  }).join('');
+}
+
+function formatQPreview(q, mode) {
+  const blankCount = (q.match(/_{3,}/g) || []).length;
+  const isDouble = mode === 'double' || (mode === 'auto' && blankCount >= 2);
+  let bn = 0;
+  const markers = ['①', '②'];
+  return esc(q).replace(/_{3,}/g, function() {
+    const m = isDouble
+      ? (markers[bn] || '') + '<span style="display:inline-block;min-width:70px;border-bottom:2px solid var(--accent);margin:0 2px;vertical-align:bottom">&nbsp;</span>'
+      : '<span style="display:inline-block;min-width:70px;border-bottom:2px solid var(--accent);margin:0 2px;vertical-align:bottom">&nbsp;</span>';
+    bn++;
+    return m;
+  });
+}
+
+/* ====================== TEST CONTROL TAB ====================== */
+async function loadTestControl() {
+  const week = document.getElementById('quiz-control-week').value;
+  const statusEl = document.getElementById('test-control-status');
+  const rosterEl = document.getElementById('test-control-roster');
+  statusEl.innerHTML = '<div class="empty-note">Loading…</div>';
+  const result = await api('quiz', { action: 'getTestControl', classId: currentClassId, week: week });
+  if (!result.ok) { statusEl.innerHTML = '<div class="empty-note">' + esc(result.error) + '</div>'; return; }
+  statusEl.innerHTML = 'Status: <span class="chip ' + (result.started ? 'chip-green' : '') + '">' + (result.started ? 'Started' : 'Not started') + '</span>' +
+    (result.startTime ? ' <span style="font-size:12px;color:var(--ink-mute)">since ' + new Date(result.startTime).toLocaleString() + '</span>' : '');
+
+  const rosterResult = await api('forum', { action: 'getRoster', classId: currentClassId });
+  const roster = rosterResult.roster || [];
+  const status = result.studentStatus || {};
+  rosterEl.innerHTML = roster.length ? (
+    '<table class="data-table"><thead><tr><th>Student</th><th>Logged in</th><th>Submitted</th></tr></thead><tbody>' +
+    roster.map(function(r) {
+      const st = status[r.StudentNumber] || { loggedIn: false, submitted: false };
+      return '<tr><td>' + esc(r.NameEng) + '</td><td>' + (st.loggedIn ? '✓' : '\u2014') + '</td><td>' + (st.submitted ? '✓' : '\u2014') + '</td></tr>';
+    }).join('') + '</tbody></table>'
+  ) : '<div class="empty-note">No students.</div>';
+}
+async function doStartQuiz() {
+  const week = document.getElementById('quiz-control-week').value;
+  const result = await api('quiz', { action: 'startQuiz', classId: currentClassId, week: week });
+  if (!result.ok) { alert(result.error || "Couldn't start."); return; }
+  showToast('✓ Quiz started.');
+  loadTestControl();
+}
+async function doStopQuiz() {
+  if (!confirm('Force-end the quiz for every student, whether or not they\'ve submitted? This cannot be undone.')) return;
+  const week = document.getElementById('quiz-control-week').value;
+  const result = await api('quiz', { action: 'stopQuiz', classId: currentClassId, week: week });
+  if (!result.ok) { alert(result.error || "Couldn't stop."); return; }
+  showToast('✓ Quiz force-ended.');
+  loadTestControl();
+}
+async function doResetTestControl() {
+  if (!confirm('Reset all login/submission tracking for this week? Students will need to log in again.')) return;
+  const week = document.getElementById('quiz-control-week').value;
+  const result = await api('quiz', { action: 'resetTestControl', classId: currentClassId, week: week });
+  if (!result.ok) { alert(result.error || "Couldn't reset."); return; }
+  showToast('✓ Reset.');
+  loadTestControl();
+}
+
+/* ====================== FLAGS TAB ====================== */
 async function loadFlags() {
-  const data = await api('quiz', { action: 'getFlags', classId: currentClassId });
-  const rows = data.flags || [];
-  document.getElementById('flags-table').innerHTML = rows.length ? (
-    '<table class="data-table"><thead><tr><th>Week</th><th>Q#</th><th>Reason</th><th></th></tr></thead><tbody>' +
-    rows.map(function(r, i) { return '<tr><td>' + esc(r.Week) + '</td><td>' + esc(r['Q#']) + '</td><td>' + esc(r.Reason) + '</td>' +
-      '<td><button class="btn btn-ghost btn-sm" onclick="resolveFlag(' + i + ')">Resolve</button></td></tr>'; }).join('') + '</tbody></table>'
-  ) : '<div class="empty-note">No flags.</div>';
+  const week = document.getElementById('quiz-flags-week').value;
+  const tableEl = document.getElementById('flags-table');
+  tableEl.innerHTML = '<div class="empty-note">Loading…</div>';
+  const result = await api('quiz', { action: 'getFlags', classId: currentClassId, week: week });
+  if (!result.ok) { tableEl.innerHTML = '<div class="empty-note">' + esc(result.error) + '</div>'; return; }
+  const flags = result.flags || [];
+  tableEl.innerHTML = flags.length ? (
+    '<table class="data-table"><thead><tr><th>Student</th><th>Unit</th><th>Question</th><th>Their answer</th><th>Correct answer</th><th>Reason</th><th>Status</th><th>Corrected score</th><th></th></tr></thead><tbody>' +
+    flags.map(function(f) {
+      return '<tr><td>' + esc(f.studentName) + '</td><td>' + esc(f.unit) + '</td><td style="max-width:200px">' + esc(f.question) + '</td>' +
+        '<td>' + esc(f.studentAnswer) + '</td><td>' + esc(f.correctAnswer) + '</td><td style="max-width:150px">' + esc(f.flagReason) + '</td>' +
+        '<td><span class="chip ' + (f.status === 'Approved' ? 'chip-green' : f.status === 'Rejected' ? 'chip-red' : 'chip-gold') + '">' + esc(f.status) + '</span></td>' +
+        '<td><input class="text-input" style="width:60px" type="number" step="0.5" id="fl-score-' + f.studentNumber + '-' + f.qNum + '" value="' + esc(f.correctedScore) + '"></td>' +
+        '<td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="doUpdateFlag(\'' + f.studentNumber + '\',' + f.qNum + ',\'Approved\')">Approve</button> ' +
+        '<button class="btn btn-ghost btn-sm" onclick="doUpdateFlag(\'' + f.studentNumber + '\',' + f.qNum + ',\'Rejected\')">Reject</button></td></tr>';
+    }).join('') + '</tbody></table>'
+  ) : '<div class="empty-note">No flagged questions this week.</div>';
 }
-async function resolveFlag(rowIndex) {
-  await api('quiz', { action: 'resolveFlag', rowIndex: rowIndex });
+async function doUpdateFlag(studentNumber, qNum, status) {
+  const scoreInput = document.getElementById('fl-score-' + studentNumber + '-' + qNum);
+  const correctedScore = scoreInput ? scoreInput.value : '';
+  const week = document.getElementById('quiz-flags-week').value;
+  const result = await api('quiz', { action: 'updateFlag', classId: currentClassId, week: week, studentNumber: studentNumber, qNum: qNum, status: status, correctedScore: correctedScore });
+  if (!result.ok) { alert(result.error || "Couldn't update."); return; }
+  showToast('✓ Flag updated.');
   loadFlags();
 }
-async function addQuestion() {
-  await api('quiz', {
-    action: 'editQuestionBank', op: 'add',
-    tier: document.getElementById('qb-tier').value,
-    unit: document.getElementById('qb-unit').value,
-    question: document.getElementById('qb-question').value,
-    answer: document.getElementById('qb-answer').value
+
+/* ====================== GRADES TAB ====================== */
+async function loadGradeWeights() {
+  const result = await api('quiz', { action: 'getGradeWeights', classId: currentClassId });
+  document.getElementById('gw-practiceq').value = result.practiceQPoints;
+  document.getElementById('gw-flashcard').value = result.flashcardPoints;
+  document.getElementById('gw-quiznew').value = result.quizNewPoints;
+  document.getElementById('gw-quizreview').value = result.quizReviewPoints;
+}
+async function saveGradeWeights() {
+  const result = await api('quiz', {
+    action: 'saveGradeWeights', classId: currentClassId,
+    practiceQPoints: document.getElementById('gw-practiceq').value, flashcardPoints: document.getElementById('gw-flashcard').value,
+    quizNewPoints: document.getElementById('gw-quiznew').value, quizReviewPoints: document.getElementById('gw-quizreview').value
   });
-  document.getElementById('qb-question').value = '';
-  document.getElementById('qb-answer').value = '';
-  alert('Question added.');
+  if (!result.ok) { alert(result.error || "Couldn't save."); return; }
+  showToast('✓ Weights saved.');
+  loadGrades();
+}
+let quizGradesCache = null;
+async function loadGrades() {
+  const week = document.getElementById('quiz-grades-week').value;
+  const tableEl = document.getElementById('grades-table');
+  tableEl.innerHTML = '<div class="empty-note">Loading…</div>';
+  const result = await api('quiz', { action: 'getGrades', classId: currentClassId, week: week });
+  if (!result.ok) { tableEl.innerHTML = '<div class="empty-note">' + esc(result.error) + '</div>'; return; }
+  quizGradesCache = result.rows || [];
+  const tri = function(v) { return v === true ? '✓' : v === false ? '✗' : '\u2014'; };
+  tableEl.innerHTML = quizGradesCache.length ? (
+    '<table class="data-table"><thead><tr><th>Student</th><th>Practice Q</th><th>Flashcard</th><th>New</th><th>Review</th><th>Bonus</th><th>Total</th><th>Flags</th></tr></thead><tbody>' +
+    quizGradesCache.map(function(r) {
+      return '<tr><td>' + esc(r.nameEng) + '</td>' +
+        '<td><input type="checkbox" ' + (r.practiceQ ? 'checked' : '') + ' onchange="saveHomework(\'' + r.studentNumber + '\',\'practiceQ\',this.checked)"></td>' +
+        '<td><input type="checkbox" ' + (r.flashcard ? 'checked' : '') + ' onchange="saveHomework(\'' + r.studentNumber + '\',\'flashcard\',this.checked)"></td>' +
+        '<td>' + tri(r.quizNewPassed) + '</td><td>' + tri(r.quizReviewPassed) + '</td><td>' + (r.bonus ? '✓' : '\u2014') + '</td>' +
+        '<td><b>' + r.total + '</b></td>' +
+        '<td>' + (r.flagsPending ? '<span class="chip chip-gold">' + r.flagsPending + ' pending</span>' : (r.flagsResolved ? r.flagsResolved + ' resolved' : '\u2014')) + '</td></tr>';
+    }).join('') + '</tbody></table>'
+  ) : '<div class="empty-note">No active students.</div>';
+}
+async function saveHomework(studentNumber, field, value) {
+  const week = document.getElementById('quiz-grades-week').value;
+  const payload = { action: 'saveHomework', classId: currentClassId, studentNumber: studentNumber, week: week };
+  payload[field] = value;
+  const result = await api('quiz', payload);
+  if (!result.ok) { alert(result.error || "Couldn't save."); return; }
+  loadGrades();
+}
+function downloadQuizMoodleCsv() {
+  if (!quizGradesCache) { alert('Load a week\'s grades first.'); return; }
+  const week = document.getElementById('quiz-grades-week').value;
+  const header = csvRow(['Identifier', 'Full name', 'Grade', 'Feedback comments']);
+  const rows = quizGradesCache.map(function(r) {
+    if (!r.submitted) return csvRow([r.studentNumber, r.nameEng, '', 'Incomplete']);
+    const feedback = '<p><strong>' + r.total + ' points</strong></p><ul>' +
+      '<li>' + (r.practiceQ ? '\u2713' : '\u2717') + ' Practice questions</li>' +
+      '<li>' + (r.flashcard ? '\u2713' : '\u2717') + ' Flashcard</li>' +
+      (r.quizNewPassed !== null ? '<li>' + (r.quizNewPassed ? '\u2713' : '\u2717') + ' New unit(s)</li>' : '') +
+      (r.quizReviewPassed !== null ? '<li>' + (r.quizReviewPassed ? '\u2713' : '\u2717') + ' Review unit(s)</li>' : '') +
+      (r.bonus ? '<li>\u2713 Bonus</li>' : '') + '</ul>';
+    return csvRow([r.studentNumber, r.nameEng, r.total, feedback]);
+  });
+  const csv = header + '\n' + rows.join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = currentClassId + '_QuizWeek' + week + '_Moodle.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+/* ====================== QUESTION BANK EDITOR TAB ====================== */
+async function loadQBUnit() {
+  const tier = document.getElementById('qb-tier').value;
+  const unit = document.getElementById('qb-unit').value;
+  if (!unit) { alert('Enter a unit number.'); return; }
+  const editorEl = document.getElementById('qb-editor');
+  editorEl.innerHTML = '<div class="card empty-note">Loading…</div>';
+  const result = await api('quiz', { action: 'getQBUnit', tier: tier, unit: unit });
+  if (!result.ok) { editorEl.innerHTML = '<div class="card empty-note">' + esc(result.error) + '</div>'; return; }
+
+  const sections = {};
+  (result.questions || []).forEach(function(q) { (sections[q.section] = sections[q.section] || []).push(q); });
+  const sectionKeys = Object.keys(sections).sort();
+
+  let html = '<div class="card"><label class="field-label">Unit title</label>' +
+    '<div style="display:flex;gap:8px"><input class="text-input" id="qb-title-input" value="' + esc(result.title) + '">' +
+    '<button class="btn btn-ghost btn-sm" onclick="saveQBTitle()">Save</button></div>' +
+    (result.hasContent ? '' : '<div class="total-pts-note" style="margin-top:8px">No questions written for this unit yet.</div>') + '</div>';
+
+  sectionKeys.forEach(function(section) {
+    const qs = sections[section].sort(function(a, b) { return a.questionOrder - b.questionOrder; });
+    html += '<div class="card"><h3>Section ' + esc(section) + '</h3>' +
+      '<label class="field-label">Instruction (Japanese)</label>' +
+      '<div style="display:flex;gap:8px;margin-bottom:12px"><input class="text-input" id="qb-ins-' + section.replace('.', '_') + '" value="' + esc(result.instructions[section] || '') + '">' +
+      '<button class="btn btn-ghost btn-sm" onclick="saveQBInstruction(\'' + section + '\')">Save</button></div>' +
+      qs.map(function(q) {
+        const key = section + '_' + q.questionOrder;
+        return '<div class="editor-tier-row" style="grid-template-columns:2fr 2fr auto auto auto;">' +
+          '<input class="text-input" id="qb-q-' + key + '" value="' + esc(q.question) + '" placeholder="Question">' +
+          '<input class="text-input" id="qb-a-' + key + '" value="' + esc(q.answer) + '" placeholder="Answer">' +
+          '<label style="font-size:11px;white-space:nowrap"><input type="checkbox" id="qb-wb-' + key + '" ' + (q.isWordBank ? 'checked' : '') + '> Word bank</label>' +
+          (q.isExample ? '<span class="chip chip-gold">Example</span>' : '<span></span>') +
+          '<div style="display:flex;gap:4px"><button class="icon-btn" onclick="saveQBQuestion(\'' + section + '\',' + q.questionOrder + ')">💾</button>' +
+          '<button class="icon-btn" onclick="deleteQBQuestion(\'' + section + '\',' + q.questionOrder + ')">✕</button></div></div>';
+      }).join('') +
+      '<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="addQBQuestion(\'' + section + '\')">+ Add question to ' + esc(section) + '</button></div>';
+  });
+
+  if (!sectionKeys.length) {
+    html += '<div class="card"><p style="font-size:12px;color:var(--ink-mute);margin-bottom:10px">No sections exist yet for this unit \u2014 add the first question to section ' + esc(unit) + '.1 to start one.</p>' +
+      '<div style="display:flex;gap:8px"><input class="text-input" id="qb-new-section" placeholder="' + esc(unit) + '.1" style="width:100px">' +
+      '<button class="btn btn-ghost btn-sm" onclick="addQBQuestion(document.getElementById(\'qb-new-section\').value)">+ Add first question</button></div></div>';
+  }
+
+  editorEl.innerHTML = html;
+}
+async function saveQBTitle() {
+  const result = await api('quiz', { action: 'updateQBTitle', tier: document.getElementById('qb-tier').value, unit: document.getElementById('qb-unit').value, title: document.getElementById('qb-title-input').value });
+  if (!result.ok) { alert(result.error); return; }
+  showToast('✓ Title saved.');
+}
+async function saveQBInstruction(section) {
+  const result = await api('quiz', { action: 'updateQBInstruction', tier: document.getElementById('qb-tier').value, unit: document.getElementById('qb-unit').value, section: section, instruction: document.getElementById('qb-ins-' + section.replace('.', '_')).value });
+  if (!result.ok) { alert(result.error); return; }
+  showToast('✓ Instruction saved.');
+}
+async function saveQBQuestion(section, questionOrder) {
+  const key = section + '_' + questionOrder;
+  const result = await api('quiz', {
+    action: 'updateQBQuestion', tier: document.getElementById('qb-tier').value, unit: document.getElementById('qb-unit').value, section: section, questionOrder: questionOrder,
+    question: document.getElementById('qb-q-' + key).value, answer: document.getElementById('qb-a-' + key).value,
+    isWordBank: document.getElementById('qb-wb-' + key).checked
+  });
+  if (!result.ok) { alert(result.error); return; }
+  showToast('✓ Saved.');
+}
+async function addQBQuestion(section) {
+  if (!section) { alert('Enter a section, e.g. ' + document.getElementById('qb-unit').value + '.1'); return; }
+  const result = await api('quiz', { action: 'addQBQuestion', tier: document.getElementById('qb-tier').value, unit: document.getElementById('qb-unit').value, section: section, question: '', answer: '' });
+  if (!result.ok) { alert(result.error); return; }
+  loadQBUnit();
+}
+async function deleteQBQuestion(section, questionOrder) {
+  if (!confirm('Delete this question permanently?')) return;
+  const result = await api('quiz', { action: 'deleteQBQuestion', tier: document.getElementById('qb-tier').value, unit: document.getElementById('qb-unit').value, section: section, questionOrder: questionOrder });
+  if (!result.ok) { alert(result.error); return; }
+  loadQBUnit();
 }
 
 // ════════════════════════════════════════════════════════
