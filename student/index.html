@@ -387,6 +387,19 @@ function showTiles() {
   document.getElementById('tiles-panel').style.display = 'block';
   document.getElementById('logout-btn').style.display = 'inline-block';
 }
+
+// ── AUTO-LOGIN FROM AN EXTERNAL WIDGET (e.g. a Moodle-embedded quick-login
+// box) — pre-fills the student number and submits immediately. Falls
+// through to the normal password prompt exactly as if they'd typed it
+// here themselves, for accounts that require one.
+(function () {
+  const params = new URLSearchParams(window.location.search);
+  const autoNum = params.get('studentNumber');
+  if (autoNum) {
+    document.getElementById('num-input').value = autoNum;
+    doLogin();
+  }
+})();
 </script>
 </body>
 </html>
