@@ -24,15 +24,26 @@
   .tile-icon { width:32px; height:32px; flex-shrink:0; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; }
   .tile h3 { font-family:Georgia,"Times New Roman",serif; font-weight:600; font-size:14px; color:#1a1a2e; margin:0 0 2px; line-height:1.25; }
   .tile p { font-size:12px; color:#8888aa; margin:0; line-height:1.4; }
-  .signin { padding:16px 20px 18px; background:#faf9f6; }
-  .signin label { display:block; font-size:10px; font-weight:600; letter-spacing:0.09em; text-transform:uppercase; color:#8888aa; margin-bottom:6px; }
+  .signin { padding:40px 20px 18px; background:#faf9f6; display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap; }
+  .signin label { font-size:15px; font-weight:600; color:#1a1a2e; white-space:nowrap; }
   .signin input {
-    width:100%; box-sizing:border-box; padding:11px 14px; font-size:16px;
+    width:180px; max-width:100%; box-sizing:border-box; padding:11px 14px; font-size:16px;
     border:1.5px solid rgba(26,26,46,0.15); border-radius:8px;
     font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     color:#1a1a2e; outline:none; transition:border-color 0.15s; background:#fff;
+    text-align:center;
   }
   .signin input:focus { border-color:#2e5ba8; }
+  .pointer-arrow { position:relative; height:0; z-index:5; }
+  .pointer-arrow-inner {
+    position:relative; width:34px; margin:-30px auto 0;
+    filter:
+      drop-shadow(1.5px 0 0 #fff) drop-shadow(-1.5px 0 0 #fff)
+      drop-shadow(0 1.5px 0 #fff) drop-shadow(0 -1.5px 0 #fff)
+      drop-shadow(0 3px 6px rgba(0,0,0,0.3));
+  }
+  .pointer-arrow-stem { width:13px; height:18px; background:#c0392b; margin:0 auto; }
+  .pointer-arrow-head { width:0; height:0; margin:-1px auto 0; border-left:17px solid transparent; border-right:17px solid transparent; border-top:20px solid #c0392b; }
   .cta { display:flex; align-items:center; justify-content:center; gap:10px; background:#b03030; color:#fff; font-size:15px; font-weight:600; padding:18px 20px; border-radius:0 0 14px 14px; text-decoration:none; transition:background 0.15s; border:none; width:100%; cursor:pointer; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
   .cta:hover { background:#942828; }
   .cta span { font-size:22px; line-height:1; }
@@ -62,6 +73,7 @@
     <div class="tile"><div class="tile-icon" style="background:#c9a227">&#128203;</div><div><h3>Grammar Quiz</h3><p>Weekly quizzes on your assigned units.</p></div></div>
     <div class="tile"><div class="tile-icon" style="background:#534ab7">&#128269;</div><div><h3>Grammar Analysis / Unit Submission</h3><p>Choose your next unit from your own mistakes.</p></div></div>
   </div>
+  <div class="pointer-arrow"><div class="pointer-arrow-inner"><div class="pointer-arrow-stem"></div><div class="pointer-arrow-head"></div></div></div>
   <div class="signin">
     <label for="num-input">Student Number</label>
     <input type="text" id="num-input" placeholder="e.g. 2411004" autocomplete="off" onkeydown="if(event.key==='Enter')goToHub()">
