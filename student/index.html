@@ -284,6 +284,7 @@ async function doLogin() {
 
     if (data.ok) {
       session = data;
+      try { sessionStorage.setItem('ewsHubSession', JSON.stringify(session)); } catch (e) { /* storage unavailable - session still works for this page load */ }
       showTiles();
     }
   } catch (err) {
@@ -294,6 +295,7 @@ async function doLogin() {
 
 function doLogout() {
   session = null;
+  try { sessionStorage.removeItem('ewsHubSession'); } catch (e) { /* ignore */ }
   document.getElementById('num-input').value = '';
   document.getElementById('pw-input').value = '';
   document.getElementById('password-field').style.display = 'none';
@@ -377,7 +379,7 @@ function showTiles() {
         '<div class="tile-text"><div class="tile-title">' + escHtml(t.title) + '</div>' +
         '<div class="tile-desc">' + escHtml(t.desc) + '</div></div></div>';
     }
-    return '<a class="tile" href="' + t.url + '" target="_blank" rel="noopener">' + iconHtml +
+    return '<a class="tile" href="' + t.url + '">' + iconHtml +
       '<div class="tile-text"><div class="tile-title">' + escHtml(t.title) + '</div>' +
       '<div class="tile-desc">' + escHtml(t.desc) + '</div></div>' +
       '<div class="tile-arrow">→</div></a>';
@@ -388,11 +390,22 @@ function showTiles() {
   document.getElementById('logout-btn').style.display = 'inline-block';
 }
 
-// ── AUTO-LOGIN FROM AN EXTERNAL WIDGET (e.g. a Moodle-embedded quick-login
-// box) — pre-fills the student number and submits immediately. Falls
-// through to the normal password prompt exactly as if they'd typed it
-// here themselves, for accounts that require one.
+// ── RESTORE AN EXISTING SESSION, OR AUTO-LOGIN FROM AN EXTERNAL WIDGET ──────
+// Runs once on every page load, including navigating "back to hub" from a
+// tool page. If this tab already has a session (from having logged in
+// earlier in the same tab), restore it straight to the tiles screen with
+// no re-login. Otherwise, fall back to the studentNumber URL param (e.g.
+// a Moodle-embedded quick-login box) exactly as before.
 (function () {
+  try {
+    const stored = sessionStorage.getItem('ewsHubSession');
+    if (stored) {
+      session = JSON.parse(stored);
+      showTiles();
+      return;
+    }
+  } catch (e) { /* storage unavailable or corrupt - fall through to normal login */ }
+
   const params = new URLSearchParams(window.location.search);
   const autoNum = params.get('studentNumber');
   if (autoNum) {
