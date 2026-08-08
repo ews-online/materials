@@ -308,7 +308,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v4.3 — Test Control card-grid + absent tracking, new Grading Sheet tab</div>
+      <div class="version-tag">v4.4 — Units tab: errors now surface visibly instead of hanging on Loading forever</div>
     </div>
   </div>
 
@@ -2882,10 +2882,14 @@ let quizUnitsCache = null;
 async function loadQuizUnits() {
   const tableEl = document.getElementById('quiz-units-table');
   tableEl.innerHTML = '<div class="empty-note">Loading…</div>';
-  const result = await api('quiz', { action: 'getWeeklyUnitAssignments', classId: currentClassId });
-  if (!result.ok) { tableEl.innerHTML = '<div class="empty-note">' + esc(result.error) + '</div>'; return; }
-  quizUnitsCache = result;
-  renderQuizUnitsTable();
+  try {
+    const result = await api('quiz', { action: 'getWeeklyUnitAssignments', classId: currentClassId });
+    if (!result.ok) { tableEl.innerHTML = '<div class="empty-note">' + esc(result.error) + '</div>'; return; }
+    quizUnitsCache = result;
+    renderQuizUnitsTable();
+  } catch (e) {
+    tableEl.innerHTML = '<div class="empty-note">Something went wrong loading this: ' + esc(e.message) + '</div>';
+  }
 }
 
 function renderQuizUnitsTable() {
@@ -2919,7 +2923,8 @@ function renderQuizUnitsTable() {
 }
 
 function highlightCurrentWeekColumn() {
-  if (quizUnitsCache) renderQuizUnitsTable();
+  if (!quizUnitsCache) return;
+  try { renderQuizUnitsTable(); } catch (e) { console.error('renderQuizUnitsTable failed:', e); }
 }
 
 // Same check the real system runs before allowing Generate Quizzes: has
@@ -2979,36 +2984,41 @@ async function generateQuizzes() {
 
   const btn = document.getElementById('generate-quizzes-btn');
   btn.disabled = true; btn.textContent = 'Saving units…';
-
-  // Save every cell for the target week (not just changed ones - simplest
-  // and safest, matches the real system reading every .mgmt-input on submit
-  // rather than tracking a dirty-diff).
-  const inputs = document.querySelectorAll('#quiz-units-table input[data-week="' + week + '"]');
-  const students = (quizUnitsCache && quizUnitsCache.students) || [];
-  const byId = {}; students.forEach(function(s) { byId[s.studentId] = s; });
-  for (const inp of inputs) {
-    const s = byId[inp.dataset.student];
-    if (!s) continue;
-    await api('quiz', { action: 'saveWeeklyUnitAssignment', classId: currentClassId, studentNumber: s.studentNumber, week: week, units: inp.value.trim() });
-  }
-
-  btn.textContent = 'Generating…';
   const resultEl = document.getElementById('quiz-generate-result');
-  const result = await api('quiz', { action: 'generateQuizzes', classId: currentClassId, week: week });
-  btn.disabled = false; btn.textContent = '⚡ Generate Quizzes';
 
-  if (!result.ok) { resultEl.innerHTML = '<div class="empty-note">' + esc(result.error) + '</div>'; return; }
-  let html = '<div class="total-pts-note">Generated for ' + result.generated.length + ' student(s).</div>';
-  if (result.blocked && result.blocked.length) {
-    html += '<div style="background:var(--paper);border:1.5px solid var(--stamp-red,#b03030);border-radius:10px;padding:12px 14px;margin-top:10px;">' +
-      '<b>Blocked (no questions available yet):</b><ul style="margin:6px 0 0 18px;">' +
-      result.blocked.map(function(b) { return '<li>' + esc(b.name) + ' — ' + esc(b.reason) + '</li>'; }).join('') + '</ul></div>';
+  try {
+    // Save every cell for the target week (not just changed ones - simplest
+    // and safest, matches the real system reading every .mgmt-input on submit
+    // rather than tracking a dirty-diff).
+    const inputs = document.querySelectorAll('#quiz-units-table input[data-week="' + week + '"]');
+    const students = (quizUnitsCache && quizUnitsCache.students) || [];
+    const byId = {}; students.forEach(function(s) { byId[s.studentId] = s; });
+    for (const inp of inputs) {
+      const s = byId[inp.dataset.student];
+      if (!s) continue;
+      await api('quiz', { action: 'saveWeeklyUnitAssignment', classId: currentClassId, studentNumber: s.studentNumber, week: week, units: inp.value.trim() });
+    }
+
+    btn.textContent = 'Generating…';
+    const result = await api('quiz', { action: 'generateQuizzes', classId: currentClassId, week: week });
+
+    if (!result.ok) { resultEl.innerHTML = '<div class="empty-note">' + esc(result.error) + '</div>'; return; }
+    let html = '<div class="total-pts-note">Generated for ' + result.generated.length + ' student(s).</div>';
+    if (result.blocked && result.blocked.length) {
+      html += '<div style="background:var(--paper);border:1.5px solid var(--stamp-red,#b03030);border-radius:10px;padding:12px 14px;margin-top:10px;">' +
+        '<b>Blocked (no questions available yet):</b><ul style="margin:6px 0 0 18px;">' +
+        result.blocked.map(function(b) { return '<li>' + esc(b.name) + ' — ' + esc(b.reason) + '</li>'; }).join('') + '</ul></div>';
+    }
+    if (result.skippedNoAssignment && result.skippedNoAssignment.length) {
+      html += '<div class="total-pts-note" style="margin-top:8px">No unit assignment entered yet: ' + result.skippedNoAssignment.map(esc).join(', ') + '</div>';
+    }
+    resultEl.innerHTML = html;
+    await loadQuizUnits();
+  } catch (e) {
+    resultEl.innerHTML = '<div class="empty-note">Something went wrong: ' + esc(e.message) + '</div>';
+  } finally {
+    btn.disabled = false; btn.textContent = '⚡ Generate Quizzes';
   }
-  if (result.skippedNoAssignment && result.skippedNoAssignment.length) {
-    html += '<div class="total-pts-note" style="margin-top:8px">No unit assignment entered yet: ' + result.skippedNoAssignment.map(esc).join(', ') + '</div>';
-  }
-  resultEl.innerHTML = html;
-  loadQuizUnits();
 }
 
 /* ====================== STUDENT VIEW TAB ======================
