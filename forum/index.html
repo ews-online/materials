@@ -321,6 +321,7 @@
     <header class="topbar">
       <div class="brand">Weekly Forum<small>EFL BLOG &amp; DISCUSSION</small></div>
       <div class="who">
+        <span id="topbarVersion" style="font-family:'IBM Plex Mono',monospace;font-size:0.62rem;opacity:0.45;margin-right:8px;white-space:nowrap;"></span>
         <button class="home-btn hidden" id="homeBtn" onclick="renderDashboard()">🏠 Dashboard</button>
         <button class="who-self" onclick="location.href='../student/'" title="Back to all tools" style="margin-right:2px;">← Hub</button>
         <button class="who-self" onclick="renderProfilePage()">
@@ -335,7 +336,7 @@
   <div class="card empty-note" id="sessionErrorScreen" style="display:none;max-width:400px;margin:80px auto;">
     Couldn't find your session — please go back and open this from your dashboard.
     <div style="margin-top:14px;"><button class="btn btn-primary" onclick="location.href='../student/'">← Back to dashboard</button></div>
-    <div class="version-tag" style="text-align:center;margin-top:12px;">v1.2 — AI-check prompt copy button restored</div>
+    <div class="version-tag" style="text-align:center;margin-top:12px;" id="errorScreenVersion"></div>
   </div>
 </div>
 
@@ -360,6 +361,7 @@ const API_URL = "https://script.google.com/macros/s/AKfycbw5J9WRH-wsUVkFLaTI18MB
 // loads, and reused by submitPost(). Starts null until that lookup resolves.
 let currentWeek = null;
 
+const APP_VERSION = 'v1.3 — unit-submission errors now visible, not silently swallowed';
 let authToken = null;
 
 async function callApi(action, payload) {
@@ -427,10 +429,12 @@ function initSessionFromUrl(){
   if (goto) gotoDestination = goto;
 
   if(!authToken || !currentStudent || !currentClassId){
+    document.getElementById('errorScreenVersion').textContent = APP_VERSION;
     document.getElementById('sessionErrorScreen').style.display = 'block';
     return;
   }
   document.getElementById('mainApp').classList.remove('hidden');
+  document.getElementById('topbarVersion').textContent = APP_VERSION.split(' — ')[0];
   document.getElementById('whoName').textContent = currentName;
   document.getElementById('whoAvatar').innerHTML = avatarInner(currentName, currentProfilePicURL);
   renderDashboard();
@@ -512,7 +516,7 @@ function renderProfilePage(){
         ${currentProfilePicURL ? `<button class="btn btn-ghost" onclick="removeProfilePic()">Remove picture</button>` : ''}
       </div>
     </div>
-    <div class="version-tag" style="text-align:center;">v1.2 — AI-check prompt copy button restored</div>
+    <div class="version-tag" style="text-align:center;">${APP_VERSION}</div>
   `;
 }
 
@@ -950,7 +954,9 @@ async function submitGrammarUnit(week){
       btn.disabled = false;
       btn.textContent = 'Update submission →';
       const el = document.getElementById('grammarSubmitSuccess');
-      el.textContent = `Unit ${window._ccfUnitPrefix||'B'}${mainUnit} submitted — your teacher can see your choice.`;
+      el.textContent = data.warning
+        ? `Unit ${window._ccfUnitPrefix||'B'}${mainUnit} submitted, but: ${data.warning}`
+        : `Unit ${window._ccfUnitPrefix||'B'}${mainUnit} submitted — your teacher can see your choice.`;
       el.classList.add('show');
     } else {
       btn.disabled = false;
