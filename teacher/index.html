@@ -321,7 +321,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v4.10 — student name/score frozen at top of rubric sidebar while criteria scroll</div>
+      <div class="version-tag">v4.11 — RevisionCheck now shows a breakdown of which of the 4 checks passed/failed</div>
     </div>
   </div>
 
@@ -1416,6 +1416,22 @@ function revisionCheckTierIndex(text, title) {
   return 3;
 }
 
+// The 4 individual pass/fail results, for teacher-facing display - shows
+// exactly which checks passed/failed, not just the final tier a student
+// landed on.
+function revisionCheckBreakdown(text, title) {
+  const paragraphs = revcheckSplitParagraphs(text);
+  if (paragraphs.length === 0) {
+    return { indentation: false, capitalization: false, endPunctuation: false, noExtraSpaces: false };
+  }
+  return {
+    indentation: revcheckIndentation(paragraphs),
+    capitalization: revcheckCapitalization(paragraphs, title),
+    endPunctuation: revcheckEndPunctuation(paragraphs, title),
+    noExtraSpaces: revcheckNoExtraSpaces(paragraphs)
+  };
+}
+
 function autoSelectTier(crit, sub, sn, week, schedule) {
   if (crit.autoType === 'WordCount') {
     const wc = wordCount(sub.text);
@@ -1615,9 +1631,27 @@ async function renderGrading() {
         '<div><div class="tlabel">' + esc(t.label) + autoTag + '</div>' + (t.desc ? '<div class="tdesc">' + esc(t.desc) + '</div>' : '') +
         '<div class="tpts">' + t.points + ' pts</div></div></label>';
     }).join('');
+
+    let explanationHtml = '';
+    if (crit.autoType === 'RevisionCheck' && sub.title) {
+      const b = revisionCheckBreakdown(sub.text, sub.title);
+      const row = function(label, ok) {
+        return '<div style="display:flex;align-items:center;gap:6px;padding:2px 0;font-size:12px">' +
+          '<span style="color:' + (ok ? 'var(--green)' : 'var(--red)') + ';font-weight:700">' + (ok ? '✓' : '✗') + '</span>' +
+          '<span style="color:' + (ok ? 'var(--ink-mute)' : 'var(--ink)') + '">' + esc(label) + '</span></div>';
+      };
+      explanationHtml = '<div style="background:var(--paper-2);border-radius:8px;padding:8px 10px;margin-bottom:10px">' +
+        '<div style="font-size:10px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:var(--ink-mute);margin-bottom:4px">What was checked</div>' +
+        row('Paragraph indentation (5 spaces)', b.indentation) +
+        row('Capitalization (paragraphs + title)', b.capitalization) +
+        row('End punctuation (paragraphs + no periods in title)', b.endPunctuation) +
+        row('No extra spaces between words', b.noExtraSpaces) +
+        '</div>';
+    }
+
     return '<div class="criterion open" id="crit-' + crit.id + '"><div class="criterion-head" onclick="toggleCriterion(\'' + crit.id + '\')">' +
       '<div class="cname">' + esc(crit.name) + '</div><div style="display:flex;align-items:center;gap:8px"><span class="cpts">' + crit.maxPoints + ' pts max</span><span>▾</span></div></div>' +
-      '<div class="criterion-body">' + tiersHtml + '</div></div>';
+      '<div class="criterion-body">' + explanationHtml + tiersHtml + '</div></div>';
   }).join('');
 
   document.getElementById('forum-content').innerHTML =
