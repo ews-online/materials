@@ -170,7 +170,13 @@
   /* Grading layout */
   .grading-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
   .grading-layout { display: grid; grid-template-columns: 1fr; gap: 18px; align-items: start; }
-  @media (min-width: 900px) { .grading-layout { grid-template-columns: 1.2fr 1fr; } }
+  @media (min-width: 900px) {
+    .grading-layout { grid-template-columns: 1.2fr 1fr; }
+    .grading-layout .submission-card, .grading-layout .grade-sidebar {
+      max-height: calc(100vh - 200px);
+      overflow-y: auto;
+    }
+  }
   .submission-card .sub-title { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; margin-bottom: 8px; }
   .sub-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
   .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-weight: 600; font-size: 13px; flex-shrink: 0; }
@@ -308,7 +314,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v4.5 — fix: single-digit unit entries crashing the Units table render</div>
+      <div class="version-tag">v4.9 — grading screen: independent scroll on submission panel and rubric sidebar</div>
     </div>
   </div>
 
@@ -1275,6 +1281,134 @@ function commentsQualify(commentsArr, deadline) {
   if (!deadline) return commentsArr.every(function(c) { return wordCount(c.text) >= 30; });
   return commentsArr.every(function(c) { return wordCount(c.text) >= 30 && new Date(c.createdAt) <= new Date(deadline); });
 }
+/* ====================== REVISION & EDITING AUTO-CHECK ======================
+   4 pass/fail checks on the raw blog text, mapped to a tier index (0-3).
+   Grammar/spelling are deliberately NOT checked here - that's CCF's job -
+   this only checks proofreading/formatting habits any student can execute
+   with a quick reread, regardless of English level.
+   ============================================================================ */
+
+// A paragraph is one line of the raw textarea value, split on \n. The
+// composer textarea only inserts \n where the student actually pressed
+// Enter (word-wrap is purely visual, never written into .value), so this
+// recovers exactly the paragraphs the student intended - no blank-line
+// convention needed. Blank lines (e.g. an accidental double-Enter) are
+// dropped, not counted as a paragraph.
+function revcheckSplitParagraphs(text) {
+  return String(text || '').split('\n').filter(function(line) { return line.trim().length > 0; });
+}
+
+const REVCHECK_INDENT = '     '; // exactly 5 spaces, the required paragraph indent
+
+// Check 1 — every paragraph starts with EXACTLY 5 spaces (not 4, not 6+).
+function revcheckIndentation(paragraphs) {
+  return paragraphs.every(function(p) { return p.startsWith(REVCHECK_INDENT) && p.charAt(5) !== ' '; });
+}
+
+// ── Title case, used as part of Check 2 below ───────────────────────────
+// Standard title-case convention: every word capitalized EXCEPT a fixed
+// list of short "minor" words (articles, coordinating conjunctions, short
+// prepositions) — UNLESS that word is the first or last word of the title,
+// in which case it's always capitalized regardless.
+// Note: there's no single universal title-case rule - style guides differ
+// slightly on the word list and preposition-length cutoff. This is a
+// common, teachable version (articles + coordinating conjunctions +
+// prepositions of 4 letters or fewer). Adjust this list if a different
+// specific convention is taught.
+const TITLE_MINOR_WORDS = new Set([
+  'a', 'an', 'the',
+  'and', 'but', 'or', 'nor', 'for', 'so', 'yet',
+  'at', 'by', 'in', 'of', 'off', 'on', 'out', 'to', 'up', 'as',
+  'via', 'per', 'from', 'into', 'like', 'near', 'onto', 'over', 'past',
+  'than', 'till', 'upon', 'with'
+]);
+function titleSplitWords(title) { return String(title || '').trim().split(/\s+/).filter(Boolean); }
+function titleWordCore(word) { return word.replace(/^[^a-zA-Z]+|[^a-zA-Z]+$/g, '').toLowerCase(); }
+function checkTitleCapitalization(title) {
+  const words = titleSplitWords(title);
+  if (words.length === 0) return true; // no title text - nothing to fail on
+  return words.every(function(word, i) {
+    const core = titleWordCore(word);
+    if (!core) return true; // no letters in this "word" - skip
+    const firstLetterMatch = word.match(/[a-zA-Z]/);
+    if (!firstLetterMatch) return true;
+    const isCapitalized = firstLetterMatch[0] === firstLetterMatch[0].toUpperCase();
+    const isFirstOrLast = (i === 0 || i === words.length - 1);
+    const isMinorWord = TITLE_MINOR_WORDS.has(core);
+    if (isFirstOrLast) return isCapitalized;
+    if (isMinorWord) return !isCapitalized;
+    return isCapitalized;
+  });
+}
+
+// Check 2 — first LETTER of each paragraph is uppercase, AND the post
+// title follows standard title-case capitalization. Both must hold for
+// this check to pass - still one of the 4 categories, title case just
+// folded in here rather than becoming a separate 5th check.
+function revcheckCapitalization(paragraphs, title) {
+  const paragraphsOk = paragraphs.every(function(p) {
+    const body = p.replace(/^\s+/, '');
+    const m = body.match(/[a-zA-Z]/);
+    if (!m) return true;
+    return m[0] === m[0].toUpperCase();
+  });
+  return paragraphsOk && checkTitleCapitalization(title);
+}
+
+// Strips trailing emoji (and surrounding whitespace) before the punctuation
+// check runs - emoji are decoration that can trail AFTER real punctuation
+// (same idea as the quote/parenthesis exception below), never a substitute
+// FOR it.
+function revcheckStripTrailingEmoji(str) {
+  const trailingEmojiRun = /[\s\u200d\ufe0f\u2600-\u27bf\u{1f300}-\u{1faff}]+$/u;
+  let out = str, prev;
+  do { prev = out; out = out.replace(trailingEmojiRun, ''); } while (out !== prev);
+  return out;
+}
+
+// Check 3 — every paragraph EXCEPT THE LAST ends with . ! or ?, optionally
+// followed by one closing quote/parenthesis (the last paragraph is skipped
+// entirely - the 20-minute timer can cut a student off mid-sentence, which
+// is a time-pressure artifact, not a revision failure) — AND the post
+// title contains no period at all (titles aren't sentences and shouldn't
+// be punctuated like one). Both must hold for this check to pass.
+function revcheckEndPunctuation(paragraphs, title) {
+  const closers = ['"', "'", '\u201d', '\u2019', ')'];
+  const paragraphsOk = paragraphs.slice(0, -1).every(function(p) {
+    const end = revcheckStripTrailingEmoji(p.replace(/\s+$/, ''));
+    if (end.length === 0) return true;
+    const last = end.charAt(end.length - 1);
+    if ('.!?'.indexOf(last) !== -1) return true;
+    if (closers.indexOf(last) !== -1 && end.length >= 2) return '.!?'.indexOf(end.charAt(end.length - 2)) !== -1;
+    return false;
+  });
+  const titleOk = String(title || '').indexOf('.') === -1;
+  return paragraphsOk && titleOk;
+}
+
+// Check 4 — no double-or-more spaces between words, excluding the leading
+// indent (whatever size it happens to be - a wrong-sized indent is Check
+// 1's problem to catch, not this one's).
+function revcheckNoExtraSpaces(paragraphs) {
+  return paragraphs.every(function(p) { return !/ {2,}/.test(p.replace(/^ +/, '')); });
+}
+
+// Maps passedCount -> tier index (0-based), matching autoSelectTier()'s
+// convention of returning an index into crit.tiers. Tiers must be seeded
+// in this order: 0="0-1 passed"(0pts), 1="2 passed"(5pts), 2="3 passed"(7pts), 3="4 passed"(10pts).
+function revisionCheckTierIndex(text, title) {
+  const paragraphs = revcheckSplitParagraphs(text);
+  if (paragraphs.length === 0) return 0;
+  const passed = [
+    revcheckIndentation(paragraphs), revcheckCapitalization(paragraphs, title),
+    revcheckEndPunctuation(paragraphs, title), revcheckNoExtraSpaces(paragraphs)
+  ].filter(Boolean).length;
+  if (passed <= 1) return 0;
+  if (passed === 2) return 1;
+  if (passed === 3) return 2;
+  return 3;
+}
+
 function autoSelectTier(crit, sub, sn, week, schedule) {
   if (crit.autoType === 'WordCount') {
     const wc = wordCount(sub.text);
@@ -1303,6 +1437,7 @@ function autoSelectTier(crit, sub, sn, week, schedule) {
     const okr = received.every(function(c) { return wordCount(c.reply.text) >= 30 && (!schedule || !schedule.ReplyDeadline || new Date(c.reply.createdAt) <= new Date(schedule.ReplyDeadline)); });
     return okr ? 1 : 0;
   }
+  if (crit.autoType === 'RevisionCheck') return revisionCheckTierIndex(sub.text, sub.title);
   return null;
 }
 
@@ -1858,14 +1993,19 @@ function parseRubricCsv(text) {
 
 function downloadRubricCsvTemplate() {
   const headerRow = csvRow(['Criterion', 'AutoType', 'TierLabel', 'TierDescription', 'TierPoints', 'AutoMin', 'AutoMax']);
-  const note = ['# AutoType must be exactly one of: Manual, WordCount, PictureTimeliness, CommentCompletion, ReplyCompletion',
+  const note = ['# AutoType must be exactly one of: Manual, WordCount, PictureTimeliness, CommentCompletion, ReplyCompletion, RevisionCheck',
     '# AutoMin/AutoMax only apply to WordCount tiers (the word-count range that earns that tier) — leave blank otherwise.',
+    '# RevisionCheck tiers must appear in this exact order (0-1 / 2 / 3 / 4 checks passed) — the auto-grader maps a passed-check count directly to tier position, not tier label text.',
     '# Repeat the Criterion name on every tier row that belongs to it — rows are grouped by that name, in the order they first appear.'];
   const sampleRows = [
     ['Word Count', 'WordCount', 'No submission', '', '0', '', ''],
     ['Word Count', 'WordCount', '1\u201339 words', '', '2', '1', '39'],
     ['Word Count', 'WordCount', '40\u201379 words', '', '6', '40', '79'],
     ['Word Count', 'WordCount', '80+ words', '', '10', '80', ''],
+    ['Revision & Editing', 'RevisionCheck', '0-1 checks passed', 'Paragraph indentation, capitalization, end punctuation, and spacing.', '0', '', ''],
+    ['Revision & Editing', 'RevisionCheck', '2 checks passed', 'Paragraph indentation, capitalization, end punctuation, and spacing.', '5', '', ''],
+    ['Revision & Editing', 'RevisionCheck', '3 checks passed', 'Paragraph indentation, capitalization, end punctuation, and spacing.', '7', '', ''],
+    ['Revision & Editing', 'RevisionCheck', '4 checks passed', 'Paragraph indentation, capitalization, end punctuation, and spacing.', '10', '', ''],
     ['Content', 'Manual', 'No submission', '', '0', '', ''],
     ['Content', 'Manual', 'Needs improvement', 'Does not clearly address the topic, or provides so little detail that the reader cannot engage with it.', '6', '', ''],
     ['Content', 'Manual', 'Average', 'Addresses the topic but lacks detail, or provides detail without any personal connection or opinion.', '18', '', ''],
@@ -1972,7 +2112,7 @@ function renderRubricTab() {
       '<div><label class="field-label">Criterion name</label><input class="text-input" value="' + esc(crit.name || '') + '" onchange="updateCriterion(' + ci + ',\'name\',this.value)"></div>' +
       '<div><label class="field-label">Max points</label><input class="text-input" value="' + (Number(crit.maxPoints) || 0) + '" disabled></div>' +
       '<div><label class="field-label">Auto-grade by</label><select onchange="updateCriterion(' + ci + ',\'autoType\',this.value)">' +
-      ['Manual', 'WordCount', 'PictureTimeliness', 'CommentCompletion', 'ReplyCompletion'].map(function(t) { return '<option value="' + t + '" ' + (crit.autoType === t ? 'selected' : '') + '>' + t + '</option>'; }).join('') +
+      ['Manual', 'WordCount', 'PictureTimeliness', 'CommentCompletion', 'ReplyCompletion', 'RevisionCheck'].map(function(t) { return '<option value="' + t + '" ' + (crit.autoType === t ? 'selected' : '') + '>' + t + '</option>'; }).join('') +
       '</select></div><button class="icon-btn" onclick="removeCriterion(' + ci + ')">✕</button></div>' +
       '<label class="field-label">Tiers</label>' + tiersHtml +
       '<button class="btn btn-ghost btn-sm" onclick="addTier(' + ci + ')">+ Add tier</button></div>';
