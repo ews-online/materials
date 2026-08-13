@@ -176,6 +176,13 @@
       max-height: calc(100vh - 200px);
       overflow-y: auto;
     }
+    .grade-sidebar-sticky {
+      position: sticky; top: 0; z-index: 5; background: #fff;
+      margin: -20px -20px 0; padding: 20px 20px 8px;
+      border-bottom: 1px solid var(--rule);
+      border-radius: 14px 14px 0 0;
+    }
+    .grade-sidebar-sticky .student-nav { margin-bottom: 10px; }
   }
   .submission-card .sub-title { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; margin-bottom: 8px; }
   .sub-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
@@ -314,7 +321,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v4.9 — grading screen: independent scroll on submission panel and rubric sidebar</div>
+      <div class="version-tag">v4.10 — student name/score frozen at top of rubric sidebar while criteria scroll</div>
     </div>
   </div>
 
@@ -1620,10 +1627,12 @@ async function renderGrading() {
     '<button class="search-btn" onclick="openStudentSearch()">🔍</button></div>' +
     '<div class="total-pts-note" style="margin:-8px 0 14px">Using rubric version starting Week ' + rubricVersion.startWeek + ' (Rubric tab to manage versions)</div>' +
     '<div class="grading-layout"><div>' + bodyHtml + '</div><div class="grade-sidebar card">' +
+    '<div class="grade-sidebar-sticky">' +
     '<div class="student-nav"><button class="nav-arrow" onclick="navStudent(-1)">‹</button>' +
     '<div class="id"><div class="avatar">' + initials(author.name) + '</div><div class="nm">' + esc(author.name) + '</div></div>' +
     '<button class="nav-arrow" onclick="navStudent(1)">›</button></div>' +
-    '<div class="grade-total-strip"><span id="gradeTotalDisplay"></span></div>' + criteriaHtml +
+    '<div class="grade-total-strip"><span id="gradeTotalDisplay"></span></div>' +
+    '</div>' + criteriaHtml +
     '<div class="feedback-box"><label class="field-label">Overall feedback (shown to student)</label>' +
     '<textarea id="feedbackInput" placeholder="Write some overall advice...">' + esc(gradingFeedbackDraft[sn] || '') + '</textarea></div>' +
     '<div class="grade-actions"><button class="btn btn-ghost" style="flex:1" onclick="saveGrade(false)">Save</button>' +
