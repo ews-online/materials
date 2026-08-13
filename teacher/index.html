@@ -321,7 +321,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v4.11 — RevisionCheck now shows a breakdown of which of the 4 checks passed/failed</div>
+      <div class="version-tag">v4.12 — fix: RevisionCheck tier matching now dynamic (AutoMin-based), immune to an extra "No submission" tier</div>
     </div>
   </div>
 
@@ -1400,20 +1400,28 @@ function revcheckNoExtraSpaces(paragraphs) {
   return paragraphs.every(function(p) { return !/ {2,}/.test(p.replace(/^ +/, '')); });
 }
 
-// Maps passedCount -> tier index (0-based), matching autoSelectTier()'s
-// convention of returning an index into crit.tiers. Tiers must be seeded
-// in this order: 0="0-1 passed"(0pts), 1="2 passed"(5pts), 2="3 passed"(7pts), 3="4 passed"(10pts).
-function revisionCheckTierIndex(text, title) {
+// Matches the computed passed-count against crit.tiers dynamically via each
+// tier's AutoMin value - the exact same pattern WordCount already uses for
+// word-count thresholds - rather than assuming tiers are seeded in a fixed
+// 0-3 position. This is what makes it safe regardless of whether a "No
+// submission" tier (or any other extra tier) exists before the 4 real
+// scoring tiers, and regardless of what order they're in.
+// Tier setup: give the 4 real tiers AutoMin = 0, 2, 3, 4 respectively
+// (matching "0-1 passed", "2 passed", "3 passed", "4 passed"). Leave AutoMin
+// blank on a "No submission" tier if you have one - it's handled separately
+// below and never matched by this loop.
+function revisionCheckTierIndex(crit, text, title) {
   const paragraphs = revcheckSplitParagraphs(text);
-  if (paragraphs.length === 0) return 0;
+  if (paragraphs.length === 0) return 0; // no submission - same index-0 convention every other AutoType uses
   const passed = [
     revcheckIndentation(paragraphs), revcheckCapitalization(paragraphs, title),
     revcheckEndPunctuation(paragraphs, title), revcheckNoExtraSpaces(paragraphs)
   ].filter(Boolean).length;
-  if (passed <= 1) return 0;
-  if (passed === 2) return 1;
-  if (passed === 3) return 2;
-  return 3;
+  for (let i = crit.tiers.length - 1; i >= 0; i--) {
+    const min = (crit.tiers[i].autoMin !== '' && crit.tiers[i].autoMin !== undefined) ? Number(crit.tiers[i].autoMin) : null;
+    if (min !== null && passed >= min) return i;
+  }
+  return 0;
 }
 
 // The 4 individual pass/fail results, for teacher-facing display - shows
@@ -1460,7 +1468,7 @@ function autoSelectTier(crit, sub, sn, week, schedule) {
     const okr = received.every(function(c) { return wordCount(c.reply.text) >= 30 && (!schedule || !schedule.ReplyDeadline || new Date(c.reply.createdAt) <= new Date(schedule.ReplyDeadline)); });
     return okr ? 1 : 0;
   }
-  if (crit.autoType === 'RevisionCheck') return revisionCheckTierIndex(sub.text, sub.title);
+  if (crit.autoType === 'RevisionCheck') return revisionCheckTierIndex(crit, sub.text, sub.title);
   return null;
 }
 
