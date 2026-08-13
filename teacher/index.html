@@ -322,7 +322,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v4.13 — Grading Sheet: Print replaced with Download PDF (landscape, fits one A4 page)</div>
+      <div class="version-tag">v4.14 — Grading Sheet PDF: fixed checkmarks not rendering, unit label now number-only</div>
     </div>
   </div>
 
@@ -3624,7 +3624,7 @@ function downloadGradingSheetPdf() {
   doc.text(result.title, 10, 12);
 
   const body = result.rows.map(function(row) {
-    return row.map(function(cell) { return cell === true ? '\u2713' : (cell === false ? '' : (cell != null ? String(cell) : '')); });
+    return row.map(function(cell) { return cell === true ? 'X' : (cell === false ? '' : (cell != null ? String(cell) : '')); });
   });
 
   doc.autoTable({
