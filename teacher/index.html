@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
   :root {
     --ink: #1a1a2e; --ink-soft: #4a4a6a; --ink-mute: #8888aa;
@@ -321,7 +322,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v4.12 — fix: RevisionCheck tier matching now dynamic (AutoMin-based), immune to an extra "No submission" tier</div>
+      <div class="version-tag">v4.13 — Grading Sheet: Print replaced with Download PDF (landscape, fits one A4 page)</div>
     </div>
   </div>
 
@@ -525,7 +526,7 @@
           <h3 style="margin:0">Grading Sheet</h3>
           <div style="display:flex;gap:8px">
             <button class="btn btn-ghost btn-sm" onclick="loadGradingSheet()">↺ Refresh</button>
-            <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨 Print</button>
+            <button class="btn btn-ghost btn-sm" onclick="downloadGradingSheetPdf()">⬇ Download PDF</button>
           </div>
         </div>
       </div>
@@ -3577,6 +3578,7 @@ async function doClearSubmitted() {
 }
 
 /* ====================== GRADING SHEET TAB ====================== */
+let gradingSheetCache = null;
 async function loadGradingSheet() {
   const contentEl = document.getElementById('grading-sheet-content');
   contentEl.innerHTML = '<div class="card empty-note">Loading…</div>';
@@ -3586,6 +3588,7 @@ async function loadGradingSheet() {
     contentEl.innerHTML = '<div class="card empty-note">No grading sheet found. Generate quizzes first.</div>';
     return;
   }
+  gradingSheetCache = result;
   const headers = result.headers || [];
   contentEl.innerHTML =
     '<div class="card" style="padding:0;overflow:hidden">' +
@@ -3599,6 +3602,47 @@ async function loadGradingSheet() {
           return '<td style="padding:7px 12px;border-bottom:1px solid var(--rule);' + (ci >= 3 && ci <= 5 ? 'text-align:center' : '') + '">' + esc(val) + '</td>';
         }).join('') + '</tr>';
     }).join('') + '</tbody></table></div></div>';
+}
+
+// Landscape A4, always one page - font size and cell padding scale down as
+// the roster grows, since AutoTable doesn't shrink content to fit a page on
+// its own. These thresholds are sized for realistic class rosters (up to
+// ~45 students); if it somehow still overflows, that's surfaced honestly
+// rather than silently producing a second page.
+function downloadGradingSheetPdf() {
+  if (!gradingSheetCache) { showToast('Load the grading sheet first.'); return; }
+  if (!window.jspdf) { showToast('PDF library loading — try again in a moment.'); return; }
+  const jsPDF = window.jspdf.jsPDF;
+  const result = gradingSheetCache;
+  const rowCount = result.rows.length;
+  const fontSize = rowCount <= 20 ? 9 : rowCount <= 30 ? 8 : rowCount <= 40 ? 7 : 6;
+  const cellPadding = rowCount <= 20 ? 2 : rowCount <= 30 ? 1.5 : 1;
+
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.text(result.title, 10, 12);
+
+  const body = result.rows.map(function(row) {
+    return row.map(function(cell) { return cell === true ? '\u2713' : (cell === false ? '' : (cell != null ? String(cell) : '')); });
+  });
+
+  doc.autoTable({
+    head: [result.headers],
+    body: body,
+    startY: 18,
+    margin: { left: 8, right: 8, bottom: 8 },
+    styles: { fontSize: fontSize, cellPadding: cellPadding, overflow: 'linebreak' },
+    headStyles: { fillColor: [26, 74, 107], textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: [242, 240, 235] },
+    columnStyles: { 3: { halign: 'center' }, 4: { halign: 'center' }, 5: { halign: 'center' } }
+  });
+
+  if (doc.internal.getNumberOfPages() > 1) {
+    showToast('⚠ This roster is too large to fit on one page even at the smallest readable font — downloaded as multiple pages instead.');
+  }
+
+  doc.save(result.title.replace(/[^a-z0-9]+/gi, '_') + '.pdf');
 }
 
 /* ====================== FLAGS TAB ====================== */
