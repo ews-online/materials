@@ -6,48 +6,73 @@
 <title>EWS Online Materials</title>
 <style>
   body { margin:0; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; background:transparent; }
-  .card { max-width:640px; margin:0 auto; border-radius:14px; overflow:hidden; background:#faf9f6; box-shadow:0 2px 16px rgba(26,26,46,0.08); border:1px solid rgba(26,26,46,0.10); }
+  .card { max-width:640px; margin:0 auto; border-radius:14px; overflow:hidden; background:#e6e1d6; box-shadow:0 2px 16px rgba(26,26,46,0.08); border:1px solid rgba(26,26,46,0.10); }
   .header { background:#1a1a2e; padding:22px 24px; display:flex; align-items:center; justify-content:center; gap:16px; }
   .mark { width:40px; height:40px; flex-shrink:0; background:#2e5ba8; border-radius:9px; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:600; font-size:13px; letter-spacing:0.02em; }
   .titles h2 { font-family:Georgia,"Times New Roman",serif; font-weight:600; font-size:19px; color:#fff; margin:0 0 2px; }
   .titles p { font-size:11px; font-weight:500; letter-spacing:0.09em; text-transform:uppercase; color:#9aa3c4; margin:0; }
-  .eyebrow { padding:14px 24px 4px; font-size:10px; font-weight:600; letter-spacing:0.09em; text-transform:uppercase; color:#8888aa; background:#faf9f6; }
-  .resources { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; padding:8px 20px 16px; background:#faf9f6; }
+  .eyebrow { padding:14px 24px 4px; font-size:10px; font-weight:600; letter-spacing:0.09em; text-transform:uppercase; color:#6e6a5c; background:#e6e1d6; }
+  .resources { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; padding:8px 20px 16px; background:#e6e1d6; }
   .resource { display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:10px; border:1.5px solid rgba(26,26,46,0.10); background:#fff; text-decoration:none; transition:border-color 0.15s, background 0.15s; }
   .resource:hover { border-color:#2e5ba8; background:#f4f7fb; }
   .resource-icon { width:34px; height:34px; flex-shrink:0; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:17px; }
   .resource h3 { font-family:Georgia,"Times New Roman",serif; font-weight:600; font-size:13px; color:#1a1a2e; margin:0 0 1px; line-height:1.2; }
   .resource p { font-size:11px; color:#8888aa; margin:0; }
   .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:1px; background:rgba(26,26,46,0.10); }
-  .divider-line { height:2px; background:#1a1a2e; width:100%; }
-  .darker-zone { background: linear-gradient(180deg, #e6e1d6 0%, #cdc4b0 100%); }
-  .tile { padding:16px 18px; display:flex; align-items:flex-start; gap:12px; }
+  .darker-zone { background:#e6e1d6; padding-bottom:20px; }
+  .tile { padding:16px 18px; display:flex; align-items:flex-start; gap:12px; background:#f2eee3; }
   .tile-icon { width:32px; height:32px; flex-shrink:0; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; }
   .tile h3 { font-family:Georgia,"Times New Roman",serif; font-weight:600; font-size:14px; color:#1a1a2e; margin:0 0 2px; line-height:1.25; }
   .tile p { font-size:12px; color:#6e6a5c; margin:0; line-height:1.4; }
-  .signin { padding:40px 20px 18px; display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap; }
-  .signin label { font-size:15px; font-weight:600; color:#1a1a2e; white-space:nowrap; }
-  .signin input {
-    width:180px; max-width:100%; box-sizing:border-box; padding:11px 14px; font-size:16px;
-    border:1.5px solid rgba(26,26,46,0.15); border-radius:8px;
-    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    color:#1a1a2e; outline:none; transition:border-color 0.15s; background:#fff;
-    text-align:left;
+
+  /* --- Student Hub: one continuous bordered panel holds the tiles AND the sign-in row+button --- */
+  .callout-heading {
+    padding: 16px 24px 6px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: #6e6a5c;
   }
-  .signin input:focus { border-color:#2e5ba8; }
-  .pointer-arrow { position:relative; height:0; z-index:5; }
-  .pointer-arrow-inner {
-    position:relative; width:34px; margin:-30px auto 0;
-    filter:
-      drop-shadow(1.5px 0 0 #fff) drop-shadow(-1.5px 0 0 #fff)
-      drop-shadow(0 1.5px 0 #fff) drop-shadow(0 -1.5px 0 #fff)
-      drop-shadow(0 3px 6px rgba(0,0,0,0.3));
+  .callout-box {
+    margin: 0 20px;
+    border: 3px solid #1a1a2e;
+    border-radius: 10px;
+    overflow: hidden;
   }
-  .pointer-arrow-stem { width:13px; height:18px; background:#c0392b; margin:0 auto; }
-  .pointer-arrow-head { width:0; height:0; margin:-1px auto 0; border-left:17px solid transparent; border-right:17px solid transparent; border-top:20px solid #c0392b; }
-  .cta { display:flex; align-items:center; justify-content:center; gap:10px; background:#b03030; color:#fff; font-size:15px; font-weight:600; padding:18px 20px; border-radius:0 0 14px 14px; text-decoration:none; transition:background 0.15s; border:none; width:100%; cursor:pointer; font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
-  .cta:hover { background:#942828; }
-  .cta span { font-size:22px; line-height:1; }
+  .callout-divider { height: 3px; background: #1a1a2e; }
+  .signin-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 12px;
+    padding: 16px 18px;
+    background: #f2eee3;
+  }
+  .signin-fields { display: flex; align-items: center; gap: 10px; flex: 1 1 auto; min-width: 0; }
+  .signin-fields label { font-size: 15px; font-weight: 600; color: #1a1a2e; white-space: nowrap; flex-shrink: 0; }
+  .signin-fields input {
+    flex: 1 1 auto; min-width: 70px; width: auto; box-sizing: border-box; padding: 11px 14px; font-size: 16px;
+    border: 1.5px solid rgba(26,26,46,0.15); border-radius: 8px;
+    font-family: -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color: #1a1a2e; outline: none; transition: border-color 0.15s; background: #fff;
+  }
+  .signin-fields input:focus { border-color: #2e5ba8; }
+  .cta-inline {
+    display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+    background: #b03030; color: #fff; font-size: 15px; font-weight: 600;
+    padding: 12px 20px; border-radius: 8px; border: none; cursor: pointer;
+    font-family: -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    white-space: nowrap; transition: background 0.15s;
+  }
+  .cta-inline:hover { background: #942828; }
+  .cta-inline span { font-size: 18px; line-height: 1; }
+
+  @media (max-width: 420px) {
+    .signin-row { flex-wrap: wrap; }
+    .signin-fields { flex: 1 1 100%; }
+    .cta-inline { flex: 1 1 100%; justify-content: center; }
+  }
 </style>
 </head>
 <body>
@@ -67,22 +92,25 @@
       <div><h3>Cambridge Dictionary</h3><p>English&ndash;Japanese</p></div>
     </a>
   </div>
-  <div class="divider-line"></div>
   <div class="darker-zone">
-    <div class="tiles">
-      <div class="tile"><div class="tile-icon" style="background:#2e5ba8">&#9000;</div><div><h3>Typing Skills</h3><p>Practice speed and accuracy each week.</p></div></div>
-      <div class="tile"><div class="tile-icon" style="background:#b23a2e">&#128172;</div><div><h3>Weekly Forum &amp; Feedback</h3><p>Post your blog entry and get grammar feedback.</p></div></div>
-      <div class="tile"><div class="tile-icon" style="background:#c9a227">&#128203;</div><div><h3>Grammar Quiz</h3><p>Weekly quizzes on your assigned units.</p></div></div>
-      <div class="tile"><div class="tile-icon" style="background:#534ab7">&#128269;</div><div><h3>Grammar Analysis / Unit Submission</h3><p>Choose your next unit from your own mistakes.</p></div></div>
-    </div>
-    <div class="divider-line"></div>
-    <div class="pointer-arrow"><div class="pointer-arrow-inner"><div class="pointer-arrow-stem"></div><div class="pointer-arrow-head"></div></div></div>
-    <div class="signin">
-      <label for="num-input">Student Number</label>
-      <input type="text" id="num-input" placeholder="e.g. 2411004" autocomplete="off" onkeydown="if(event.key==='Enter')goToHub()">
+    <div class="callout-heading">Student Hub</div>
+    <div class="callout-box">
+      <div class="tiles">
+        <div class="tile"><div class="tile-icon" style="background:#2e5ba8">&#9000;</div><div><h3>Typing Skills</h3><p>Practice speed and accuracy each week.</p></div></div>
+        <div class="tile"><div class="tile-icon" style="background:#b23a2e">&#128172;</div><div><h3>Weekly Forum &amp; Feedback</h3><p>Post your blog entry and get grammar feedback.</p></div></div>
+        <div class="tile"><div class="tile-icon" style="background:#c9a227">&#128203;</div><div><h3>Grammar Quiz</h3><p>Weekly quizzes on your assigned units.</p></div></div>
+        <div class="tile"><div class="tile-icon" style="background:#534ab7">&#128269;</div><div><h3>Grammar Analysis / Unit Submission</h3><p>Choose your next unit from your own mistakes.</p></div></div>
+      </div>
+      <div class="callout-divider"></div>
+      <div class="signin-row">
+        <div class="signin-fields">
+          <label for="num-input">Enter Student Number</label>
+          <input type="text" id="num-input" placeholder="e.g. 2411004" autocomplete="off" onkeydown="if(event.key==='Enter')goToHub()">
+        </div>
+        <button class="cta-inline" onclick="goToHub()"><span>&#8594;</span> Open dashboard</button>
+      </div>
     </div>
   </div>
-  <button class="cta" onclick="goToHub()"><span>&#8594;</span> Open dashboard <span>&#8592;</span></button>
 </div>
 <script>
   function goToHub() {
