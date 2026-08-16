@@ -322,7 +322,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v4.14 — Grading Sheet PDF: fixed checkmarks not rendering, unit label now number-only</div>
+      <div class="version-tag">v4.16 — Moodle Report: removed header row, data rows only</div>
     </div>
   </div>
 
@@ -1515,28 +1515,35 @@ function downloadMoodleReport() {
   if (!subResult) { alert('Load the grading tab for this week first.'); return; }
   const rubric = getRubricVersionForWeek(gradingWeek).criteria;
 
+  // Feedback content uses <br> instead of newlines deliberately - a literal
+  // \n inside a TSV cell makes spreadsheet paste (and Moodle's own bulk-
+  // grade paste) split that cell into extra rows. <br> keeps the whole
+  // breakdown as a single cell while still rendering as line breaks once
+  // Moodle interprets the HTML in the Feedback comments field.
   const lines = subResult.roster.map(function(r) {
     const sn = r.studentNumber;
     const sub = subResult.submissions[sn] || {};
     const saved = sub.savedGrades || {};
     const session = gradingSelections[sn] || {};
     let total = 0, max = 0;
-    const criterionLines = rubric.map(function(crit) {
+    const criterionHtml = rubric.map(function(crit) {
       const critMax = crit.tiers.length ? Math.max.apply(null, crit.tiers.map(function(t) { return Number(t.points) || 0; })) : 0;
       max += critMax;
       const tierIdx = saved[crit.id] !== undefined ? saved[crit.id] : (session[crit.id] !== undefined ? session[crit.id] : null);
-      if (tierIdx === null || tierIdx === undefined || !crit.tiers[tierIdx]) return crit.name + ': Not graded';
+      if (tierIdx === null || tierIdx === undefined || !crit.tiers[tierIdx]) return '<b>' + esc(crit.name) + ':</b> Not graded';
       const pts = Number(crit.tiers[tierIdx].points) || 0;
       total += pts;
-      return crit.name + ': ' + crit.tiers[tierIdx].label + ' = ' + pts + ' points';
-    }).join('\n');
-    return total + '\t' + r.name + ' (' + sn + ')\n' + criterionLines + '\nTotal: ' + total + ' / ' + max;
-  }).join('\n\n');
+      return '<b>' + esc(crit.name) + ':</b> ' + esc(crit.tiers[tierIdx].label) + ' = ' + pts + ' points';
+    }).join('<br>');
+    const feedbackHtml = '<p>' + esc(r.name) + ' (' + esc(sn) + ')<br>' + criterionHtml + '<br><b>Total: ' + total + ' / ' + max + '</b></p>';
+    return total + '\t' + feedbackHtml;
+  }).join('\n');
 
-  const blob = new Blob([lines], { type: 'text/plain;charset=utf-8' });
+  const output = lines;
+  const blob = new Blob([output], { type: 'text/tab-separated-values;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = currentClassId + '_Week' + String(gradingWeek).padStart(2, '0') + '_Moodle_Grades.txt';
+  a.href = url; a.download = currentClassId + '_Week' + String(gradingWeek).padStart(2, '0') + '_Moodle_Grades.tsv';
   a.click(); URL.revokeObjectURL(url);
 }
 
