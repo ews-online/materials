@@ -264,6 +264,7 @@
   .ccf-purple{background:#E6DEF7;color:#4A2A80;}
   .ccf-grey{background:#E6E6E4;color:#5A5A56;}
   .ccf-border{box-shadow:0 0 0 1.5px #2A7A4E;}
+  .ccf-indent{display:inline-block;width:1.4em;}
   .err-tt{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:10px;padding:11px 14px;min-width:220px;max-width:280px;font-size:0.72rem;line-height:1.5;z-index:100;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,0.25);white-space:normal;text-align:left;font-family:'IBM Plex Sans',sans-serif;}
   .err-tt::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--ink);}
   .ccf-tag:hover .err-tt{display:block;}
@@ -283,7 +284,7 @@
   .other-reason-wrap{display:none;margin-bottom:14px;}
   .other-reason-wrap.show{display:block;}
   .unit-input-grp label{display:block;font-family:'IBM Plex Mono',monospace;font-size:0.64rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;}
-  .unit-num-inp{width:120px;flex-shrink:0;height:44px;font-family:'IBM Plex Mono',monospace;font-size:1rem;font-weight:500;padding:0 12px;border:1.5px solid var(--border);border-radius:10px;background:var(--paper);color:var(--ink);outline:none;transition:border-color .2s,box-shadow .2s;}
+  input.unit-num-inp{width:120px;flex-shrink:0;height:44px;font-family:'IBM Plex Mono',monospace;font-size:1rem;font-weight:500;padding:0 12px;border:1.5px solid var(--border);border-radius:10px;background:var(--paper);color:var(--ink);outline:none;transition:border-color .2s,box-shadow .2s;}
   .unit-num-inp:focus{border-color:var(--postal-blue);box-shadow:0 0 0 3px rgba(61,90,115,0.12);}
   .grammar-submit-success{background:#ddf2e8;border:1px solid #2a7a4e;border-radius:10px;padding:12px 16px;font-size:0.84rem;color:#2a7a4e;font-weight:500;display:none;margin-top:12px;}
   .grammar-submit-success.show{display:block;}
@@ -316,14 +317,24 @@
 
 <div class="app">
 
+  <!-- ===================== LOGIN SCREEN ===================== -->
+  <div class="login-screen" id="loginScreen">
+    <div class="brand">Weekly Forum<small>EFL BLOG &amp; DISCUSSION</small></div>
+    <div class="login-card">
+      <label for="studentNumberInput">Student Number</label>
+      <input type="text" id="studentNumberInput" placeholder="e.g. 2111001" autocomplete="off">
+      <button class="btn btn-primary btn-block" style="margin-top:14px;" onclick="login()">Enter</button>
+      <div class="error-msg" id="loginError">Student number not found. Check and try again.</div>
+    </div>
+    <div class="version-tag">v2.8 — 2026-07-28</div>
+  </div>
+
   <!-- ===================== MAIN APP ===================== -->
   <div id="mainApp" class="hidden">
     <header class="topbar">
       <div class="brand">Weekly Forum<small>EFL BLOG &amp; DISCUSSION</small></div>
       <div class="who">
-        <span id="topbarVersion" style="font-family:'IBM Plex Mono',monospace;font-size:0.62rem;opacity:0.45;margin-right:8px;white-space:nowrap;"></span>
         <button class="home-btn hidden" id="homeBtn" onclick="renderDashboard()">🏠 Dashboard</button>
-        <button class="who-self" onclick="location.href='../student/'" title="Back to all tools" style="margin-right:2px;">← Hub</button>
         <button class="who-self" onclick="renderProfilePage()">
           <span id="whoName">—</span>
           <div class="avatar" id="whoAvatar">?</div>
@@ -332,11 +343,6 @@
     </header>
 
     <div id="content"></div>
-  </div>
-  <div class="card empty-note" id="sessionErrorScreen" style="display:none;max-width:400px;margin:80px auto;">
-    Couldn't find your session — please go back and open this from your dashboard.
-    <div style="margin-top:14px;"><button class="btn btn-primary" onclick="location.href='../student/'">← Back to dashboard</button></div>
-    <div class="version-tag" style="text-align:center;margin-top:12px;" id="errorScreenVersion"></div>
   </div>
 </div>
 
@@ -354,22 +360,19 @@
    backend endpoints exist.
    ==================================================================== */
 
-const API_URL = "https://script.google.com/macros/s/AKfycbw5J9WRH-wsUVkFLaTI18MBMnjv3K8WHdF3l7_GwtXTADyHPheHDxHt8E4sqbGxXz8M/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyMbuD6_z3PTOt8P_dS8TPTImZB-r1cnraENT82KGxD6eL2EGK0IxSC5spUu38SfFnX/exec";
 
 // The week shown in the Current Post tab is resolved dynamically via getCurrentWeekInfo
 // (the earliest week whose ReplyDeadline hasn't passed yet) — set once renderNewPostTab
 // loads, and reused by submitPost(). Starts null until that lookup resolves.
 let currentWeek = null;
 
-const APP_VERSION = 'v1.3 — unit-submission errors now visible, not silently swallowed';
-let authToken = null;
-
 async function callApi(action, payload) {
   try {
     const res = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" }, // avoids a CORS preflight
-      body: JSON.stringify(Object.assign({ action, token: authToken }, payload || {})),
+      body: JSON.stringify(Object.assign({ action }, payload || {})),
     });
     const json = await res.json();
     if(typeof json.success === 'undefined'){
@@ -387,8 +390,6 @@ let currentStudent = null;
 let currentStudentName = null; // full name string e.g. "Rei YAMAGUCHI", set at login
 let gotoDestination = null;    // set from ?goto= URL param, consumed once after login
 let currentClassId = null;
-let currentClassLabel = null;
-let currentTextbookTier = 'Basic';
 let currentName = null;
 let activeTab = 'dashboard';
 let currentPostData = null; // cached response from getNewPostData, so we don't refetch on every small render
@@ -414,30 +415,29 @@ function hideLoading(){
   document.getElementById('loadingOverlay').classList.remove('show');
 }
 
-/* ============ AUTH — session comes from the hub via URL params, no login screen here ============ */
-function initSessionFromUrl(){
-  const params = new URLSearchParams(window.location.search);
-  authToken = params.get('token');
-  currentStudent = params.get('studentNumber');
-  currentClassId = params.get('classId');
-  currentClassLabel = params.get('classLabel') || currentClassId;
-  currentStudentName = params.get('nameEng') || currentStudent;
-  currentName = currentStudentName;
-  currentProfilePicURL = params.get('profilePicURL') || '';
-  currentTextbookTier = params.get('textbookTier') || 'Basic';
-  const goto = params.get('goto');
-  if (goto) gotoDestination = goto;
-
-  if(!authToken || !currentStudent || !currentClassId){
-    document.getElementById('errorScreenVersion').textContent = APP_VERSION;
-    document.getElementById('sessionErrorScreen').style.display = 'block';
-    return;
+/* ============ AUTH ============ */
+async function login(){
+  const val = document.getElementById('studentNumberInput').value.trim();
+  if(!val) return;
+  document.getElementById('loginError').style.display = 'none';
+  showLoading('Logging in…');
+  const result = await callApi('studentLogin', { studentNumber: val });
+  hideLoading();
+  if(result.success){
+    currentStudent = val;
+    currentClassId = result.classId;
+    currentName = result.name;
+    currentStudentName = result.name;
+    currentProfilePicURL = result.profilePicURL || '';
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+    document.getElementById('whoName').textContent = currentName;
+    document.getElementById('whoAvatar').innerHTML = avatarInner(currentName, currentProfilePicURL);
+    renderDashboard();
+  } else {
+    document.getElementById('loginError').textContent = result.error || 'Student number not found.';
+    document.getElementById('loginError').style.display = 'block';
   }
-  document.getElementById('mainApp').classList.remove('hidden');
-  document.getElementById('topbarVersion').textContent = APP_VERSION.split(' — ')[0];
-  document.getElementById('whoName').textContent = currentName;
-  document.getElementById('whoAvatar').innerHTML = avatarInner(currentName, currentProfilePicURL);
-  renderDashboard();
 }
 
 function updateHomeButton(onDashboard){
@@ -510,13 +510,12 @@ function renderProfilePage(){
     <div class="card" style="text-align:center;">
       <div class="profile-avatar-big" id="profileAvatarBig">${avatarInner(currentName, currentProfilePicURL)}</div>
       <div class="profile-name">${currentName}</div>
-      <div class="profile-sn">${currentStudent} · ${currentClassLabel}</div>
+      <div class="profile-sn">${currentStudent} · ${currentClassId}</div>
       <div style="display:flex;gap:10px;justify-content:center;margin-top:16px;flex-wrap:wrap;">
         <button class="btn btn-primary" onclick="triggerImageUpload('profile', null, 'profileAvatarBig')">Change profile picture</button>
         ${currentProfilePicURL ? `<button class="btn btn-ghost" onclick="removeProfilePic()">Remove picture</button>` : ''}
       </div>
     </div>
-    <div class="version-tag" style="text-align:center;">${APP_VERSION}</div>
   `;
 }
 
@@ -589,7 +588,7 @@ async function renderPreviousWeekDetail(week){
 
     let membersHtml = '';
     if(data.settings.GroupsEnabled){
-      membersHtml = data.groupMembers.filter(m=>String(m.studentNumber)!==String(currentStudent)).map(m=>{
+      membersHtml = data.groupMembers.filter(m=>m.studentNumber!==currentStudent).map(m=>{
         if(m.postId){
           return `
             <div class="member-row" onclick="openPostDetail('${m.postId}', {type:'previousWeek', week:${week}})">
@@ -712,22 +711,9 @@ async function renderGrammarFeedback(week){
   const annotationData = (annotationResult.status==='fulfilled' && annotationResult.value && annotationResult.value.success) ? annotationResult.value : null;
   const annotation = (annotationData && annotationData.found) ? annotationData : null;
   const colourMap = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.colours : {};
-  const ccfSettings = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.settings : { showUntreatableErrors: true, forceGreenUnitSelection: false };
+  const ccfSettings = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.settings : { showUntreatableErrors: true };
   const grammarSubmitDeadline = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.grammarSubmitDeadline : null;
   const existingSubmission = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.existingSubmission : { found: false, unit: '', reason: '', submittedAt: '' };
-  // Prefix comes straight from SSO (set once at hub login), not a live
-  // Roster lookup on every page load — that lookup used to run on every
-  // single grammar-feedback view and was a real contributor to this page
-  // getting slow as the Roster sheet grows over a semester.
-  const unitPrefix = currentTextbookTier === 'Intermediate' ? 'I' : 'B';
-  // Computed client-side from data already being fetched (the annotation
-  // text + colourMap), instead of a separate server round-trip that
-  // re-read and re-parsed the Annotations/StudiedSet sheets a second time
-  // for the exact same week. Reuses ccfUnitState — the same function that
-  // decides on-screen highlight colours — so this can never show a unit as
-  // an option that doesn't actually render green above.
-  const greenUnitsThisWeek = annotation ? computeGreenUnitsThisWeek(annotation.annotatedText, colourMap, unitPrefix) : [];
-  const forceGreenMode = ccfSettings.forceGreenUnitSelection;
 
   const hasAnnotation = annotation && annotation.annotatedText;
 
@@ -753,20 +739,10 @@ async function renderGrammarFeedback(week){
          <span style="font-size:0.8rem;">No blog entry was submitted, so there is no grammar feedback.</span>
        </div>`;
 
-  const hasGreenThisWeek = greenUnitsThisWeek.length > 0;
-  const forcingNow = forceGreenMode && hasGreenThisWeek; // the restriction only actually bites when there's something green to enforce
-  const mistakeOptDisabled = (!hasAnnotation || (forceGreenMode && !hasGreenThisWeek)) ? 'disabled-opt' : '';
+  const mistakeOptDisabled = !hasAnnotation ? 'disabled-opt' : '';
   const mistakeOptHint = !hasAnnotation
     ? 'Not available — no entry was submitted this week.'
-    : (forceGreenMode && !hasGreenThisWeek)
-      ? 'No new (green) units in this week\u2019s feedback yet — use "Other reason" instead.'
-      : 'A new unit color coded green that matches one of the errors above.';
-  // "Other reason" is only disabled when Force Green is actually forcing
-  // something — i.e. green units genuinely exist to choose from instead.
-  // If there aren't any this week, "Other reason" is the fallback, not
-  // something to also grey out — otherwise a student with no fresh errors
-  // could never submit anything at all.
-  const otherOptDisabled = forcingNow ? 'disabled-opt' : '';
+    : 'A new unit color coded green that matches one of the errors above.';
 
   // Unit section — three states: deadline passed, deadline open + already submitted, deadline open fresh
   let unitSectionHtml;
@@ -775,7 +751,7 @@ async function renderGrammarFeedback(week){
     const previousHtml = alreadySubmitted
       ? `<div style="background:var(--paper);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-top:12px;">
            <div style="font-size:0.76rem;color:var(--ink-soft);margin-bottom:6px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;">Your submission</div>
-           <div style="font-size:0.9rem;font-weight:600;">Unit ${unitPrefix}${existingMain}</div>
+           <div style="font-size:0.9rem;font-weight:600;">Unit B${existingMain}</div>
            <div style="font-size:0.76rem;color:var(--ink-soft);margin-top:3px;">Submitted ${submittedAt}</div>
          </div>`
       : `<div style="font-size:0.82rem;color:var(--ink-soft);margin-top:10px;">No unit was submitted for this week.</div>`;
@@ -789,22 +765,11 @@ async function renderGrammarFeedback(week){
   } else {
     const btnLabel = alreadySubmitted ? 'Update submission →' : 'Submit unit →';
     const alreadyNote = alreadySubmitted
-      ? `<div style="font-size:0.76rem;color:var(--ink-soft);margin-bottom:14px;">You submitted Unit ${unitPrefix}${existingMain} on ${submittedAt} — submitting again will update your choice.</div>`
+      ? `<div style="font-size:0.76rem;color:var(--ink-soft);margin-bottom:14px;">You submitted Unit B${existingMain} on ${submittedAt} — submitting again will update your choice.</div>`
       : '';
     const countdownHtml = deadlineDate
       ? `<div id="grammarDeadlineCountdown" style="font-size:0.76rem;color:var(--ink-soft);margin-top:8px;font-family:'IBM Plex Mono',monospace;"></div>`
       : '';
-    // Force Green mode: the free-text box becomes a dropdown of exactly the
-    // units the server will actually accept, but only while there's
-    // actually something green to restrict to. With nothing green this
-    // week, this falls back to the normal free-text box — "Other reason"
-    // is the intended path in that case, not a dead end.
-    const unitInputHtml = forcingNow
-      ? `<select class="unit-num-inp" id="grammarMainUnit">
-           ${greenUnitsThisWeek.map(u => `<option value="${u}" ${u===existingMain?'selected':''}>${unitPrefix}${u}</option>`).join('')}
-         </select>`
-      : `<input class="unit-num-inp" type="text" id="grammarMainUnit" inputmode="numeric" placeholder="e.g. 11" autocomplete="off" value="${existingMain}">`;
-
     unitSectionHtml = `
       <div class="section-label">Choose your grammar unit</div>
       <div class="unit-selection-card">
@@ -812,17 +777,17 @@ async function renderGrammarFeedback(week){
         <div class="unit-sel-desc">Look at the feedback above. Choose a new grammar unit to study and tell your teacher why you chose it.</div>
         ${alreadyNote}
         <label class="reason-opt ${mistakeOptDisabled}">
-          <input type="radio" name="grammar-reason" value="mistake" ${(!hasAnnotation||mistakeOptDisabled)?'disabled':''} ${forcingNow?'checked':''} onchange="handleGrammarReason(this)">
+          <input type="radio" name="grammar-reason" value="mistake" ${!hasAnnotation?'disabled':''} onchange="handleGrammarReason(this)">
           <div>
             <span class="ro-strong">A mistake in my blog entry</span>
             <span class="ro-soft">${mistakeOptHint}</span>
           </div>
         </label>
-        <label class="reason-opt ${otherOptDisabled}">
-          <input type="radio" name="grammar-reason" value="other" ${otherOptDisabled?'disabled':''} onchange="handleGrammarReason(this)">
+        <label class="reason-opt">
+          <input type="radio" name="grammar-reason" value="other" onchange="handleGrammarReason(this)">
           <div>
             <span class="ro-strong">Other reason</span>
-            <span class="ro-soft">${forcingNow ? 'Not available — your teacher requires a green-highlighted unit this week.' : 'You will need to explain your reason.'}</span>
+            <span class="ro-soft">You will need to explain your reason.</span>
           </div>
         </label>
         <div class="other-reason-wrap" id="otherReasonWrap">
@@ -832,7 +797,7 @@ async function renderGrammarFeedback(week){
         <div style="margin:14px 0 18px;">
           <label for="grammarMainUnit" style="display:block;font-family:'IBM Plex Mono',monospace;font-size:0.64rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">New unit <span style="color:var(--stamp-red)">*</span></label>
           <div style="display:flex;gap:10px;">
-            ${unitInputHtml}
+            <input class="unit-num-inp" type="text" id="grammarMainUnit" inputmode="numeric" placeholder="e.g. 11" autocomplete="off" value="${existingMain}">
             <button class="btn btn-primary" id="grammarSubmitBtn" onclick="submitGrammarUnit(${week})" style="white-space:nowrap;">${btnLabel}</button>
           </div>
           ${countdownHtml}
@@ -871,8 +836,7 @@ async function renderGrammarFeedback(week){
   // Stored in a plain JS variable rather than serialized into the onclick
   // attribute above — no annotation content (quotes, apostrophes, anything)
   // ever has to survive HTML-attribute escaping this way.
-  window._ccfPdfData = { week, annotation: Object.assign({}, annotation||{}, {colourMap, showUntreatable: ccfSettings.showUntreatableErrors}), existingMain };
-  window._ccfUnitPrefix = unitPrefix;
+  window._ccfPdfData = { week, annotation: Object.assign({}, annotation||{}, {colourMap, showUntreatable: ccfSettings.showUntreatableErrors}), existingMain, existingSubmittedAt: submittedAt };
   if(windowOpen && deadlineDate) startGrammarDeadlineCountdown(deadlineDate, week);
   } finally {
     hideLoading();
@@ -925,16 +889,6 @@ async function submitGrammarUnit(week){
   if(!mainUnit){ showToast('Please enter a unit number.'); return; }
   if(reason.value === 'other' && !otherText){ showToast('Please explain your reason.'); return; }
 
-  // Real range for each textbook (B1-B113 / I1-I142) — same boundaries the
-  // server enforces, checked here first so an obvious typo like "1001"
-  // doesn't need a round-trip to get caught.
-  const maxUnit = (window._ccfUnitPrefix === 'I') ? 142 : 113;
-  const unitNum = Number(mainUnit);
-  if(!Number.isInteger(unitNum) || unitNum < 1 || unitNum > maxUnit){
-    showTabWarningModal('Not a real unit', `Unit ${window._ccfUnitPrefix||'B'}${mainUnit} doesn't exist — ${window._ccfUnitPrefix||'B'}1 through ${window._ccfUnitPrefix||'B'}${maxUnit} are the real range for your textbook.`);
-    return;
-  }
-
   const btn = document.getElementById('grammarSubmitBtn');
   btn.disabled = true;
   btn.textContent = 'Submitting…';
@@ -954,24 +908,12 @@ async function submitGrammarUnit(week){
       btn.disabled = false;
       btn.textContent = 'Update submission →';
       const el = document.getElementById('grammarSubmitSuccess');
-      el.textContent = data.warning
-        ? `Unit ${window._ccfUnitPrefix||'B'}${mainUnit} submitted, but: ${data.warning}`
-        : `Unit ${window._ccfUnitPrefix||'B'}${mainUnit} submitted — your teacher can see your choice.`;
+      el.textContent = `Unit B${mainUnit} submitted — your teacher can see your choice.`;
       el.classList.add('show');
     } else {
       btn.disabled = false;
       btn.textContent = 'Submit unit →';
-      const msg = data.error || "Couldn't submit. Try again.";
-      // The two server-side rejections that actually matter get the
-      // centered modal (same one used for the tab-switch warning) — easy
-      // to miss a toast for something this important, since it means the
-      // student picked a unit that can't be accepted at all, not just a
-      // typo to fix in place.
-      if (/already studied|requires choosing a unit highlighted green/i.test(msg)) {
-        showTabWarningModal('Choose a different unit', msg);
-      } else {
-        showToast(msg);
-      }
+      showToast(data.error || "Couldn't submit. Try again.");
     }
   }catch(e){
     btn.disabled = false;
@@ -988,6 +930,503 @@ async function submitGrammarUnit(week){
    is for the on-screen tooltip only. ── */
 const UNIT_TITLES = {B1:{jp:"am/is/are (be 動詞の肯定文、否定文)",en:null},B2:{jp:"am/is/are (be 動詞の疑問文)",en:null},B3:{jp:"I am doing (現在進行形)",en:null},B4:{jp:"are you doing? (現在進行形の疑問文)",en:null},B5:{jp:"I do/work/like など (単純現在形)",en:null},B6:{jp:"I don't ... (単純現在形の否定文)",en:null},B7:{jp:"Do you ... ? (単純現在形の疑問文)",en:null},B8:{jp:"I am doing と I do (現在進行形と単純現在形)",en:null},B9:{jp:"I have ... と I've got ...",en:null},B10:{jp:"was/were (be 動詞の過去形)",en:null},B11:{jp:"worked/got/went など (単純過去形)",en:null},B12:{jp:"I didn't ... Did you ... ? (単純過去形の否定文と疑問文)",en:null},B13:{jp:"I was doing (過去進行形)",en:null},B14:{jp:"I was doing と I did (過去進行形と単純過去形)",en:null},B15:{jp:"I used to + 動詞の原形",en:null},B16:{jp:"Have you ... ? (現在完了形：現在までの経験)",en:null},B17:{jp:"How long have you ... ? (現在完了形：現在までの動作や状態の継続)",en:null},B18:{jp:"for since ago",en:null},B19:{jp:"I have done と I did (現在完了形と単純過去形)",en:null},B20:{jp:"is done was done (受動態 1)",en:null},B21:{jp:"is being done has been done (受動態 2)",en:null},B22:{jp:"be/have/do (現在形と過去形における助動詞)",en:null},B23:{jp:"規則動詞と不規則動詞",en:null},B24:{jp:"What are you doing tomorrow? (未来を表す be + -ing)",en:null},B25:{jp:"I'm going to + 動詞の原形",en:null},B26:{jp:"will",en:null},B27:{jp:"might",en:null},B28:{jp:"can と could",en:null},B29:{jp:"must",en:null},B30:{jp:"should",en:null},B31:{jp:"I have to + 動詞の原形",en:null},B32:{jp:"Would you like ... ? I'd like ...",en:null},B33:{jp:"I'd rather + 動詞の原形",en:null},B34:{jp:"Do this! Don't do that! Let's do this! (命令文)",en:null},B35:{jp:"there is there are (there + be 動詞構文 1)",en:null},B36:{jp:"there was/were there has/have been there will be (there + be 動詞構文 2)",en:null},B37:{jp:"「それ」という意味を持たない it",en:null},B38:{jp:"I am, I don't など (肯定文、否定文の後に続く語句の省略)",en:null},B39:{jp:"Have you?/Are you? など (聞き返し疑問と付加疑問)",en:null},B40:{jp:"too/either so am I/neither do I など",en:null},B41:{jp:"isn't, haven't, don't など (様々な否定文)",en:null},B42:{jp:"Is it ... ? Have you ... ? Do they ... ? など (疑問文 1)",en:null},B43:{jp:"Who saw you? Who did you see? (疑問文 2)",en:null},B44:{jp:"Who is she talking to? What is it like? (疑問文 3)",en:null},B45:{jp:"What ... ? Which ... ? How ... ? (疑問文 4)",en:null},B46:{jp:"How long does it take to + 動詞の原形 (…にはどのくらい時間がかかりますか)",en:null},B47:{jp:"Do you know where ... ? I don't know what ... など (間接疑問文)",en:null},B48:{jp:"She said that ... He told me that ... (間接話法)",en:null},B49:{jp:"work/working go/going do/doing (動詞の原形と -ing)",en:null},B50:{jp:"I want to do I enjoy doing (動詞の後ろに入る「to + 動詞の原形」と -ing)",en:null},B51:{jp:"I want you to ... / I told you to ... (want/tell + 人 + to + 動詞の原形)",en:null},B52:{jp:"I went to the store to + 動詞の原形 (目的を表す不定詞)",en:null},B53:{jp:"go to/on/for + 名詞句 go + -ing",en:null},B54:{jp:"get",en:null},B55:{jp:"do と make",en:null},B56:{jp:"have",en:null},B57:{jp:"I/me he/him they/them など (代名詞の主格と目的格)",en:null},B58:{jp:"my/his/their など (代名詞の所有格)",en:null},B59:{jp:"Whose is this? It's mine/yours/hers など (代名詞の所有格と独立所有格)",en:null},B60:{jp:"I/me/my/mine など (代名詞の格)",en:null},B61:{jp:"myself/yourself/themselves など (再帰代名詞)",en:null},B62:{jp:"-'s (Kate's camera/my brother's car など)",en:null},B63:{jp:"a/an (不定冠詞)",en:null},B64:{jp:"train(s) bus(es) (単数形と複数形)",en:null},B65:{jp:"a bottle / some water (可算名詞と不可算名詞 1)",en:null},B66:{jp:"a cake / some cake / some cakes (可算名詞と不可算名詞 2)",en:null},B67:{jp:"a/an と the (不定冠詞と定冠詞)",en:null},B68:{jp:"the ... (the の付く名詞と付かない名詞 1)",en:null},B69:{jp:"go to work go home go to the hospital (the の付く名詞と付かない名詞 2)",en:null},B70:{jp:"I like music I hate exams (the の付く名詞と付かない名詞 3)",en:null},B71:{jp:"the + 場所の名前",en:null},B72:{jp:"this/that/these/those",en:null},B73:{jp:"one/ones",en:null},B74:{jp:"some と any",en:null},B75:{jp:"not + any / no + 名詞 / none",en:null},B76:{jp:"not + anybody/anyone/anything nobody / no one / nothing",en:null},B77:{jp:"somebody/anything/nowhere など",en:null},B78:{jp:"every と all",en:null},B79:{jp:"all most some any no/none",en:null},B80:{jp:"both/either/neither",en:null},B81:{jp:"a lot / much / many",en:null},B82:{jp:"(a) little / (a) few",en:null},B83:{jp:"old/nice/interesting など (形容詞)",en:null},B84:{jp:"quickly/badly/suddenly など (副詞)",en:null},B85:{jp:"old / older expensive / more expensive (比較級 1)",en:null},B86:{jp:"older than ... more expensive than ... (比較級 2)",en:null},B87:{jp:"not as ... as (原級を用いた比較)",en:null},B88:{jp:"the oldest the most expensive (最上級)",en:null},B89:{jp:"enough",en:null},B90:{jp:"too",en:null},B91:{jp:"He speaks English very well. (語順 1：動詞─目的語、場所─時)",en:null},B92:{jp:"always/usually/often など (語順 2：時を表す副詞)",en:null},B93:{jp:"still yet already",en:null},B94:{jp:"Give me that book! Give it to me! (「動詞 + 物 + to 人」と「動詞 + 人 + 物」)",en:null},B95:{jp:"and but or so because (2 つの文をつなぐ接続詞)",en:null},B96:{jp:"when ... (時を表す節)",en:null},B97:{jp:"If we go ... If you see ... など (起きるかもしれない出来事を仮定する if 節)",en:null},B98:{jp:"If I had ... If we went ... など (事実に反することを仮定する if 節)",en:null},B99:{jp:"a person who ... a thing that/which ... (関係詞節 1：主語であることを示す関係代名詞)",en:null},B100:{jp:"the people we met the hotel you stayed at (関係詞節 2：目的語を示す関係代名詞の省略)",en:null},B101:{jp:"at 8:00 on Monday in April (時を表す前置詞)",en:null},B102:{jp:"from ... to until since for (期間を表す前置詞)",en:null},B103:{jp:"before after during while (「前・後・間」を表す前置詞／接続詞)",en:null},B104:{jp:"in/at/on (場所を表す前置詞 1)",en:null},B105:{jp:"in/at/on (場所を表す前置詞 2)",en:null},B106:{jp:"to/in/at (場所を表す前置詞 3)",en:null},B107:{jp:"next to, between, under など (位置関係を表す前置詞)",en:null},B108:{jp:"up, over, through など (方向を表す前置詞)",en:null},B109:{jp:"on/at/by/with/about (前置詞のその他の用法)",en:null},B110:{jp:"afraid of ... , good at ... など of/at/for など + -ing (「形容詞 + 前置詞」と「前置詞 + -ing」)",en:null},B111:{jp:"listen to ... , look at ... など (動詞 + 前置詞)",en:null},B112:{jp:"go in, fall off, run away など (句動詞 1：句動詞と動作の方向)",en:null},B113:{jp:"put on your shoes put your shoes on (句動詞 2：句動詞と目的語)",en:null},I1:{jp:"現在進行形 (I am doing)",en:null},I2:{jp:"単純現在形 (I do)",en:null},I3:{jp:"現在進行形と単純現在形 1 (I am doing と I do)",en:null},I4:{jp:"現在進行形と単純現在形 2 (I am doing と I do)",en:null},I5:{jp:"単純過去形 (I did)",en:null},I6:{jp:"過去進行形 (I was doing)",en:null},I7:{jp:"現在完了形 (I have done)",en:null},I8:{jp:"現在完了形と過去形 1 (I have done と I did)",en:null},I9:{jp:"現在完了進行形 (I have been doing)",en:null},I10:{jp:"現在完了進行形と現在完了形 (I have been doing と I have done)",en:null},I11:{jp:"How long have you (been) ... ?",en:null},I12:{jp:"for と since　When ... ? と How long ... ?",en:null},I13:{jp:"現在完了形と過去形 2 (I have done と I did)",en:null},I14:{jp:"過去完了形 (I had done)",en:null},I15:{jp:"過去完了進行形 (I had been doing)",en:null},I16:{jp:"have と have got",en:null},I17:{jp:"used to + 動詞の原形",en:null},I18:{jp:"未来の意味を表す現在時制 (I am doing / I do)",en:null},I19:{jp:"I'm going to (do)",en:null},I20:{jp:"will 1",en:null},I21:{jp:"will 2",en:null},I22:{jp:"I will と I'm going to",en:null},I23:{jp:"will be doing と will have done",en:null},I24:{jp:"when I do / when I've done　if と when (従属節内の時制)",en:null},I25:{jp:"can, could と (be) able to",en:null},I26:{jp:"could (do) と could have (done)",en:null},I27:{jp:"must と can't",en:null},I28:{jp:"may と might 1",en:null},I29:{jp:"may と might 2",en:null},I30:{jp:"have to と must",en:null},I31:{jp:"should",en:null},I32:{jp:"仮定法 (I suggest you do)",en:null},I33:{jp:"I'd better ... It's time ...",en:null},I34:{jp:"would",en:null},I35:{jp:"Can/Could/Would you ... ? など (要求・申し出・許可・勧誘)",en:null},I36:{jp:"if I do ... , if I did ...",en:null},I37:{jp:"if I knew ... , I wish I knew ...",en:null},I38:{jp:"if I had known ... , I wish I had known ...",en:null},I39:{jp:"wish",en:null},I40:{jp:"受動態 1 (is done / was done)",en:null},I41:{jp:"受動態 2 (be done / been done / being done)",en:null},I42:{jp:"受動態 3",en:null},I43:{jp:"It is said that ...　He is said to ...　He is supposed to ...",en:null},I44:{jp:"have/get ～ done",en:null},I45:{jp:"間接話法 1 (He said that ...)",en:null},I46:{jp:"間接話法 2",en:null},I47:{jp:"疑問文 1",en:null},I48:{jp:"疑問文 2 (間接疑問文) Do you know where ... ? / He asked me where ...",en:null},I49:{jp:"助動詞 (have/do/can など) I think so / I hope so などを用いて繰り返しを避ける表現",en:null},I50:{jp:"付加疑問 (..., do you? / ..., isn't it? など)",en:null},I51:{jp:"動詞 + -ing (enjoy doing / stop doing など)",en:null},I52:{jp:"動詞 + to ～ (decide to + 動詞の原形 / forget to + 動詞の原形 など)",en:null},I53:{jp:"動詞 + (目的語) + to ～ (I want you to + 動詞の原形 など)",en:null},I54:{jp:"動詞 + -ing と 動詞 + to + 動詞の原形 1 (remember/regret など)",en:null},I55:{jp:"動詞 + -ing と 動詞 + to + 動詞の原形 2 (try/need/help)",en:null},I56:{jp:"動詞 + -ing と 動詞 + to + 動詞の原形 3 (like / would like など)",en:null},I57:{jp:"prefer と would rather",en:null},I58:{jp:"前置詞 (in/for/about など) + -ing",en:null},I59:{jp:"be/get used to do ... (I'm used to ...)",en:null},I60:{jp:"動詞 + 前置詞 + -ing (succeed in -ing / insist on -ing など)",en:null},I61:{jp:"There is no point in -ing, it's worth -ing など",en:null},I62:{jp:"to + 動詞の原形, for ... と so that ... (目的を表す表現)",en:null},I63:{jp:"形容詞 + to + 動詞の原形",en:null},I64:{jp:"to + 動詞の原形 (afraid to do) と前置詞 + -ing (afraid of -ing)",en:null},I65:{jp:"see ～ do と see ～ doing",en:null},I66:{jp:"-ing 句 (分詞構文：He hurt his knee playing football.)",en:null},I67:{jp:"可算名詞と不可算名詞 1",en:null},I68:{jp:"可算名詞と不可算名詞 2",en:null},I69:{jp:"可算名詞の前に置く a/an や some の用法",en:null},I70:{jp:"a/an と the",en:null},I71:{jp:"the の用法 1",en:null},I72:{jp:"the の用法 2 (school / the school など)",en:null},I73:{jp:"the の用法 3 (children / the children など)",en:null},I74:{jp:"the の用法 4 (the giraffe / the telephone / the old など)",en:null},I75:{jp:"the の付く固有名詞、付かない固有名詞 1",en:null},I76:{jp:"the の付く固有名詞、付かない固有名詞 2",en:null},I77:{jp:"単数か複数か注意すべき名詞",en:null},I78:{jp:"名詞 + 名詞で作られる名詞 (a bus driver/ a headache など)",en:null},I79:{jp:"-'s (your sister's name) と of ... (the name of the book)",en:null},I80:{jp:"myself/yourself/themselves などの再帰代名詞",en:null},I81:{jp:"a friend of mine　my own house　on my own / by myself",en:null},I82:{jp:"there ... と it ...",en:null},I83:{jp:"some と any",en:null},I84:{jp:"no/none/any　nothing/nobody など",en:null},I85:{jp:"much, many, little, few, a lot, plenty",en:null},I86:{jp:"all / all of　most / most of　no / none of など",en:null},I87:{jp:"both / both of　neither / neither of　either / either of",en:null},I88:{jp:"all　every　whole",en:null},I89:{jp:"each と every",en:null},I90:{jp:"関係代名詞 1：主格の who/that/which を持つ関係代名詞",en:null},I91:{jp:"関係代名詞 2：目的格の who/that/which を持つ関係代名詞とその省略",en:null},I92:{jp:"関係代名詞 3：whose/whom/where を持つ関係代名詞",en:null},I93:{jp:"関係代名詞 4：(追加情報を示す)継続用法としての関係代名詞(1)",en:null},I94:{jp:"関係代名詞 5：(追加情報を示す)継続用法としての関係代名詞(2)",en:null},I95:{jp:"-ing 句 と -ed 句 (the woman talking to Tom, the boy injured in the accident)",en:null},I96:{jp:"-ing や -ed の語尾を持つ形容詞 (boring/bored など)",en:null},I97:{jp:"形容詞の語順：a nice new house, you look tired",en:null},I98:{jp:"形容詞と副詞 1 (quick/quickly)",en:null},I99:{jp:"形容詞と副詞 2 (well, fast, late, hard/hardly)",en:null},I100:{jp:"so と such",en:null},I101:{jp:"enough と too",en:null},I102:{jp:"比較 1 (cheaper, more expensive など)",en:null},I103:{jp:"比較 2 (much better / any better など)",en:null},I104:{jp:"比較 3 (as ～ as ... / than)",en:null},I105:{jp:"最上級 (the longest / the most enjoyable など)",en:null},I106:{jp:"語順 1：「動詞＋目的語」と「場所＋時」の語順",en:null},I107:{jp:"語順 2：副詞と結び付く動詞の語順",en:null},I108:{jp:"still　anymore　yet　already",en:null},I109:{jp:"even",en:null},I110:{jp:"although　though　even though　in spite of　despite",en:null},I111:{jp:"in case",en:null},I112:{jp:"unless　as long as　provided",en:null},I113:{jp:"as (as I walked ... / as I was ... など)",en:null},I114:{jp:"like と as",en:null},I115:{jp:"like　as if",en:null},I116:{jp:"during　for　while",en:null},I117:{jp:"by と until　by the time ...",en:null},I118:{jp:"at/on/in (時を表す前置詞)",en:null},I119:{jp:"on time と in time　at the end と in the end",en:null},I120:{jp:"in/at/on (場所を表す前置詞) 1",en:null},I121:{jp:"in/at/on (場所を表す前置詞) 2",en:null},I122:{jp:"in/at/on (場所を表す前置詞) 3",en:null},I123:{jp:"to, at, in と into",en:null},I124:{jp:"in/on/at (その他の用法)",en:null},I125:{jp:"by",en:null},I126:{jp:"名詞 + 前置詞 (reason for, cause of などの前置詞と結び付く名詞)",en:null},I127:{jp:"形容詞 + 前置詞 1",en:null},I128:{jp:"形容詞 + 前置詞 2",en:null},I129:{jp:"動詞 + 前置詞 1：to と at",en:null},I130:{jp:"動詞 + 前置詞 2：about/for/of/after",en:null},I131:{jp:"動詞 + 前置詞 3：about と of",en:null},I132:{jp:"動詞 + 前置詞 4：of/for/from/on",en:null},I133:{jp:"動詞 + 前置詞 5：in/into/with/to/on",en:null},I134:{jp:"句動詞 1：「句動詞」とは？",en:null},I135:{jp:"句動詞 2：in/out",en:null},I136:{jp:"句動詞 3：out",en:null},I137:{jp:"句動詞 4：on/off (1)",en:null},I138:{jp:"句動詞 5：on/off (2)",en:null},I139:{jp:"句動詞 6：up/down",en:null},I140:{jp:"句動詞 7：up (1)",en:null},I141:{jp:"句動詞 8：up (2)",en:null},I142:{jp:"句動詞 9：away/back",en:null}};
 
+/* ── Annotation renderer — CCF format. Uses ccfTokenize (also used by
+   downloadCCFReflectionSheet) so the on-screen view and the printed sheet
+   are always reading the exact same tags the same way. Never shows the
+   correction — only the error span/caret, the code, and the unit. ── */
+const CCF_CODE_LABELS={VT:'Verb Tense',SVA:'Subject-Verb Agreement',ART:'Articles',PREP:'Prepositions',WF:'Word Form',SP:'Singular / Plural',WO:'Word Order',MOD:'Modal Verbs',CL:'Clause-level Error',ME:'Missing / Extra Words',SC:'Spelling & Capitalisation',PU:'Punctuation',COL:'Collocation',WC:'Word Choice',IDM:'Idiom',AWK:'Awkward Phrasing'};
+function buildAnnotatedHtml(text, colourMap, showUntreatable){
+  function esc(s){ return s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''; }
+  const tokens = ccfTokenize(text, colourMap, showUntreatable);
+  const parts = tokens.map(t=>{
+    if(t.break) return '<br><br>';
+    if(t.indent) return '<span class="ccf-indent"></span>';
+    if(!t.style) return esc(t.text);
+    const noUnit = t.style.state==='purple' || t.style.state==='grey';
+    let tip = `<div class="tt-code">${esc(CCF_CODE_LABELS[t.style.code]||t.style.code)}</div>`;
+    if(!noUnit && t.style.primaryUnit){
+      const titleInfo = UNIT_TITLES[t.style.primaryUnit];
+      const titleText = titleInfo ? (titleInfo.jp || titleInfo.en || '') : '';
+      tip += `<div class="tt-unit"><span class="tt-num">${esc(t.style.primaryUnit)}</span>${titleText ? `<span class="tt-title">${esc(titleText)}</span>` : ''}</div>`;
+      if(t.style.secondaryUnit) tip += `<div class="tt-title" style="opacity:.7;margin-top:2px;">also see ${esc(t.style.secondaryUnit)}</div>`;
+    }
+    if(t.style.border) tip += `<div class="tt-title" style="opacity:.7;margin-top:2px;">Assigned by your teacher this cycle</div>`;
+    const borderClass = t.style.border ? ' ccf-border' : '';
+    return `<span class="ccf-tag ccf-${t.style.state}${borderClass}">${esc(t.text)}<span class="err-tt">${tip}</span></span>`;
+  });
+  let html='';
+  for(let i=0;i<parts.length;i++){
+    if(i>0 && parts[i]!=='<br><br>' && parts[i-1]!=='<br><br>' && parts[i-1]!=='<span class="ccf-indent"></span>') html+=' ';
+    html+=parts[i];
+  }
+  return html;
+}
+
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   CCF REFLECTION SHEET — see CCF_handover.md §7
+   One page: blog entry (colour + code + unit, NEVER the correction, once
+   real annotation data exists — falls back to plain text otherwise) + New
+   Unit box + Teacher Check (in-class / homework) + Sentence 1 (new unit)
+   + Sentence 2 (recurring). No Analysis field, no checkboxes (Decision
+   #12). Sentence-finding is the student's job (Decision #11).
+   Validated through many rounds of layout iteration in a standalone test
+   script before being ported here — see conversation history if the
+   reasoning behind a specific spacing/colour choice needs revisiting.
+   ══════════════════════════════════════════════════════════════════════ */
+
+const CCF_M = 12, CCF_W = 210 - CCF_M*2;
+
+// ── Colour/recurrence engine STUB ───────────────────────────────────────
+// The real engine (StudiedSet + per-semester recurrence counts, CCF §4) is
+// not built yet, so every treatable error defaults to green (Decision #4:
+// no study history recorded = "not yet studied," never higher). Purple is
+// real, not a stub (SC/PU never carry a unit or history — that's a fact
+// about the code). Grey is also real: COL/WC/IDM/AWK (untreatable errors)
+// are never colour-coded to a unit and never selectable as a study unit,
+// but they're never silently dropped either — a class-wide toggle for
+// whether grey actually renders to students doesn't exist yet (would need
+// a new Settings field); for now grey always renders.
+const CCF_COLORS = {
+  green:  {fill:[219,242,229], text:[26,58,42]},
+  yellow: {fill:[253,244,205], text:[102,79,8]},
+  orange: {fill:[253,225,196], text:[120,58,10]},
+  red:    {fill:[252,220,220], text:[110,28,28]},
+  purple: {fill:[230,222,247], text:[74,42,128]},
+  grey:   {fill:[230,230,228], text:[90,90,86]},
+};
+// colourMap is {unit: {colour, border}} for THIS WEEK specifically — fetched
+// via getColourStateForWeek, one frozen snapshot per week. A unit absent from
+// the map (never studied, or studied but this is its first post-study
+// occurrence, or unstudied+unscaffolded) correctly defaults to green/no border.
+function ccfUnitState(code, unit, colourMap){
+  if(!code) return null;
+  if(code==='SC'||code==='PU') return 'purple';
+  if(code==='COL'||code==='WC'||code==='IDM'||code==='AWK') return 'grey';
+  if(unit && colourMap && colourMap[unit]) return colourMap[unit].colour;
+  return 'green';
+}
+// Border (CCF §4.5 scaffold-failure flag) is always green when it fires —
+// never coexists with yellow/orange/red (a studied unit is never bordered).
+function ccfUnitBorder(unit, colourMap){
+  return !!(unit && colourMap && colourMap[unit] && colourMap[unit].border);
+}
+function ccfTagFor(style){
+  const noUnit = style.state==='purple' || style.state==='grey';
+  return noUnit ? style.code : style.code + (style.primaryUnit ? '\u00b7'+style.primaryUnit : '');
+}
+
+// ── Tokenize the CCF tag format into word-level tokens ──────────────────
+// Tag shapes: {span|CODE|UNIT}, {span|CODE|UNIT1/UNIT2} (dual-unit,
+// slash-separated), {^|CODE|UNIT} (omission, caret only — never the
+// missing word), {span|CODE} (no unit — SC/PU/COL/WC/IDM/AWK).
+// colourMap: this week's frozen {unit: {colour, border}} snapshot.
+// showUntreatable: class Settings toggle — when false, COL/WC/IDM/AWK tokens
+// are treated as plain text (no style at all) so BOTH the on-screen view and
+// the PDF automatically stay consistent without each needing their own check.
+// The underlying tag stays in annotatedText regardless — this only affects
+// rendering, never the stored data.
+// ── Fixed ccfTokenize: pre-scans paragraph indentation on the ORIGINAL
+// text (before tag matching), so an annotated word appearing as a
+// paragraph's very first token still correctly triggers the indent —
+// this can't rely on per-call whitespace detection alone, since a tag
+// match can split a paragraph's leading whitespace away from its first
+// word. ──
+function ccfTokenize(text, colourMap, showUntreatable){
+  const re=/\{(\^|[^{}|]*)\|([A-Z]+)(?:\|([BI]\d+(?:\/[BI]\d+)?))?\}/g;
+  const tokens=[]; let last=0, m;
+
+  const paraTexts = text.split(/\n\s*\n/);
+  const paraIndents = paraTexts.map(p => /^[ \t]+\S/.test(p));
+  let paraIdx = 0;
+  let needIndentMarker = paraIndents[0];
+
+  function pushWords(str, style){
+    String(str).split(/\n\s*\n/).forEach((para, i, arr)=>{
+      if(needIndentMarker){ tokens.push({indent:true}); needIndentMarker=false; }
+      para.split(/\s+/).filter(Boolean).forEach(w=> tokens.push({text:w, style}));
+      if(i < arr.length-1){
+        tokens.push({break:true});
+        paraIdx++;
+        needIndentMarker = paraIndents[paraIdx];
+      }
+    });
+  }
+  while((m=re.exec(text))!==null){
+    pushWords(text.slice(last, m.index), null);
+    const span=m[1], code=m[2].trim();
+    const unitRaw=m[3]?m[3].trim():'';
+    const [primaryUnit, secondaryUnit] = unitRaw ? unitRaw.split('/') : [null,null];
+    let state=ccfUnitState(code, primaryUnit, colourMap);
+    if(state==='grey' && showUntreatable===false) state=null;
+    const noUnit = state==='purple' || state==='grey';
+    const border = (!state || noUnit) ? false : ccfUnitBorder(primaryUnit, colourMap);
+    const style = state ? {code, primaryUnit: noUnit?null:primaryUnit, secondaryUnit: noUnit?null:secondaryUnit, state, border} : null;
+    if(needIndentMarker){ tokens.push({indent:true}); needIndentMarker=false; }
+    if(span==='^'){
+      tokens.push({text:'^', style});
+    } else {
+      span.trim().split(/\s+/).filter(Boolean).forEach(w=> tokens.push({text:w, style}));
+    }
+    last = m.index+m[0].length;
+  }
+  pushWords(text.slice(last), null);
+  return tokens;
+}
+
+function ccfLayoutAnnotated(doc, tokens, fontSize, maxWidth){
+  const tagFontSize = fontSize*0.62;
+  doc.setFont('helvetica','normal'); doc.setFontSize(fontSize);
+  const spaceW = doc.getTextWidth(' ');
+  const widths = tokens.map(t=>{
+    if(t.break || t.indent) return 0;
+    doc.setFont('helvetica', t.style?'bold':'normal'); doc.setFontSize(fontSize);
+    let w = doc.getTextWidth(t.text);
+    if(t.style){
+      doc.setFont('helvetica','normal'); doc.setFontSize(tagFontSize);
+      w += doc.getTextWidth(' ['+ccfTagFor(t.style)+']');
+    }
+    return w;
+  });
+  doc.setFont('helvetica','normal'); doc.setFontSize(fontSize);
+  const lines=[]; let cur=[]; let curW=0;
+  let pendingIndent = false;
+  tokens.forEach((t,i)=>{
+    if(t.indent){ pendingIndent = true; return; }
+    if(t.break){ if(cur.length){lines.push(cur); cur=[]; curW=0;} lines.push([]); return; }
+    const w=widths[i];
+    const add = cur.length? spaceW+w : w;
+    if(curW+add>maxWidth && cur.length){ lines.push(cur); cur=[]; curW=0; }
+    if(cur.length===0 && pendingIndent){ cur.indent = true; pendingIndent = false; }
+    cur.push(t); curW += (cur.length>1?spaceW:0)+w;
+  });
+  if(cur.length) lines.push(cur);
+  return lines;
+}
+function ccfDrawAnnotated(doc, tokens, x0, y0, fontSize, lineHeight, maxWidth){
+  const lines = ccfLayoutAnnotated(doc, tokens, fontSize, maxWidth);
+  doc.setFont('helvetica','normal'); doc.setFontSize(fontSize);
+  const spaceW = doc.getTextWidth(' ');
+  const tagFontSize = fontSize*0.62;
+  const PARA_INDENT_MM = 5;
+  let y=y0;
+  lines.forEach(line=>{
+    let x=x0 + (line.indent ? PARA_INDENT_MM : 0);
+    line.forEach(t=>{
+      doc.setFont('helvetica', t.style?'bold':'normal'); doc.setFontSize(fontSize);
+      let w = doc.getTextWidth(t.text);
+      let tagStr = null, tagW=0;
+      if(t.style){
+        tagStr = ' ['+ccfTagFor(t.style)+']';
+        doc.setFont('helvetica','normal'); doc.setFontSize(tagFontSize);
+        tagW = doc.getTextWidth(tagStr);
+      }
+      if(t.style){
+        const c = CCF_COLORS[t.style.state];
+        doc.setFillColor(...c.fill);
+        doc.roundedRect(x-0.6, y-fontSize*0.34, w+tagW+1.2, fontSize*0.48, 0.5, 0.5, 'F');
+        if(t.style.border){
+          doc.setDrawColor(42,122,78); doc.setLineWidth(0.35);
+          doc.roundedRect(x-0.6, y-fontSize*0.34, w+tagW+1.2, fontSize*0.48, 0.5, 0.5, 'S');
+        }
+        doc.setTextColor(...c.text);
+      } else {
+        doc.setTextColor(40,40,40);
+      }
+      doc.setFont('helvetica', t.style?'bold':'normal'); doc.setFontSize(fontSize);
+      doc.text(t.text, x, y);
+      x += w;
+      if(tagStr){
+        doc.setFont('helvetica','normal'); doc.setFontSize(tagFontSize);
+        doc.text(tagStr, x, y);
+        x += tagW;
+      }
+      x += spaceW;
+    });
+    y += lineHeight;
+  });
+  return y;
+}
+
+// ── Layout helpers for the CCF reflection sheet — one physical sheet,
+// front + back (see ccfDrawReflectionSheet for the full page structure). ──
+function ccfRuled(doc, y, n, gap, width){
+  const w = width || CCF_W;
+  for(let i=0;i<n;i++){
+    doc.setDrawColor(61,90,115); doc.setLineWidth(0.35);
+    doc.line(CCF_M+2, y, CCF_M+2+w, y);
+    if(i < n-1) y += gap; // advance only BETWEEN lines, not after the last one —
+                          // an earlier version of this function advanced past
+                          // the last line too, silently baking in a hidden
+                          // trailing gap that made every "gap after ruled
+                          // lines" tuning downstream ineffective. Confirmed
+                          // and fixed; every gap below is the true, actual
+                          // visible gap now.
+  }
+  return y;
+}
+function ccfFieldLabel(doc, y, text){
+  doc.setFontSize(7.2); doc.setFont('helvetica','bold'); doc.setTextColor(91,99,88);
+  doc.text(text.toUpperCase(), CCF_M+2, y);
+  return y + 5.2;
+}
+
+// "How I fixed each mark" table — one row per annotation, deliberately not
+// scaled to how many the student actually used: a thin table under a
+// heavily-annotated sentence is the whole point of the fast in-class scan
+// (count-vs-count, not a reading task). Fixed at 5 rows. Unit/Page columns
+// are narrow (real content is 2-3 characters); Why? gets the most room.
+const CCF_TABLE_COLS = [
+  { label:'What I changed', frac:0.36 },
+  { label:'Unit',           frac:0.06 },
+  { label:'Page',           frac:0.06 },
+  { label:'Why?',           frac:0.52 },
+];
+function ccfDrawFixTable(doc, y, rows, width){
+  const tableStart = y;
+  const rowH = 6.3, headerH = 5;
+  let x = CCF_M + 2;
+  const colX = [];
+  CCF_TABLE_COLS.forEach(c => { colX.push(x); x += width * c.frac; });
+  colX.push(CCF_M + 2 + width);
+  doc.setFillColor(240,240,236);
+  doc.rect(CCF_M+2, y, width, headerH, 'F');
+  doc.setFontSize(6.3); doc.setFont('helvetica','bold'); doc.setTextColor(91,99,88);
+  CCF_TABLE_COLS.forEach((c,i) => { doc.text(c.label, colX[i]+1.5, y+3.6); });
+  y += headerH;
+  doc.setDrawColor(180,183,176); doc.setLineWidth(0.25);
+  for(let r=0;r<rows;r++){ doc.line(CCF_M+2, y+rowH, CCF_M+2+width, y+rowH); y += rowH; }
+  const tableEnd = y;
+  doc.setDrawColor(91,99,88); doc.setLineWidth(0.4);
+  doc.rect(CCF_M+2, tableStart, width, tableEnd-tableStart, 'S');
+  doc.setDrawColor(180,183,176); doc.setLineWidth(0.25);
+  for(let i=1;i<colX.length-1;i++){ doc.line(colX[i], tableStart, colX[i], tableEnd); }
+  return tableEnd;
+}
+
+// One "Sentence N" in-class correction block: colored title bar (green for
+// the new-unit sentence, yellow for the recurring-error sentence) merged
+// onto one line with "CORRECTIONS", full page width (no gutter) ->
+// Corrections (2 lines) -> My Finished Attempt (2 lines) -> fix table.
+function ccfDrawSentenceBlock(doc, y, sentenceNum, subtitle, fillColor, textColor){
+  const boxTop = y;
+  const titleBarTop = boxTop + 1.2;
+  const titleBarH = 6.5;
+  doc.setFillColor(...fillColor);
+  doc.rect(CCF_M+0.3, titleBarTop, CCF_W-0.6, titleBarH, 'F');
+  let ty = titleBarTop + titleBarH/2 + 1.5;
+  doc.setFontSize(7.2); doc.setFont('helvetica','bold'); doc.setTextColor(...textColor);
+  doc.text(`SENTENCE ${sentenceNum} (${subtitle.toUpperCase()}) - CORRECTIONS`, CCF_M+2, ty);
+
+  let y2 = boxTop + 1.2 + titleBarH + 4.5;
+  y2 = ccfRuled(doc, y2, 2, 5.8, CCF_W-4) + 3.8;
+  y2 = ccfFieldLabel(doc, y2, 'My Finished Attempt');
+  y2 = ccfRuled(doc, y2, 2, 5.8, CCF_W-4) + 1.2;
+  y2 = ccfDrawFixTable(doc, y2, 5, CCF_W-4);
+  const boxBottom = y2 + 5;
+  doc.setDrawColor(91,99,88); doc.setLineWidth(0.5);
+  doc.roundedRect(CCF_M-2, boxTop, CCF_W+4, boxBottom-boxTop, 2, 2, 'S');
+  return boxBottom;
+}
+
+// New Unit box only now - In-class Completion checkbox removed. It's no
+// longer needed: since page 1 (the in-class page) is now its own separate
+// handed-in sheet rather than the front of a double-sided page, there's no
+// completion-tracking purpose left for a checkbox living on this specific
+// row to serve.
+function ccfDrawUnitRow(doc, y, newUnitValue, submittedAt){
+  doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(91,99,88);
+  doc.text('NEW UNIT', CCF_M, y);
+  const newUnitLabelW = doc.getTextWidth('NEW UNIT');
+  const newUnitBoxX = CCF_M + newUnitLabelW + 2.5;
+  doc.setDrawColor(61,90,115); doc.setLineWidth(0.4);
+  doc.roundedRect(newUnitBoxX, y-4.4, 16, 6, 1, 1, 'S');
+  if(newUnitValue){
+    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(32,38,31);
+    doc.text(String(newUnitValue), newUnitBoxX+3, y);
+  }
+  if(newUnitValue && submittedAt){
+    doc.setFontSize(6.3); doc.setFont('helvetica','italic'); doc.setTextColor(120,126,116);
+    doc.text(`Submitted by student on ${submittedAt}`, newUnitBoxX + 16 + 4, y);
+  }
+  return y + 5;
+}
+
+// New take-home box: lets the student copy down their two in-class
+// attempts before starting the homework below, since page 1 (with their
+// actual in-class writing) gets handed in separately now rather than
+// living on the back of this same physical sheet. Plain bordered box, no
+// colored title bar - this isn't tied to either sentence's own color
+// coding, just a shared staging area for both.
+function ccfDrawInClassAttemptsBox(doc, y){
+  const boxTop = y;
+  let y2 = boxTop + 5;
+  y2 = ccfFieldLabel(doc, y2, 'In-Class Attempts');
+  y2 = ccfFieldLabel(doc, y2, 'Sentence 1:');
+  y2 = ccfRuled(doc, y2, 2, 5.8, CCF_W-4) + 3.8;
+  y2 = ccfFieldLabel(doc, y2, 'Sentence 2:');
+  y2 = ccfRuled(doc, y2, 2, 5.8, CCF_W-4) + 3;
+  const boxBottom = y2;
+  doc.setDrawColor(91,99,88); doc.setLineWidth(0.5);
+  doc.roundedRect(CCF_M-2, boxTop, CCF_W+4, boxBottom-boxTop, 2, 2, 'S');
+  return boxBottom + 4;
+}
+
+// Weekend homework block — same colored-title-bar treatment as its
+// matching in-class sentence block, so the two stay visually linked
+// across both pages. 2 lines for the confirmed sentence (matches the
+// front page's field pattern), 8 lines for the AI's explanation (real
+// Gemini output runs several sentences — verified against actual
+// responses, not assumed. Bumped from 5 to 8 once the extra vertical
+// room freed up by moving this to its own standalone page was confirmed
+// safe against the page's print margin).
+function ccfDrawHomeworkBlock(doc, y, sentenceNum, fillColor, textColor){
+  const boxTop = y;
+  const titleBarTop = boxTop + 1.2;
+  const titleBarH = 6.5;
+  doc.setFillColor(...fillColor);
+  doc.rect(CCF_M+0.3, titleBarTop, CCF_W-0.6, titleBarH, 'F');
+  let ty = titleBarTop + titleBarH/2 + 1.5;
+  doc.setFontSize(7.2); doc.setFont('helvetica','bold'); doc.setTextColor(...textColor);
+  doc.text(`SENTENCE ${sentenceNum} — AI CHECK`, CCF_M+2, ty);
+
+  let y2 = boxTop + 1.2 + titleBarH + 4.5;
+  y2 = ccfFieldLabel(doc, y2, 'Confirmed correct sentence');
+  y2 = ccfRuled(doc, y2, 2, 5.8, CCF_W-4) + 3.8;
+  y2 = ccfFieldLabel(doc, y2, 'What the AI told me');
+  y2 = ccfRuled(doc, y2, 8, 5.8, CCF_W-4) + 3;
+  const boxBottom = y2 + 5;
+  doc.setDrawColor(91,99,88); doc.setLineWidth(0.5);
+  doc.roundedRect(CCF_M-2, boxTop, CCF_W+4, boxBottom-boxTop, 2, 2, 'S');
+  return boxBottom + 8;
+}
+
+function ccfPageHeader(doc, title, meta){
+  doc.setFontSize(13); doc.setFont('helvetica','bold'); doc.setTextColor(32,38,31);
+  doc.text(title, CCF_M, 12);
+  if(meta){
+    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(91,99,88);
+    doc.text(meta, 210-CCF_M, 12, {align:'right'});
+  }
+  doc.setDrawColor(61,90,115); doc.setLineWidth(0.8);
+  doc.line(CCF_M, 16, 210-CCF_M, 16);
+}
+
+// Builds one student's complete reflection sheet — one physical page
+// front, one back. Front: blog entry (adaptive font, measured against the
+// New Unit row + both sentence blocks' real height first — measure-on-a-
+// scratch-doc-then-draw-for-real, so measurement can never drift out of
+// sync with the actual layout) + the completion row + both sentence
+// blocks. Back: both AI-check homework blocks. isFirst controls whether a
+// new page is added before this student's own front page — false only
+// for the very first student in a merged multi-student PDF.
+//
+// MAX_Y is 285, not the page's full 297 — real printers typically can't
+// print within 8-12mm of the physical edge even though a PDF viewer shows
+// no such limit; this was found and fixed after an actual print test
+// clipped Sentence 2's bottom border at the old 292 threshold.
+function ccfDrawReflectionSheet(doc, studentName, classId, week, annotation, colourMap, showUntreatable, isFirst, newUnitValue, newUnitSubmittedAt){
+  const MAX_Y = 285;
+  const hasAnnotation = annotation && annotation.annotatedText;
+  const blogTitle = (annotation && annotation.title) ? annotation.title : `Week ${week} entry`;
+  const meta = `${classId}  \u00b7  Week ${week}  \u00b7  ${studentName}`;
+
+  if(!isFirst) doc.addPage();
+  ccfPageHeader(doc, 'Blog Entry Grammar Reflection', meta);
+  let y = 24;
+  doc.setFontSize(10.5); doc.setFont('helvetica','bold'); doc.setTextColor(32,38,31);
+  doc.text(blogTitle, CCF_M + CCF_W/2, y, {align:'center'});
+  y += 5;
+  doc.setDrawColor(215,218,206); doc.setLineWidth(0.25); doc.line(CCF_M,y,210-CCF_M,y); y += 5;
+  const blogStartY = y;
+
+  const scratch = new window.jspdf.jsPDF({unit:'mm', format:'a4'});
+  let scratchY = ccfDrawUnitRow(scratch, 0, newUnitValue, newUnitSubmittedAt);
+  scratchY = ccfDrawSentenceBlock(scratch, scratchY, 1, 'New Unit', [219,242,229], [26,58,42]);
+  scratchY = ccfDrawSentenceBlock(scratch, scratchY, 2, 'Recurring', [253,244,205], [102,79,8]);
+  const FIXED_HEIGHT = scratchY;
+  const BLOG_AVAILABLE = MAX_Y - blogStartY - FIXED_HEIGHT;
+  const FONT_MIN = 5.5, FONT_MAX = 11;
+
+  let chosenFont = FONT_MIN, chosenLines = null, tokens = null;
+  if(hasAnnotation){
+    tokens = ccfTokenize(annotation.annotatedText, colourMap, showUntreatable);
+    for(let fs=FONT_MAX; fs>=FONT_MIN; fs-=0.25){
+      const testLines = ccfLayoutAnnotated(doc, tokens, fs, CCF_W-8);
+      const lineH = fs*0.352778*1.35;
+      if(testLines.length*lineH <= BLOG_AVAILABLE){ chosenFont=fs; chosenLines=testLines; break; }
+      chosenLines=testLines;
+    }
+  } else {
+    const plainText = 'No entry was submitted this week.';
+    for(let fs=FONT_MAX; fs>=FONT_MIN; fs-=0.25){
+      doc.setFontSize(fs);
+      const testLines = doc.splitTextToSize(plainText, CCF_W-8);
+      const lineH = fs*0.352778*1.35;
+      if(testLines.length*lineH <= BLOG_AVAILABLE){ chosenFont=fs; chosenLines=testLines; break; }
+      chosenLines=testLines;
+    }
+  }
+  if(chosenFont === FONT_MIN){
+    const lineH = FONT_MIN*0.352778*1.35;
+    if(chosenLines.length*lineH > BLOG_AVAILABLE){
+      console.warn('CCF reflection sheet: entry is too long to fit even at ' + FONT_MIN + 'pt — genuinely needs more room than one page allows.');
+    }
+  }
+  const lineH = chosenFont*0.352778*1.35;
+  if(hasAnnotation){
+    ccfDrawAnnotated(doc, tokens, CCF_M+4, y, chosenFont, lineH, CCF_W-8);
+  } else {
+    doc.setFontSize(chosenFont); doc.setFont('helvetica','italic'); doc.setTextColor(150,155,145);
+    chosenLines.forEach(l => { doc.text(l, CCF_M+4, y); y += lineH; });
+  }
+
+  y = blogStartY + BLOG_AVAILABLE + 2;
+  y = ccfDrawUnitRow(doc, y, newUnitValue, newUnitSubmittedAt);
+  y = ccfDrawSentenceBlock(doc, y, 1, 'New Unit', [219,242,229], [26,58,42]);
+  y = ccfDrawSentenceBlock(doc, y, 2, 'Recurring', [253,244,205], [102,79,8]);
+
+  // No longer "the back of the sheet" - this is now its own separate,
+  // standalone take-home page, so it needs its own full header (title +
+  // class/week/name meta), matching page 1's format exactly rather than
+  // the bare "Homework" title it used when it was printed on a shared
+  // physical sheet with page 1's own header already covering that.
+  doc.addPage();
+  const homeworkMeta = `${classId}  \u00b7  Week ${week}  \u00b7  ${studentName}`;
+  ccfPageHeader(doc, 'Blog Entry Grammar Reflection - Homework', homeworkMeta);
+  y = 24;
+  y = ccfDrawInClassAttemptsBox(doc, y);
+  y = ccfDrawHomeworkBlock(doc, y, 1, [219,242,229], [26,58,42]);
+  y = ccfDrawHomeworkBlock(doc, y, 2, [253,244,205], [102,79,8]);
+}
+
+function downloadCCFReflectionSheet(){
+  const stored = window._ccfPdfData;
+  if(!stored){ showToast('No data to download — try refreshing the page.'); return; }
+  const {week, annotation, existingMain, existingSubmittedAt} = stored;
+  if(!window.jspdf){ showToast('PDF generator loading — try again in a moment.'); return; }
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+
+  ccfDrawReflectionSheet(doc, currentStudentName||currentStudent, currentClassId, week,
+    annotation, annotation ? annotation.colourMap : {}, annotation ? annotation.showUntreatable : true, true, existingMain, existingSubmittedAt);
+
+  const safeName=(currentStudentName||currentStudent).replace(/\s+/g,'_');
+  doc.save(`EWS_Week${week}_CCF-Reflection_${safeName}.pdf`);
+}
+
+// ── AI-check prompt builder (homework copy button) ───────────────────────
+// Builds the full Japanese prompt for the weekend Gemini AI-check step:
+// explains the {text|CODE|UNIT} tag notation, includes a legend of only
+// the unit titles actually used in THIS entry (built from UNIT_TITLES,
+// not the full B1-B113/I1-I142 list every time), includes the full tagged
+// entry as context, and leaves two placeholders for the student to paste
+// in their own "My Finished Attempt" sentences before sending it to
+// Gemini. Deliberately verifies the student's own attempt rather than
+// generating a fresh correction — and deliberately does NOT give the
+// correction itself anywhere, matching the same "never show the
+// correction" principle as the paper worksheet.
 function ccfBuildUnitLegend(annotatedText){
   const unitsUsed = [];
   const seen = {};
@@ -1081,393 +1520,6 @@ async function copyAICheckPrompt(){
   }
 }
 
-/* ── Annotation renderer — CCF format. Uses ccfTokenize (also used by
-   downloadCCFReflectionSheet) so the on-screen view and the printed sheet
-   are always reading the exact same tags the same way. Never shows the
-   correction — only the error span/caret, the code, and the unit. ── */
-const CCF_CODE_LABELS={VT:'Verb Tense',SVA:'Subject-Verb Agreement',ART:'Articles',PREP:'Prepositions',WF:'Word Form',SP:'Singular / Plural',WO:'Word Order',MOD:'Modal Verbs',CL:'Clause-level Error',ME:'Missing / Extra Words',SC:'Spelling & Capitalisation',PU:'Punctuation',COL:'Collocation',WC:'Word Choice',IDM:'Idiom',AWK:'Awkward Phrasing'};
-function buildAnnotatedHtml(text, colourMap, showUntreatable){
-  function esc(s){ return s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''; }
-  const tokens = ccfTokenize(text, colourMap, showUntreatable);
-  const parts = tokens.map(t=>{
-    if(t.break) return '<br><br>';
-    if(!t.style) return esc(t.text);
-    const noUnit = t.style.state==='purple' || t.style.state==='grey';
-    let tip = `<div class="tt-code">${esc(CCF_CODE_LABELS[t.style.code]||t.style.code)}</div>`;
-    if(!noUnit && t.style.primaryUnit){
-      const titleInfo = UNIT_TITLES[t.style.primaryUnit];
-      const titleText = titleInfo ? (titleInfo.jp || titleInfo.en || '') : '';
-      tip += `<div class="tt-unit"><span class="tt-num">${esc(t.style.primaryUnit)}</span>${titleText ? `<span class="tt-title">${esc(titleText)}</span>` : ''}</div>`;
-      if(t.style.secondaryUnit) tip += `<div class="tt-title" style="opacity:.7;margin-top:2px;">also see ${esc(t.style.secondaryUnit)}</div>`;
-    }
-    if(t.style.border) tip += `<div class="tt-title" style="opacity:.7;margin-top:2px;">Assigned by your teacher this cycle</div>`;
-    const borderClass = t.style.border ? ' ccf-border' : '';
-    return `<span class="ccf-tag ccf-${t.style.state}${borderClass}">${esc(t.text)}<span class="err-tt">${tip}</span></span>`;
-  });
-  let html='';
-  for(let i=0;i<parts.length;i++){
-    if(i>0 && parts[i]!=='<br><br>' && parts[i-1]!=='<br><br>') html+=' ';
-    html+=parts[i];
-  }
-  return html;
-}
-
-
-
-/* ══════════════════════════════════════════════════════════════════════
-   CCF REFLECTION SHEET — see CCF_handover.md §7
-   One page: blog entry (colour + code + unit, NEVER the correction, once
-   real annotation data exists — falls back to plain text otherwise) + New
-   Unit box + Teacher Check (in-class / homework) + Sentence 1 (new unit)
-   + Sentence 2 (recurring). No Analysis field, no checkboxes (Decision
-   #12). Sentence-finding is the student's job (Decision #11).
-   Validated through many rounds of layout iteration in a standalone test
-   script before being ported here — see conversation history if the
-   reasoning behind a specific spacing/colour choice needs revisiting.
-   ══════════════════════════════════════════════════════════════════════ */
-
-const CCF_M = 12, CCF_W = 210 - CCF_M*2;
-
-// ── Colour/recurrence engine STUB ───────────────────────────────────────
-// The real engine (StudiedSet + per-semester recurrence counts, CCF §4) is
-// not built yet, so every treatable error defaults to green (Decision #4:
-// no study history recorded = "not yet studied," never higher). Purple is
-// real, not a stub (SC/PU never carry a unit or history — that's a fact
-// about the code). Grey is also real: COL/WC/IDM/AWK/ME (untreatable
-// errors, plus ME since it never carries a unit either) are never colour-coded to a unit and never selectable as a study unit,
-// but they're never silently dropped either — a class-wide toggle for
-// whether grey actually renders to students doesn't exist yet (would need
-// a new Settings field); for now grey always renders.
-const CCF_COLORS = {
-  green:  {fill:[219,242,229], text:[26,58,42]},
-  yellow: {fill:[253,244,205], text:[102,79,8]},
-  orange: {fill:[253,225,196], text:[120,58,10]},
-  red:    {fill:[252,220,220], text:[110,28,28]},
-  purple: {fill:[230,222,247], text:[74,42,128]},
-  grey:   {fill:[230,230,228], text:[90,90,86]},
-};
-// colourMap is {unit: {colour, border}} for THIS WEEK specifically — fetched
-// via getColourStateForWeek, one frozen snapshot per week. A unit absent from
-// the map (never studied, or studied but this is its first post-study
-// occurrence, or unstudied+unscaffolded) correctly defaults to green/no border.
-function ccfUnitState(code, unit, colourMap){
-  if(!code) return null;
-  if(code==='SC'||code==='PU') return 'purple';
-  // ME never carries a unit by design — group it with the genuinely
-  // untreatable codes rather than letting it fall through to green, since
-  // a bare "ME" tag gives a student nothing actionable to study.
-  if(code==='COL'||code==='WC'||code==='IDM'||code==='AWK'||code==='ME') return 'grey';
-  if(unit && colourMap && colourMap[unit]) return colourMap[unit].colour;
-  return 'green';
-}
-// Which units in this week's annotated text would currently render green —
-// computed client-side from data already fetched (the annotation text +
-// colourMap), rather than a second server round-trip that re-reads and
-// re-parses the same sheets. Reuses ccfUnitState, so this can never
-// disagree with what the student actually sees highlighted above it.
-// Returns bare numbers (no B/I prefix), matching what the submit form and
-// UnitSubmissions both expect.
-function computeGreenUnitsThisWeek(annotatedText, colourMap, prefix){
-  const re = /\{(\^|[^{}|]*)\|([A-Z]+)(?:\|([BI]\d+)(?:\/[BI]\d+)?)?\}/g;
-  const green = new Set();
-  let m;
-  while((m = re.exec(annotatedText || '')) !== null){
-    const code = m[2], unit = m[3];
-    if(!unit) continue;
-    if(ccfUnitState(code, unit, colourMap) === 'green' && unit.charAt(0) === prefix){
-      green.add(unit.slice(1));
-    }
-  }
-  return Array.from(green);
-}
-// Border (CCF §4.5 scaffold-failure flag) is always green when it fires —
-// never coexists with yellow/orange/red (a studied unit is never bordered).
-function ccfUnitBorder(unit, colourMap){
-  return !!(unit && colourMap && colourMap[unit] && colourMap[unit].border);
-}
-function ccfTagFor(style){
-  const noUnit = style.state==='purple' || style.state==='grey';
-  return noUnit ? style.code : style.code + (style.primaryUnit ? '\u00b7'+style.primaryUnit : '');
-}
-
-// ── Tokenize the CCF tag format into word-level tokens ──────────────────
-// Tag shapes: {span|CODE|UNIT}, {span|CODE|UNIT1/UNIT2} (dual-unit,
-// slash-separated), {^|CODE|UNIT} (omission, caret only — never the
-// missing word), {span|CODE} (no unit — SC/PU/COL/WC/IDM/AWK).
-// colourMap: this week's frozen {unit: {colour, border}} snapshot.
-// showUntreatable: class Settings toggle — when false, COL/WC/IDM/AWK/ME tokens
-// are treated as plain text (no style at all) so BOTH the on-screen view and
-// the PDF automatically stay consistent without each needing their own check.
-// The underlying tag stays in annotatedText regardless — this only affects
-// rendering, never the stored data.
-function ccfTokenize(text, colourMap, showUntreatable){
-  const re=/\{(\^|[^{}|]*)\|([A-Z]+)(?:\|([BI]\d+(?:\/[BI]\d+)?))?\}/g;
-  const tokens=[]; let last=0, m;
-  function pushWords(str, style){
-    // Splits on blank-line paragraph breaks into {break:true} markers, then
-    // on whitespace into individual word tokens — no separate space
-    // tokens; spacing between words is handled uniformly at render time.
-    String(str).split(/\n\s*\n/).forEach((para, i, arr)=>{
-      para.split(/\s+/).filter(Boolean).forEach(w=> tokens.push({text:w, style}));
-      if(i < arr.length-1) tokens.push({break:true});
-    });
-  }
-  while((m=re.exec(text))!==null){
-    pushWords(text.slice(last, m.index), null);
-    const span=m[1], code=m[2].trim();
-    const unitRaw=m[3]?m[3].trim():'';
-    const [primaryUnit, secondaryUnit] = unitRaw ? unitRaw.split('/') : [null,null];
-    let state=ccfUnitState(code, primaryUnit, colourMap);
-    if(state==='grey' && showUntreatable===false) state=null; // toggle off — render as plain text
-    const noUnit = state==='purple' || state==='grey';
-    const border = (!state || noUnit) ? false : ccfUnitBorder(primaryUnit, colourMap);
-    const style = state ? {code, primaryUnit: noUnit?null:primaryUnit, secondaryUnit: noUnit?null:secondaryUnit, state, border} : null;
-    if(span==='^'){
-      tokens.push({text:'^', style});
-    } else {
-      span.trim().split(/\s+/).filter(Boolean).forEach(w=> tokens.push({text:w, style}));
-    }
-    last = m.index+m[0].length;
-  }
-  pushWords(text.slice(last), null);
-  return tokens;
-}
-
-// ── Word-wrap that treats each styled word + its inline [CODE·UNIT] tag
-// as one atomic unit (so a tag never gets orphaned onto the next line) ──
-function ccfLayoutAnnotated(doc, tokens, fontSize, maxWidth){
-  const tagFontSize = fontSize*0.62;
-  doc.setFont('helvetica','normal'); doc.setFontSize(fontSize);
-  const spaceW = doc.getTextWidth(' ');
-  const widths = tokens.map(t=>{
-    if(t.break) return 0;
-    doc.setFont('helvetica', t.style?'bold':'normal'); doc.setFontSize(fontSize);
-    let w = doc.getTextWidth(t.text);
-    if(t.style){
-      doc.setFont('helvetica','normal'); doc.setFontSize(tagFontSize);
-      w += doc.getTextWidth(' ['+ccfTagFor(t.style)+']');
-    }
-    return w;
-  });
-  doc.setFont('helvetica','normal'); doc.setFontSize(fontSize); // leave doc state clean for the next caller
-  const lines=[]; let cur=[]; let curW=0;
-  tokens.forEach((t,i)=>{
-    if(t.break){ if(cur.length){lines.push(cur); cur=[]; curW=0;} lines.push([]); return; }
-    const w=widths[i];
-    const add = cur.length? spaceW+w : w;
-    if(curW+add>maxWidth && cur.length){ lines.push(cur); cur=[]; curW=0; }
-    cur.push(t); curW += (cur.length>1?spaceW:0)+w;
-  });
-  if(cur.length) lines.push(cur);
-  return lines;
-}
-function ccfDrawAnnotated(doc, tokens, x0, y0, fontSize, lineHeight, maxWidth){
-  const lines = ccfLayoutAnnotated(doc, tokens, fontSize, maxWidth);
-  doc.setFont('helvetica','normal'); doc.setFontSize(fontSize);
-  const spaceW = doc.getTextWidth(' ');
-  const tagFontSize = fontSize*0.62;
-  let y=y0;
-  lines.forEach(line=>{
-    let x=x0;
-    line.forEach(t=>{
-      doc.setFont('helvetica', t.style?'bold':'normal'); doc.setFontSize(fontSize);
-      let w = doc.getTextWidth(t.text);
-      let tagStr = null, tagW=0;
-      if(t.style){
-        tagStr = ' ['+ccfTagFor(t.style)+']';
-        doc.setFont('helvetica','normal'); doc.setFontSize(tagFontSize);
-        tagW = doc.getTextWidth(tagStr);
-      }
-      if(t.style){
-        const c = CCF_COLORS[t.style.state];
-        doc.setFillColor(...c.fill);
-        doc.roundedRect(x-0.6, y-fontSize*0.34, w+tagW+1.2, fontSize*0.48, 0.5, 0.5, 'F');
-        if(t.style.border){
-          doc.setDrawColor(42,122,78); doc.setLineWidth(0.35);
-          doc.roundedRect(x-0.6, y-fontSize*0.34, w+tagW+1.2, fontSize*0.48, 0.5, 0.5, 'S');
-        }
-        doc.setTextColor(...c.text);
-      } else {
-        doc.setTextColor(40,40,40);
-      }
-      doc.setFont('helvetica', t.style?'bold':'normal'); doc.setFontSize(fontSize);
-      doc.text(t.text, x, y);
-      x += w;
-      if(tagStr){
-        doc.setFont('helvetica','normal'); doc.setFontSize(tagFontSize);
-        doc.text(tagStr, x, y);
-        x += tagW;
-      }
-      x += spaceW;
-    });
-    y += lineHeight;
-  });
-  return y;
-}
-
-// ── Layout helpers (all take `doc` explicitly, so a scratch doc can be
-// used to MEASURE the fixed-height section below without drawing on the
-// real page — see ccfDrawPostBlogSection) ──────────────────────────────
-function ccfRuled(doc, y, n, gap){
-  for(let i=0;i<n;i++){ doc.setDrawColor(61,90,115); doc.setLineWidth(0.35); doc.line(CCF_M,y,210-CCF_M,y); y+=gap; }
-  return y;
-}
-function ccfFieldLabel(doc, y, text){
-  doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(91,99,88);
-  doc.text(text.toUpperCase(), CCF_M+4, y);
-  return y + 4.2;
-}
-function ccfFieldLabelTag(doc, y, text, fill, textColor){
-  const lbl = text.toUpperCase();
-  doc.setFontSize(7.5); doc.setFont('helvetica','bold');
-  const tw = doc.getTextWidth(lbl);
-  doc.setFillColor(...fill);
-  doc.roundedRect(CCF_M+2.5, y-3.6, tw+7, 5.2, 1, 1, 'F');
-  doc.setTextColor(...textColor);
-  doc.text(lbl, CCF_M+6, y);
-  return y + 5.2;
-}
-function ccfBoxAround(doc, yStart, yEnd){
-  doc.setDrawColor(91,99,88); doc.setLineWidth(0.45);
-  doc.roundedRect(CCF_M, yStart, CCF_W, yEnd-yStart, 2, 2, 'S');
-}
-function ccfSentenceBox(doc, y, labelText, fill, textColor){
-  const boxStart = y;
-  y += 3;
-  y = fill
-    ? ccfFieldLabelTag(doc, y, labelText, fill, textColor) + 3.5
-    : ccfFieldLabel(doc, y, labelText) + 3.5;
-  y = ccfRuled(doc, y, 2, 6.5) + 2.5;
-  y = ccfFieldLabel(doc, y, 'Correction attempt') + 3.5;
-  y = ccfRuled(doc, y, 2, 6.5) + 2.5;
-  y = ccfFieldLabel(doc, y, 'AI check / original sentence (homework)') + 3.5;
-  y = ccfRuled(doc, y, 2, 6.5) + 1.5;
-  ccfBoxAround(doc, boxStart, y);
-  return y;
-}
-
-// Everything from the divider through Sentence 2's box — same function used
-// both to MEASURE (on a disposable scratch doc, so we know exactly how much
-// room to leave for the blog entry) and to actually DRAW (on the real doc).
-// Because it's the same code path, the measurement can never drift out of
-// sync with the real layout, even as spacing keeps changing.
-function ccfDrawPostBlogSection(doc, yStart, newUnit){
-  let y = yStart;
-  y += 5;
-  doc.setDrawColor(215,218,206); doc.line(CCF_M,y,210-CCF_M,y); y += 7;
-
-  doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(91,99,88);
-  const newUnitLabel = 'NEW UNIT';
-  doc.text(newUnitLabel, CCF_M+4, y);
-  const labelW = doc.getTextWidth(newUnitLabel);
-  doc.setDrawColor(42,122,78); doc.setLineWidth(0.4);
-  doc.roundedRect(CCF_M+4+labelW+4, y-4.2, 20, 6.5, 1, 1, 'S');
-
-  // Teacher check — same row as New Unit, top right. Two boxes, same size
-  // as the New Unit box, each with its label outside/left of it.
-  const tcW = 20, tcH = 6.5, tcGap = 8;
-  const checks = ['In-class completion', 'Homework completion'];
-  let cursorRight = CCF_M + CCF_W - 4;
-  const placed = [];
-  for(let i = checks.length - 1; i >= 0; i--){
-    doc.setFontSize(7.5); doc.setFont('helvetica','bold');
-    const labelText = checks[i].toUpperCase();
-    const labelWidth = doc.getTextWidth(labelText);
-    const boxRight = cursorRight;
-    const boxLeft = boxRight - tcW;
-    const labelEndX = boxLeft - 3;
-    placed[i] = { labelText, labelEndX, boxLeft };
-    cursorRight = labelEndX - labelWidth - tcGap;
-  }
-  placed.forEach(p => {
-    doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(91,99,88);
-    doc.text(p.labelText, p.labelEndX, y, {align:'right'});
-    doc.setDrawColor(61,90,115); doc.setLineWidth(0.4);
-    doc.roundedRect(p.boxLeft, y-4.2, tcW, tcH, 1, 1, 'S');
-  });
-
-  y += 10;
-
-  y = ccfSentenceBox(doc, y, 'Sentence 1 — new unit', [219,242,229], [26,58,42]); y += 4;
-  y = ccfSentenceBox(doc, y, 'Sentence 2 — recurring', [253,244,205], [102,79,8]);
-  return y;
-}
-
-function downloadCCFReflectionSheet(){
-  const stored = window._ccfPdfData;
-  if(!stored){ showToast('No data to download — try refreshing the page.'); return; }
-  const {week, annotation, existingMain: newUnit} = stored;
-  if(!window.jspdf){ showToast('PDF generator loading — try again in a moment.'); return; }
-  const {jsPDF}=window.jspdf;
-  const doc=new jsPDF({unit:'mm',format:'a4'});
-
-  const hasAnnotation = annotation && annotation.annotatedText;
-  const blogTitle = (annotation && annotation.title) ? annotation.title : `Week ${week} entry`;
-
-  doc.setFontSize(14); doc.setFont('helvetica','bold'); doc.setTextColor(32,38,31);
-  doc.text('Blog Entry Grammar Reflection', CCF_M, 12);
-  doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(91,99,88);
-  doc.text(`${currentClassLabel}  \u00b7  Week ${week}  \u00b7  ${currentStudentName||currentStudent}`, 210-CCF_M, 12, {align:'right'});
-  doc.setDrawColor(61,90,115); doc.setLineWidth(0.8);
-  doc.line(CCF_M, 16, 210-CCF_M, 16);
-
-  let y = 24;
-  doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(32,38,31);
-  doc.text(blogTitle, CCF_M, y);
-  y += 6;
-  doc.setDrawColor(215,218,206); doc.setLineWidth(0.25); doc.line(CCF_M,y,210-CCF_M,y); y += 6;
-
-  const blogStartY = y;
-
-  // Measure the fixed-height section on a throwaway doc first, so
-  // AFTER_FIXED is always exactly what the real drawing code will use.
-  const scratch = new jsPDF({unit:'mm',format:'a4'});
-  const AFTER_FIXED = ccfDrawPostBlogSection(scratch, 0, newUnit);
-  const MAX_Y = 292;
-  const BLOG_AVAILABLE = MAX_Y - blogStartY - AFTER_FIXED;
-  const FONT_MIN = 5.5, FONT_MAX = 11.5;
-
-  let chosenFont = FONT_MIN, chosenLines = null, tokens = null;
-
-  if(hasAnnotation){
-    tokens = ccfTokenize(annotation.annotatedText, annotation.colourMap, annotation.showUntreatable);
-    for(let fs=FONT_MAX; fs>=FONT_MIN; fs-=0.25){
-      const testLines = ccfLayoutAnnotated(doc, tokens, fs, CCF_W-8);
-      const lineH = fs*0.352778*1.42;
-      if(testLines.length*lineH <= BLOG_AVAILABLE){ chosenFont=fs; chosenLines=testLines; break; }
-      chosenLines=testLines;
-    }
-  } else {
-    const plainText = 'No entry was submitted this week.';
-    for(let fs=FONT_MAX; fs>=FONT_MIN; fs-=0.25){
-      doc.setFontSize(fs);
-      const testLines = doc.splitTextToSize(plainText, CCF_W-8);
-      const lineH = fs*0.352778*1.42;
-      if(testLines.length*lineH <= BLOG_AVAILABLE){ chosenFont=fs; chosenLines=testLines; break; }
-      chosenLines=testLines;
-    }
-  }
-  if(chosenFont === FONT_MIN){
-    const lineH = FONT_MIN*0.352778*1.42;
-    if(chosenLines.length*lineH > BLOG_AVAILABLE){
-      console.warn('CCF reflection sheet: entry is too long to fit even at ' + FONT_MIN + 'pt — genuinely needs a second page.');
-    }
-  }
-
-  const lineH = chosenFont*0.352778*1.42;
-  if(hasAnnotation){
-    y = ccfDrawAnnotated(doc, tokens, CCF_M+4, y, chosenFont, lineH, CCF_W-8);
-  } else {
-    doc.setFontSize(chosenFont); doc.setFont('helvetica','italic'); doc.setTextColor(150,155,145);
-    chosenLines.forEach(l => { doc.text(l, CCF_M+4, y); y += lineH; });
-  }
-
-  y = ccfDrawPostBlogSection(doc, y, newUnit);
-
-  const safeName=(currentStudentName||currentStudent).replace(/\s+/g,'_');
-  doc.save(`EWS_Week${week}_CCF-Reflection_${safeName}.pdf`);
-}
-
 
 // Scoped per class+student+week so switching weeks or students never bleeds drafts together.
 function draftKey(week){
@@ -1554,7 +1606,7 @@ async function renderNewPostTab(){
 
   let membersHtml = '';
   if(data.settings.GroupsEnabled){
-    membersHtml = data.groupMembers.filter(m=>String(m.studentNumber)!==String(currentStudent)).map(m=>{
+    membersHtml = data.groupMembers.filter(m=>m.studentNumber!==currentStudent).map(m=>{
       const isMe = m.studentNumber===currentStudent;
       if(m.postId){
         return `
@@ -2232,11 +2284,20 @@ document.addEventListener('visibilitychange', ()=>{ if(document.hidden) markTabA
 window.addEventListener('pagehide', markTabAway);
 window.addEventListener('pageshow', markTabReturn);
 
-// ── SESSION INIT — reads token/studentNumber/classId/nameEng/profilePicURL
-// straight from the URL (set by the hub's tileUrl()), and ?goto=grammar for
-// the direct deep link into this cycle's feedback screen. No login screen
-// needed here — SSO already happened once at the hub. ──
-initSessionFromUrl();
+// ── AUTO-LOGIN FROM DASHBOARD ────────────────────────────────────────────
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const autoStudent = params.get('student');
+  const goto = params.get('goto');
+  if (goto) gotoDestination = goto;
+  if (autoStudent) {
+    const input = document.getElementById('studentNumberInput');
+    if (input) {
+      input.value = autoStudent;
+      login();
+    }
+  }
+})();
 </script>
 
 </body>

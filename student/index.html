@@ -3,2302 +3,416 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Weekly Forum — Live</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400..700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<title>EWS Student Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
 <style>
-  :root{
-    --paper:#EFF1EA;
-    --card:#FFFFFF;
-    --ink:#20261F;
-    --ink-soft:#5B6358;
-    --stamp-red:#B23A2E;
-    --postal-blue:#3D5A73;
-    --gold:#C9A227;
-    --border:#D7DACE;
-    --radius:14px;
+  :root {
+    --ink: #1a1a2e;
+    --ink-soft: #4a4a6a;
+    --ink-mute: #8888aa;
+    --paper: #faf9f6;
+    --paper-2: #f2f0eb;
+    --paper-3: #e8e5de;
+    --accent: #2e5ba8;
+    --accent-lt: #dde7f7;
+    --red: #b03030;
+    --red-lt: #fce8e8;
+    --green: #2a7a4e;
+    --green-lt: #e3f3ea;
+    --rule: rgba(26,26,46,0.10);
+    --shadow: 0 2px 16px rgba(26,26,46,0.08);
   }
-  *{box-sizing:border-box;}
-  body{margin:0;background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans', sans-serif;-webkit-font-smoothing:antialiased;}
-  .app{width:100%;max-width:1400px;margin:0 auto;padding:0 12px 80px;}
-  @media (min-width:900px){ .app{width:80%;} }
-
-  header.topbar{display:flex;align-items:center;justify-content:space-between;padding:18px 4px 14px;margin-bottom:4px;}
-  .brand{font-family:'Fraunces', serif;font-weight:600;font-size:1.3rem;letter-spacing:-0.01em;}
-  .brand small{display:block;font-family:'IBM Plex Mono', monospace;font-size:0.6rem;color:var(--ink-soft);letter-spacing:0.08em;text-transform:uppercase;margin-top:2px;}
-  .who{display:flex;align-items:center;gap:8px;font-family:'IBM Plex Mono', monospace;font-size:0.74rem;color:var(--ink-soft);}
-  .who-self{display:flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;padding:4px 6px;border-radius:10px;font-family:'IBM Plex Mono', monospace;font-size:0.74rem;color:var(--ink-soft);}
-  .who-self:hover{background:#F7F8F4;}
-
-  .profile-avatar-big{width:96px;height:96px;border-radius:50%;background:var(--postal-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:600;font-size:2.1rem;margin:0 auto 16px;overflow:hidden;}
-  .profile-avatar-big img{width:100%;height:100%;object-fit:cover;}
-  .profile-name{font-family:'Fraunces',serif;font-weight:600;font-size:1.3rem;}
-  .profile-sn{font-family:'IBM Plex Mono',monospace;font-size:0.8rem;color:var(--ink-soft);margin-top:2px;}
-  .avatar{width:32px;height:32px;border-radius:50%;background:var(--postal-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-weight:600;font-size:0.9rem;flex-shrink:0;overflow:hidden;}
-  .avatar img{width:100%;height:100%;object-fit:cover;}
-
-  .home-btn{font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:0.86rem;color:#fff;background:var(--stamp-red);border:none;border-radius:10px;padding:9px 16px;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(178,58,46,0.3);}
-  .home-btn:hover{opacity:0.92;}
-  .home-btn:active{transform:scale(0.97);}
-
-  .dash-intro{font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.07em;margin:6px 4px 14px;}
-  .dash-grid{display:flex;flex-direction:column;gap:14px;}
-  .dash-card{
-    background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
-    padding:20px;display:flex;align-items:center;gap:16px;cursor:pointer;
-    transition:transform .1s ease, box-shadow .15s ease;
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    line-height: 1.6;
   }
-  .dash-card:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(32,38,31,0.07);}
-  .dash-card:active{transform:scale(0.99);}
-  .dash-icon{
-    width:52px;height:52px;border-radius:50%;flex-shrink:0;
-    display:flex;align-items:center;justify-content:center;font-size:1.5rem;
-    color:#fff;
+  header {
+    background: var(--ink);
+    padding: 28px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
   }
-  .dash-card.c-newpost .dash-icon{background:var(--stamp-red);}
-  .dash-card.c-previous .dash-icon{background:var(--postal-blue);}
-  .dash-card.c-grades .dash-icon{background:var(--gold);}
-  .dash-text{flex:1;}
-  .dash-title{font-family:'Fraunces',serif;font-weight:600;font-size:1.15rem;}
-  .dash-sub{font-size:0.84rem;color:var(--ink-soft);margin-top:2px;line-height:1.4;}
-  .dash-chev{color:var(--ink-soft);font-size:1.3rem;}
-  .dash-badge{
-    font-family:'IBM Plex Mono',monospace;font-size:0.65rem;background:#FBEAE7;color:var(--stamp-red);
-    padding:2px 8px;border-radius:10px;margin-left:8px;white-space:nowrap;
+  .header-left { display: flex; align-items: center; gap: 16px; }
+  .header-mark {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .header-text h1 { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; color: #fff; }
+  .header-text p {
+    font-size: 11px; color: rgba(255,255,255,0.45);
+    letter-spacing: 0.04em; text-transform: uppercase; margin-top: 2px;
+  }
+  .logout-btn {
+    font-size: 12px; color: rgba(255,255,255,0.6);
+    background: none; border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 8px; padding: 6px 14px; cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+    display: none; position: absolute; right: 40px; top: 50%; transform: translateY(-50%);
+  }
+  .logout-btn:hover { border-color: rgba(255,255,255,0.5); color: #fff; }
+
+  main { max-width: 760px; margin: 0 auto; padding: 56px 24px 80px; }
+
+  .login-card {
+    background: #fff; border: 1px solid var(--rule); border-radius: 16px;
+    padding: 48px; max-width: 400px; margin: 0 auto; box-shadow: var(--shadow);
+  }
+  .login-card h2 { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; margin-bottom: 8px; }
+  .login-card .subtitle { font-size: 13px; color: var(--ink-mute); margin-bottom: 28px; }
+  .field-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--ink-soft); margin-bottom: 8px; display: block;
+  }
+  .field { margin-bottom: 16px; }
+  .text-input {
+    width: 100%; height: 48px; border: 1.5px solid var(--paper-3); border-radius: 10px;
+    padding: 0 16px; font-family: 'DM Sans', sans-serif; font-size: 17px; font-weight: 500;
+    color: var(--ink); background: var(--paper); outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s; letter-spacing: 0.04em;
+  }
+  .text-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-lt); }
+  .login-btn {
+    width: 100%; height: 48px; background: var(--accent); color: #fff; border: none;
+    border-radius: 10px; font-size: 14px; font-weight: 600; letter-spacing: 0.03em;
+    cursor: pointer; margin-top: 8px; transition: background 0.2s, transform 0.1s;
+  }
+  .login-btn:hover { background: #1f4690; }
+  .login-btn:active { transform: scale(0.99); }
+  .login-btn:disabled { background: var(--paper-3); color: var(--ink-mute); cursor: default; }
+
+  .msg { padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-top: 16px; display: none; }
+  .msg.error { background: var(--red-lt); color: var(--red); border: 1px solid #f5c0c0; }
+  .msg.show { display: block; }
+
+  #tiles-panel { display: none; }
+  .greeting { margin-bottom: 32px; }
+  .greeting h2 { font-family: 'Fraunces', serif; font-size: 24px; font-weight: 600; }
+  .greeting p { font-size: 13px; color: var(--ink-mute); margin-top: 4px; }
+  .badge {
+    display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 10px;
+    border-radius: 20px; background: var(--ink); color: #fff;
+    letter-spacing: 0.04em; margin-top: 8px;
   }
 
-  .login-screen{min-height:80vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:18px;}
-  .login-screen .brand{font-size:2rem;}
-  .login-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:28px 24px;width:100%;max-width:340px;}
-  .login-card label{display:block;text-align:left;font-size:0.75rem;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:6px;}
-  input[type=text], input[type=number], textarea{width:100%;font-family:'IBM Plex Sans',sans-serif;font-size:1rem;padding:11px 12px;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--ink);}
-  input:focus, textarea:focus{outline:none;border-color:var(--postal-blue);box-shadow:0 0 0 3px rgba(61,90,115,0.12);}
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:10px;padding:11px 18px;font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:0.92rem;cursor:pointer;transition:transform .08s ease, opacity .15s ease;}
-  .btn:active{transform:scale(0.97);}
-  .btn-primary{background:var(--stamp-red);color:#fff;}
-  .btn-primary:hover{opacity:0.92;}
-  .btn-block{width:100%;}
-  .btn-ghost{background:transparent;color:var(--postal-blue);border:1px solid var(--border);}
-  .error-msg{color:var(--stamp-red);font-size:0.82rem;margin-top:8px;display:none;}
-
-  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:16px;}
-  .week-head .label{font-family:'Fraunces',serif;font-weight:600;font-size:1.7rem;color:var(--ink);text-align:center;display:block;}
-  .deadline-pill{display:inline-block;margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:0.7rem;background:#FBEAE7;color:var(--stamp-red);padding:4px 10px;border-radius:20px;border:1px solid rgba(178,58,46,0.3);}
-
-  .prompt-card{border-left:3px solid var(--gold);}
-  .prompt-card .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--gold);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;}
-  .prompt-card .ptext{font-family:'Fraunces',serif;font-size:1.05rem;line-height:1.4;}
-
-  .your-entry-row{display:flex;align-items:center;justify-content:space-between;gap:10px;}
-  .your-entry-row .info{font-size:0.88rem;color:var(--ink-soft);}
-  .your-entry-row .ttl{font-weight:600;font-size:0.98rem;color:var(--ink);}
-
-  .section-label{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.07em;margin:18px 4px 8px;}
-
-  .member-row{display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--border);cursor:pointer;}
-  .member-row:last-child{border-bottom:none;}
-  .member-row.disabled{cursor:default;opacity:0.55;}
-  .member-row .mtext{flex:1;}
-  .member-row .mtitle{font-weight:600;font-size:1rem;color:var(--ink);}
-  .member-row .mauthor{font-size:0.8rem;color:var(--ink-soft);margin-top:2px;}
-  .member-row .mname{font-weight:600;font-size:0.92rem;}
-  .member-row .mstatus{font-size:0.82rem;color:var(--ink-soft);margin-top:1px;}
-  .member-row .mstatus.posted{color:var(--postal-blue);}
-  .member-row .chev{color:var(--ink-soft);font-size:1.1rem;}
-
-  .rubric-table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;}
-  .rubric-table-wrap::-webkit-scrollbar{display:none;height:0;}
-  table.rubric-table{border-collapse:collapse;width:100%;}
-  .rubric-table td{padding:12px 14px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);vertical-align:top;text-align:left;font-size:0.82rem;}
-  .rubric-table tr:last-child td{border-bottom:none;}
-  .rubric-table td.crit-name{
-    font-family:'Fraunces',serif;font-weight:600;font-size:0.95rem;white-space:nowrap;
-    background:#FAFBF8;position:sticky;left:0;min-width:150px;z-index:1;
+  .tiles { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  .tile {
+    background: #fff; border: 1px solid var(--rule); border-radius: 14px;
+    padding: 22px 26px; display: flex; align-items: center; gap: 18px;
+    text-decoration: none; color: var(--ink); box-shadow: var(--shadow);
+    transition: border-color 0.2s, transform 0.15s; cursor: pointer;
   }
-  .rubric-table td.crit-name .crit-max{font-family:'IBM Plex Mono',monospace;font-weight:400;font-size:0.68rem;color:var(--ink-soft);margin-top:3px;white-space:normal;}
-  .rubric-table td.tier-cell{min-width:160px;max-width:210px;}
-  .rubric-table td.tier-cell .tlabel{font-weight:600;font-size:0.82rem;color:var(--ink);}
-  .rubric-table td.tier-cell .tdesc{font-size:0.76rem;color:var(--ink-soft);margin-top:4px;line-height:1.45;}
-  .rubric-table td.tier-cell .tpts{font-family:'IBM Plex Mono',monospace;font-size:0.72rem;font-weight:600;margin-top:8px;display:inline-block;padding:2px 8px;border-radius:8px;}
-  .rubric-table td.tier-cell.empty{background:#FAFAF7;}
-
-  .rubric-table td.tier-cell.qual-green{background:#EAF6EC;}
-  .rubric-table td.tier-cell.qual-green .tpts{color:#2E7D4F;background:rgba(46,125,79,0.14);}
-  .rubric-table td.tier-cell.qual-yellow{background:#FBF6E2;}
-  .rubric-table td.tier-cell.qual-yellow .tpts{color:#A67C00;background:rgba(166,124,0,0.14);}
-  .rubric-table td.tier-cell.qual-red{background:#FBEAE7;}
-  .rubric-table td.tier-cell.qual-red .tpts{color:var(--stamp-red);background:rgba(178,58,46,0.14);}
-
-  .rubric-table td.tier-cell.selected{box-shadow:inset 0 0 0 2px var(--ink);}
-  .rubric-table td.tier-cell.selected .sel-check{font-family:'IBM Plex Mono',monospace;font-size:0.66rem;font-weight:600;color:var(--ink);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:5px;}
-  .rubric-table td.tier-cell.dimmed{opacity:0.4;}
-
-  .feedback-card{border-left:3px solid var(--postal-blue);}
-  .feedback-card .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--postal-blue);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;}
-  .feedback-card .feedback-text{font-size:0.92rem;line-height:1.55;}
-  .rubric-scroll-hint{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--ink-soft);text-align:right;margin:6px 4px 0;}
-
-  .floating-scrollbar{
-    position:fixed;left:50%;bottom:16px;transform:translateX(-50%);
-    width:min(608px, calc(100% - 32px));height:12px;
-    background:rgba(215,218,206,0.55);border:1px solid var(--border);
-    border-radius:8px;z-index:60;display:none;
-    box-shadow:0 2px 10px rgba(32,38,31,0.12);
-    backdrop-filter:blur(2px);
+  .tile:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .tile-icon {
+    width: 46px; height: 46px; border-radius: 14px; color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;
   }
-  .floating-scrollbar.show{display:block;}
-  .floating-scrollbar-thumb{
-    position:absolute;top:1px;left:0;height:8px;
-    background:var(--postal-blue);border-radius:6px;cursor:grab;
-    min-width:40px;
+  .tile-text { flex: 1; min-width: 0; }
+  .tile-title { font-family: 'Fraunces', serif; font-size: 16px; font-weight: 600; margin-bottom: 2px; }
+  .tile-desc { font-size: 13px; color: var(--ink-mute); }
+  .tile-arrow { color: var(--ink-mute); font-size: 1rem; transition: color 0.2s, transform 0.2s; flex-shrink: 0; }
+  .tile:hover .tile-arrow { color: var(--accent); transform: translateX(3px); }
+  .tile.disabled { cursor: default; opacity: 0.55; }
+  .tile.disabled:hover { border-color: var(--rule); transform: none; }
+
+  .spinner {
+    display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite;
+    vertical-align: middle; margin-right: 6px;
   }
-  .floating-scrollbar-thumb:active{cursor:grabbing;background:var(--stamp-red);}
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .fade-in { animation: fadeIn 0.3s ease forwards; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
-  .composer-form input#postTitle{margin-bottom:10px;font-weight:600;}
-  textarea#postText{min-height:30vh;resize:vertical;line-height:1.6;}
-  .meta-row{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:0.74rem;color:var(--ink-soft);}
-  .media-row{display:flex;gap:10px;margin-top:14px;}
-  .media-slot{flex:1;border:1.5px dashed var(--border);border-radius:10px;min-height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;color:var(--ink-soft);font-size:0.78rem;text-align:center;padding:8px;position:relative;overflow:hidden;background:#FAFBF8;}
-  .media-slot img, .media-slot .yt-thumb{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;}
-  .media-slot .yt-thumb::after{content:'▶';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.4rem;background:rgba(0,0,0,0.18);}
-
-  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--ink);color:#fff;padding:10px 16px;border-radius:10px;font-size:0.85rem;opacity:0;pointer-events:none;transition:all .25s ease;max-width:90%;text-align:center;z-index:50;}
-  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-
-  .modal-overlay{position:fixed;inset:0;background:rgba(32,38,31,0.6);display:none;align-items:center;justify-content:center;z-index:100;padding:20px;}
-  .modal-overlay.show{display:flex;}
-  .modal-box{background:var(--card);border-radius:18px;padding:30px 26px;max-width:380px;width:100%;text-align:center;box-shadow:0 14px 44px rgba(32,38,31,0.35);}
-  .modal-box .modal-icon{font-size:2.4rem;margin-bottom:10px;}
-  .modal-box h3{font-family:'Fraunces',serif;font-weight:600;font-size:1.25rem;margin:0 0 10px;}
-  .modal-box p{font-size:0.92rem;color:var(--ink-soft);line-height:1.55;margin:0 0 22px;}
-
-  .back-link{display:inline-flex;align-items:center;gap:8px;font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:0.9rem;color:#fff;cursor:pointer;margin-bottom:18px;background:var(--postal-blue);border:none;border-radius:10px;padding:10px 18px;box-shadow:0 2px 8px rgba(61,90,115,0.3);}
-  .back-link:hover{opacity:0.92;}
-  .back-link:active{transform:scale(0.97);}
-  .post-card{position:relative;}
-  .stamp{position:absolute;top:14px;right:14px;width:54px;height:54px;border-radius:50%;border:2px solid var(--postal-blue);color:var(--postal-blue);display:flex;flex-direction:column;align-items:center;justify-content:center;transform:rotate(7deg);font-family:'IBM Plex Mono',monospace;opacity:0.85;}
-  .stamp .wk{font-size:0.6rem;letter-spacing:0.05em;}
-  .stamp .num{font-size:1.1rem;font-weight:600;line-height:1;}
-  .post-detail-title{font-family:'Fraunces',serif;font-weight:600;font-size:1.3rem;margin:0 60px 10px 0;}
-  .post-head{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
-  .post-head .name{font-weight:600;font-size:0.92rem;}
-  .post-head .when{font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--ink-soft);}
-  .post-body{line-height:1.65;font-size:0.97rem;margin-bottom:4px;white-space:pre-wrap;}
-  .post-detail-grid{display:grid;grid-template-columns:1fr;gap:18px;align-items:start;margin-top:10px;}
-  @media (min-width:700px){ .post-detail-grid{grid-template-columns:1fr 260px;} }
-  .post-detail-media-col{display:flex;flex-direction:column;gap:10px;}
-  .post-detail-media-col img{width:100%;border-radius:10px;display:block;max-height:320px;object-fit:cover;}
-  .post-detail-media-col .yt-embed{width:100%;height:150px;border-radius:10px;display:block;}
-  .yt-embed{flex:1;position:relative;display:block;max-height:200px;height:160px;background-size:cover;background-position:center;border-radius:10px;overflow:hidden;}
-  .yt-embed::after{content:'▶';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:2rem;background:rgba(0,0,0,0.2);}
-  .word-count{font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--ink-soft);margin-top:10px;}
-
-  .comments{margin-top:14px;border-top:1px solid var(--border);padding-top:12px;}
-  .comment{display:flex;gap:10px;margin-bottom:12px;}
-  .comment .avatar{width:28px;height:28px;font-size:0.78rem;}
-  .comment-body{flex:1;background:#F7F8F4;border-radius:10px;padding:10px 12px;}
-  .comment-body .c-name{font-weight:600;font-size:0.84rem;}
-  .comment-body .c-text{font-size:0.88rem;margin-top:2px;line-height:1.5;white-space:pre-wrap;}
-  .reply{margin-left:38px;margin-top:8px;}
-  .reply .comment-body{background:#EEF1EC;}
-  .reply-link{font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--postal-blue);cursor:pointer;background:none;border:none;padding:0;margin-top:4px;}
-  .reply-box-wrap{margin-top:8px;}
-  .reply-box{display:flex;gap:8px;align-items:flex-end;}
-  .reply-box textarea{flex:1;padding:7px 10px;font-size:0.84rem;min-height:46px;max-height:140px;resize:vertical;line-height:1.5;font-family:'IBM Plex Sans',sans-serif;}
-  .comment-input-row{display:flex;gap:8px;margin-top:12px;align-items:flex-end;}
-  .comment-input-row textarea{flex:1;min-height:52px;max-height:160px;resize:vertical;line-height:1.5;font-family:'IBM Plex Sans',sans-serif;}
-  .closed-note{font-family:'IBM Plex Mono',monospace;font-size:0.76rem;color:var(--ink-soft);background:#F2F0E8;border:1px dashed var(--border);border-radius:10px;padding:10px 12px;margin-top:12px;text-align:center;}
-
-  .week-list-row{display:flex;align-items:center;justify-content:space-between;padding:14px 4px;border-bottom:1px solid var(--border);cursor:pointer;}
-  .week-list-row:last-child{border-bottom:none;}
-  .week-list-row .wtitle{font-weight:600;font-size:0.95rem;}
-  .week-list-row .wsub{font-size:0.78rem;color:var(--ink-soft);margin-top:2px;}
-
-  .grade-week-card .gw-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
-  .grade-week-card .gw-title{font-family:'Fraunces',serif;font-weight:600;font-size:1.05rem;}
-  .grade-week-card .gw-total{font-family:'IBM Plex Mono',monospace;font-size:0.85rem;color:var(--gold);font-weight:600;}
-  .grade-row{padding:8px 0;border-bottom:1px solid var(--border);}
-  .grade-row:last-child{border-bottom:none;}
-  .grade-row .gname{font-weight:600;font-size:0.86rem;display:flex;justify-content:space-between;}
-  .grade-row .gtier{font-size:0.8rem;color:var(--ink-soft);margin-top:2px;}
-  .grade-row .gfeedback{font-size:0.82rem;color:var(--postal-blue);margin-top:4px;font-style:italic;}
-
-  .empty-note{text-align:center;color:var(--ink-soft);font-size:0.85rem;padding:30px 10px;border:1px dashed var(--border);border-radius:var(--radius);background:var(--card);}
-  .hidden{display:none !important;}  .loading-overlay{position:fixed;inset:0;background:rgba(239,241,234,0.88);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;z-index:200;}
-  .loading-overlay.show{display:flex;}
-  .spinner{width:40px;height:40px;border:4px solid var(--border);border-top-color:var(--stamp-red);border-radius:50%;animation:spin 0.8s linear infinite;}
-  @keyframes spin{to{transform:rotate(360deg);}}
-  .loading-overlay .ltext{font-family:'IBM Plex Mono',monospace;font-size:0.85rem;color:var(--ink-soft);}
-  .version-tag{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--ink-soft);opacity:0.7;margin-top:6px;}
-  .completion-timeline{display:flex;align-items:flex-start;margin-bottom:18px;padding:0 4px;}
-  .tl-step{flex:1;display:flex;flex-direction:column;align-items:center;position:relative;}
-  .tl-step:not(:last-child)::after{content:'';position:absolute;top:13px;left:50%;width:100%;height:4px;background:var(--border);z-index:0;}
-  .tl-step.done:not(:last-child)::after{background:#2E7D4F;}
-  .tl-step.overdue:not(:last-child)::after{background:var(--stamp-red);}
-  .tl-node{width:28px;height:28px;border-radius:50%;border:3px solid var(--border);background:#fff;z-index:1;display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700;color:#fff;}
-  .tl-step.done .tl-node{background:#2E7D4F;border-color:#2E7D4F;}
-  .tl-step.overdue .tl-node{background:var(--stamp-red);border-color:var(--stamp-red);width:34px;height:34px;font-size:1.1rem;margin-top:-3px;}
-  .tl-step.pending .tl-node{background:#fff;border-color:var(--border);}
-  .tl-label{margin-top:8px;text-align:center;font-weight:600;font-size:0.78rem;}
-  .tl-sub{font-size:0.66rem;color:var(--ink-soft);margin-top:1px;}
-  .tl-date{font-family:'IBM Plex Mono',monospace;font-size:0.66rem;color:var(--ink-soft);margin-top:4px;}
-  .tl-submitted{font-family:'IBM Plex Mono',monospace;font-size:0.62rem;color:var(--postal-blue);margin-top:2px;}
-
-  /* ── Grammar feedback screen ── */
-  .grade-row{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);margin-bottom:7px;background:#FAFBF8;}
-  .grade-row .gr-crit{flex:1;min-width:0;}
-  .grade-row .gr-name{font-weight:600;font-size:0.88rem;margin-bottom:3px;}
-  .grade-row .gr-desc{font-size:0.76rem;color:var(--ink-soft);line-height:1.45;}
-  .grade-row .gr-score{text-align:right;flex-shrink:0;}
-  .grade-row .gr-tier{font-size:0.8rem;font-weight:600;color:#2E7D4F;white-space:nowrap;display:block;}
-  .grade-row .gr-pts{font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--ink-soft);display:block;margin-top:2px;white-space:nowrap;}
-  .grammar-disclaimer{background:#fdf6e3;border:1px solid #e8d9a0;border-radius:10px;padding:13px 16px;margin-bottom:14px;font-size:0.76rem;line-height:1.65;color:#6b5700;}
-  .grammar-disclaimer p+p{margin-top:4px;font-size:0.7rem;color:#7a6510;}
-  .annotated-blog{font-size:0.88rem;line-height:1.9;white-space:pre-wrap;word-break:break-word;}
-  .ccf-tag{border-radius:3px;padding:1px 3px;cursor:help;position:relative;display:inline;font-weight:600;transition:filter .15s;}
-  .ccf-tag:hover{filter:brightness(0.94);}
-  .ccf-green{background:#DBF2E5;color:#1A3A2A;}
-  .ccf-yellow{background:#FDF4CD;color:#664F08;}
-  .ccf-orange{background:#FDE1C4;color:#783A0A;}
-  .ccf-red{background:#FCDCDC;color:#6E1C1C;}
-  .ccf-purple{background:#E6DEF7;color:#4A2A80;}
-  .ccf-grey{background:#E6E6E4;color:#5A5A56;}
-  .ccf-border{box-shadow:0 0 0 1.5px #2A7A4E;}
-  .ccf-indent{display:inline-block;width:1.4em;}
-  .err-tt{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:10px;padding:11px 14px;min-width:220px;max-width:280px;font-size:0.72rem;line-height:1.5;z-index:100;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,0.25);white-space:normal;text-align:left;font-family:'IBM Plex Sans',sans-serif;}
-  .err-tt::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--ink);}
-  .ccf-tag:hover .err-tt{display:block;}
-  .tt-code{font-size:0.65rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,0.5);margin-bottom:5px;}
-  .tt-unit{background:rgba(255,255,255,0.1);border-radius:6px;padding:6px 9px;margin-top:4px;}
-  .tt-num{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:#93c5fd;display:block;margin-bottom:2px;}
-  .tt-title{font-size:0.72rem;color:rgba(255,255,255,0.85);}
-  .unit-selection-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:14px;}
-  .unit-sel-title{font-family:'Fraunces',serif;font-weight:600;font-size:1rem;margin-bottom:4px;}
-  .unit-sel-desc{font-size:0.8rem;color:var(--ink-soft);margin-bottom:16px;line-height:1.5;}
-  .reason-opt{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer;transition:border-color .15s,background .15s;}
-  .reason-opt:has(input:checked){border-color:var(--postal-blue);background:#EEF3F7;}
-  .reason-opt.disabled-opt{opacity:0.4;pointer-events:none;}
-  .reason-opt input[type=radio]{margin-top:2px;flex-shrink:0;accent-color:var(--postal-blue);}
-  .reason-opt .ro-strong{display:block;font-weight:600;font-size:0.86rem;margin-bottom:1px;}
-  .reason-opt .ro-soft{font-size:0.74rem;color:var(--ink-soft);}
-  .other-reason-wrap{display:none;margin-bottom:14px;}
-  .other-reason-wrap.show{display:block;}
-  .unit-input-grp label{display:block;font-family:'IBM Plex Mono',monospace;font-size:0.64rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;}
-  input.unit-num-inp{width:120px;flex-shrink:0;height:44px;font-family:'IBM Plex Mono',monospace;font-size:1rem;font-weight:500;padding:0 12px;border:1.5px solid var(--border);border-radius:10px;background:var(--paper);color:var(--ink);outline:none;transition:border-color .2s,box-shadow .2s;}
-  .unit-num-inp:focus{border-color:var(--postal-blue);box-shadow:0 0 0 3px rgba(61,90,115,0.12);}
-  .grammar-submit-success{background:#ddf2e8;border:1px solid #2a7a4e;border-radius:10px;padding:12px 16px;font-size:0.84rem;color:#2a7a4e;font-weight:500;display:none;margin-top:12px;}
-  .grammar-submit-success.show{display:block;}
-  .pdf-download-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;}
-  .pdf-download-row .info .ttl{font-weight:600;font-size:0.92rem;margin-bottom:3px;}
-  .pdf-download-row .info .sub{font-size:0.78rem;color:var(--ink-soft);}
-  .btn-pdf{background:transparent;color:var(--ink);border:1.5px solid var(--border);border-radius:10px;padding:10px 18px;font-family:'IBM Plex Sans',sans-serif;font-weight:500;font-size:0.86rem;cursor:pointer;transition:border-color .2s;}
-  .btn-pdf:hover{border-color:var(--ink-soft);}
-  .btn-pdf:disabled{opacity:0.4;cursor:default;}
+  @media (max-width: 600px) {
+    header { padding: 20px; }
+    .login-card { padding: 32px 24px; }
+  }
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
-<div class="toast" id="toast"></div>
-
-<div class="loading-overlay" id="loadingOverlay">
-  <div class="spinner"></div>
-  <div class="ltext" id="loadingText">Loading…</div>
-</div>
-
-<div class="modal-overlay" id="tabWarningModal">
-  <div class="modal-box">
-    <div class="modal-icon">⚠️</div>
-    <h3 id="tabWarningTitle">Stay on this page</h3>
-    <p id="tabWarningText">You switched away while writing. Please stay on this page — using translation tools or other apps while writing isn't allowed, and this has been logged.</p>
-    <button class="btn btn-primary btn-block" onclick="closeTabWarningModal()">OK</button>
-  </div>
-</div>
-
-<div class="app">
-
-  <!-- ===================== LOGIN SCREEN ===================== -->
-  <div class="login-screen" id="loginScreen">
-    <div class="brand">Weekly Forum<small>EFL BLOG &amp; DISCUSSION</small></div>
-    <div class="login-card">
-      <label for="studentNumberInput">Student Number</label>
-      <input type="text" id="studentNumberInput" placeholder="e.g. 2111001" autocomplete="off">
-      <button class="btn btn-primary btn-block" style="margin-top:14px;" onclick="login()">Enter</button>
-      <div class="error-msg" id="loginError">Student number not found. Check and try again.</div>
+<header>
+  <div class="header-left">
+    <div class="header-mark">EWS</div>
+    <div class="header-text">
+      <h1>English Writing Skills Online Materials</h1>
+      <p>Student Dashboard</p>
     </div>
-    <div class="version-tag">v2.8 — 2026-07-28</div>
   </div>
+  <button class="logout-btn" id="logout-btn" onclick="doLogout()">Sign out</button>
+</header>
 
-  <!-- ===================== MAIN APP ===================== -->
-  <div id="mainApp" class="hidden">
-    <header class="topbar">
-      <div class="brand">Weekly Forum<small>EFL BLOG &amp; DISCUSSION</small></div>
-      <div class="who">
-        <button class="home-btn hidden" id="homeBtn" onclick="renderDashboard()">🏠 Dashboard</button>
-        <button class="who-self" onclick="renderProfilePage()">
-          <span id="whoName">—</span>
-          <div class="avatar" id="whoAvatar">?</div>
-        </button>
+<main>
+
+  <!-- LOGIN -->
+  <div id="login-panel">
+    <div class="login-card fade-in">
+      <h2>Sign in</h2>
+      <p class="subtitle">Enter your student number to begin.</p>
+
+      <div class="field">
+        <label class="field-label" for="num-input">Student Number</label>
+        <input class="text-input" type="text" id="num-input" placeholder="e.g. 2511003" autocomplete="off" inputmode="numeric">
       </div>
-    </header>
 
-    <div id="content"></div>
+      <div class="field" id="password-field" style="display:none">
+        <label class="field-label" for="pw-input">Password</label>
+        <input class="text-input" type="password" id="pw-input" placeholder="Your password" autocomplete="off">
+      </div>
+
+      <button class="login-btn" id="login-btn" onclick="doLogin()">Continue →</button>
+      <div class="msg" id="login-msg"></div>
+      <div style="text-align:center; margin-top:20px; font-size:11px; color:var(--ink-mute); letter-spacing:0.06em;">v1.1 — textbook tier passed through SSO</div>
+    </div>
   </div>
-</div>
 
-<input type="file" id="imageFileInput" accept="image/*" class="hidden" onchange="handleImageFile(event)">
+  <!-- TILES -->
+  <div id="tiles-panel">
+    <div class="greeting fade-in">
+      <h2 id="greeting-name"></h2>
+      <p>Choose what you'd like to open.</p>
+      <span class="badge" id="greeting-class"></span>
+    </div>
+    <div class="tiles fade-in" id="tiles-container"></div>
+  </div>
+
+</main>
 
 <script>
-/* ====================================================================
-   LIVE BACKEND WIRING
-   This file talks to the real Apps Script API instead of mock data.
-   Phase 1 scope: login, New Post (prompt/group/rubric), posting,
-   viewing a post, commenting, replying. Also now wired: Previous
-   Entries history list + per-week grade view.
-   NOT yet wired: real image upload is still a placeholder for some
-   flows, profile pictures. Those come in later passes once their
-   backend endpoints exist.
-   ==================================================================== */
+// ════════════════════════════════════════════════════════
+//  CONFIGURATION
+// ════════════════════════════════════════════════════════
 
-const API_URL = "https://script.google.com/macros/s/AKfycbyMbuD6_z3PTOt8P_dS8TPTImZB-r1cnraENT82KGxD6eL2EGK0IxSC5spUu38SfFnX/exec";
+// Filled in automatically by generateDeploymentPackage() in Genesis.gs once
+// the Forum/CCF/Typing Engine is deployed and registered — this is the ONLY
+// engine the dashboard talks to directly. Login lives here (Decision Log
+// §8), and the resulting token is what every tool below uses.
+const FORUM_ENGINE_URL = 'https://script.google.com/macros/s/AKfycbw5J9WRH-wsUVkFLaTI18MBMnjv3K8WHdF3l7_GwtXTADyHPheHDxHt8E4sqbGxXz8M/exec';
 
-// The week shown in the Current Post tab is resolved dynamically via getCurrentWeekInfo
-// (the earliest week whose ReplyDeadline hasn't passed yet) — set once renderNewPostTab
-// loads, and reused by submitPost(). Starts null until that lookup resolves.
-let currentWeek = null;
-
-async function callApi(action, payload) {
-  try {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" }, // avoids a CORS preflight
-      body: JSON.stringify(Object.assign({ action }, payload || {})),
-    });
-    const json = await res.json();
-    if(typeof json.success === 'undefined'){
-      // Server responded, but not in the expected shape — treat as a failure rather than
-      // letting "undefined" leak into the UI.
-      return { success: false, error: "Got an unexpected response from the server. Please try again." };
-    }
-    return json;
-  } catch (err) {
-    return { success: false, error: "Couldn't reach the server — check your connection and try again." };
-  }
-}
-
-let currentStudent = null;
-let currentStudentName = null; // full name string e.g. "Rei YAMAGUCHI", set at login
-let gotoDestination = null;    // set from ?goto= URL param, consumed once after login
-let currentClassId = null;
-let currentName = null;
-let activeTab = 'dashboard';
-let currentPostData = null; // cached response from getNewPostData, so we don't refetch on every small render
-
-function initials(name){ return (name||'?').split(' ').map(n=>n[0]).join(''); }
-function avatarInner(name, picURL){ return picURL ? `<img src="${picURL}">` : initials(name); }
-let currentProfilePicURL = '';
-
-let toastTimer;
-function showToast(msg){
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(()=> t.classList.remove('show'), 2800);
-}
-
-function showLoading(text){
-  document.getElementById('loadingText').textContent = text || 'Loading…';
-  document.getElementById('loadingOverlay').classList.add('show');
-}
-function hideLoading(){
-  document.getElementById('loadingOverlay').classList.remove('show');
-}
-
-/* ============ AUTH ============ */
-async function login(){
-  const val = document.getElementById('studentNumberInput').value.trim();
-  if(!val) return;
-  document.getElementById('loginError').style.display = 'none';
-  showLoading('Logging in…');
-  const result = await callApi('studentLogin', { studentNumber: val });
-  hideLoading();
-  if(result.success){
-    currentStudent = val;
-    currentClassId = result.classId;
-    currentName = result.name;
-    currentStudentName = result.name;
-    currentProfilePicURL = result.profilePicURL || '';
-    document.getElementById('loginScreen').classList.add('hidden');
-    document.getElementById('mainApp').classList.remove('hidden');
-    document.getElementById('whoName').textContent = currentName;
-    document.getElementById('whoAvatar').innerHTML = avatarInner(currentName, currentProfilePicURL);
-    renderDashboard();
-  } else {
-    document.getElementById('loginError').textContent = result.error || 'Student number not found.';
-    document.getElementById('loginError').style.display = 'block';
-  }
-}
-
-function updateHomeButton(onDashboard){
-  document.getElementById('homeBtn').classList.toggle('hidden', onDashboard);
-}
-
-/* ============ DASHBOARD ============ */
-function renderDashboard(){
-  // Handle ?goto=grammar deep link from the all-in-one dashboard.
-  // Consumed exactly once — cleared immediately so back-button returns to dashboard normally.
-  // Lands on the CLASS'S current grammar-selection cycle — the earliest
-  // scheduled week whose quiz hasn't been completed by anyone yet
-  // (getCurrentGrammarCycle, class-wide, not per-student). Deliberately
-  // NOT based on this student's own posting status or the calendar: a
-  // student catching up after missing class should land on whichever
-  // cycle the class is actually still on, not get skipped ahead just
-  // because the calendar moved on or because they already wrote a later
-  // week's post out of order.
-  if(gotoDestination === 'grammar'){
-    gotoDestination = null;
-    (async()=>{
-      const result = await callApi('getCurrentGrammarCycle', { classId: currentClassId });
-      if(result.success && result.week){
-        renderGrammarFeedback(result.week);
-      } else {
-        renderDashboard(); // no weeks scheduled at all yet — nothing to show
-      }
-    })();
-    return;
-  }
-  activeTab = 'dashboard';
-  updateHomeButton(true);
-  isWritingSomething = false;
-  document.getElementById('content').innerHTML = `
-    <div class="dash-intro">What would you like to do?</div>
-    <div class="dash-grid">
-      <div class="dash-card c-newpost" onclick="enterSection('newpost')">
-        <div class="dash-icon">📝</div>
-        <div class="dash-text">
-          <div class="dash-title">Current Post</div>
-          <div class="dash-sub">Write this week's entry, read your group's posts and comment</div>
-        </div>
-        <div class="dash-chev">›</div>
-      </div>
-      <div class="dash-card c-previous" onclick="enterSection('previous')">
-        <div class="dash-icon">📚</div>
-        <div class="dash-text">
-          <div class="dash-title">Previous Entries / Grades</div>
-          <div class="dash-sub">Review past weeks' entries and check your grades</div>
-        </div>
-        <div class="dash-chev">›</div>
-      </div>
-    </div>
-  `;
-}
-
-function enterSection(section){
-  activeTab = section;
-  updateHomeButton(false);
-  if(section==='newpost') renderNewPostTab();
-  if(section==='previous') renderPreviousList();
-}
-
-function renderProfilePage(){
-  activeTab = 'profile';
-  updateHomeButton(false);
-  isWritingSomething = false;
-  document.getElementById('content').innerHTML = `
-    <button class="back-link" onclick="renderDashboard()">← Back to dashboard</button>
-    <div class="card" style="text-align:center;">
-      <div class="profile-avatar-big" id="profileAvatarBig">${avatarInner(currentName, currentProfilePicURL)}</div>
-      <div class="profile-name">${currentName}</div>
-      <div class="profile-sn">${currentStudent} · ${currentClassId}</div>
-      <div style="display:flex;gap:10px;justify-content:center;margin-top:16px;flex-wrap:wrap;">
-        <button class="btn btn-primary" onclick="triggerImageUpload('profile', null, 'profileAvatarBig')">Change profile picture</button>
-        ${currentProfilePicURL ? `<button class="btn btn-ghost" onclick="removeProfilePic()">Remove picture</button>` : ''}
-      </div>
-    </div>
-  `;
-}
-
-/* ============ PREVIOUS ENTRIES & GRADES ============ */
-async function renderPreviousList(){
-  activeTab = 'previous';
-  updateHomeButton(false);
-  isWritingSomething = false;
-  showLoading('Loading previous entries…');
-  try{
-    const result = await callApi('getPreviousWeeks', { classId: currentClassId, studentNumber: currentStudent });
-    if(!result.success){
-      document.getElementById('content').innerHTML = `
-        <button class="back-link" onclick="renderDashboard()">← Back to dashboard</button>
-        <div class="card empty-note">${result.error || "Couldn't load previous entries."}</div>`;
-      return;
-    }
-    if(!result.weeks.length){
-      document.getElementById('content').innerHTML = `
-        <button class="back-link" onclick="renderDashboard()">← Back to dashboard</button>
-        <div class="card empty-note">No previous weeks yet — check back once the first week's posting window opens.</div>`;
-      return;
-    }
-    const rowsHtml = result.weeks.map(w=>{
-      const sub = w.hasPosted
-        ? (w.isGraded ? 'Posted · Graded' : 'Posted · Not graded yet')
-        : 'No entry submitted';
-      return `
-        <div class="week-list-row" onclick="renderPreviousWeekDetail(${w.week})">
-          <div><div class="wtitle">Week ${String(w.week).padStart(2,'0')} · ${w.dateRangeLabel}</div><div class="wsub">${sub}</div></div>
-          <div class="chev">›</div>
-        </div>`;
-    }).join('');
-    document.getElementById('content').innerHTML = `
-      <button class="back-link" onclick="renderDashboard()">← Back to dashboard</button>
-      <div class="section-label">Previous entries</div>
-      <div class="card">${rowsHtml}</div>
-    `;
-  } finally {
-    hideLoading();
-  }
-}
-
-async function renderPreviousWeekDetail(week){
-  isWritingSomething = false;
-  showLoading('Loading…');
-  try{
-    const [data, gradeData] = await Promise.all([
-      callApi('getNewPostData', { classId: currentClassId, studentNumber: currentStudent, week }),
-      callApi('getGradeForStudent', { classId: currentClassId, studentNumber: currentStudent, week }),
-    ]);
-    if(!data.success){
-      document.getElementById('content').innerHTML = `
-        <button class="back-link" onclick="renderPreviousList()">← Back to previous entries</button>
-        <div class="card empty-note">${data.error || "Something went wrong loading this week."}</div>`;
-      return;
-    }
-    const sched = data.schedule;
-
-    let entryBlockHtml;
-    if(data.myPost){
-      entryBlockHtml = `
-        <div class="card your-entry-row">
-          <div><div class="info">Your entry</div><div class="ttl">${data.myPost.Title}</div></div>
-          <button class="btn btn-ghost" onclick="openPostDetail('${data.myPost.PostID}', {type:'previousWeek', week:${week}})">View</button>
-        </div>`;
-    } else {
-      entryBlockHtml = `<div class="card" style="text-align:center;color:var(--ink-soft);">No entry was submitted this week.</div>`;
-    }
-
-    let membersHtml = '';
-    if(data.settings.GroupsEnabled){
-      membersHtml = data.groupMembers.filter(m=>m.studentNumber!==currentStudent).map(m=>{
-        if(m.postId){
-          return `
-            <div class="member-row" onclick="openPostDetail('${m.postId}', {type:'previousWeek', week:${week}})">
-              <div class="avatar" style="background:var(--postal-blue)">${avatarInner(m.name, m.profilePicURL)}</div>
-              <div class="mtext"><div class="mtitle">${m.title}</div><div class="mauthor">${m.name}</div></div>
-              <div class="chev">›</div>
-            </div>`;
-        }
-        return `
-          <div class="member-row disabled">
-            <div class="avatar" style="background:var(--border);color:var(--ink-soft);">${avatarInner(m.name, m.profilePicURL)}</div>
-            <div class="mtext"><div class="mname">${m.name}</div><div class="mstatus">No posts</div></div>
-          </div>`;
-      }).join('');
-    }
-
-    const hasEntry = !!data.myPost;
-    const gradeSectionHtml = (gradeData.success && gradeData.graded)
-      ? buildGradeSection(gradeData)
-      : buildUngradedRubricSection(data.rubric);
-
-    document.getElementById('content').innerHTML = `
-      <button class="back-link" onclick="renderPreviousList()">← Back to previous entries</button>
-      <div class="card week-head">
-        <div class="label">Week ${String(sched.Week).padStart(2,'0')} · ${sched.DateRangeLabel}</div>
-      </div>
-      ${buildCompletionTimeline(data)}
-      <div class="card prompt-card">
-        <div class="eyebrow">Prompt</div>
-        <div class="ptext">${sched.Prompt}</div>
-      </div>
-      ${entryBlockHtml}
-      ${data.settings.GroupsEnabled ? `
-      <div class="section-label">Your group that week</div>
-      <div class="card">${membersHtml}</div>` : ''}
-      ${hasEntry ? `
-      <div style="text-align:center;margin:10px 0;">
-        <button class="btn btn-primary" onclick="renderGrammarFeedback(${week})">View grammar feedback →</button>
-      </div>
-      ` : ''}
-      ${gradeSectionHtml}
-    `;
-  } finally {
-    hideLoading();
-  }
-}
-
-// Shown in place of the grade section before the teacher has graded this week — the
-// rubric itself, so the student can still see how it'll be scored, but visually muted
-// so it doesn't read as an actual result.
-function buildUngradedRubricSection(rubric){
-  const rubricHtml = buildRubricTable(rubric);
-  return `
-    <div class="section-label">Rubric</div>
-    <div class="card empty-note" style="margin-bottom:10px;">Not graded yet — check back later.</div>
-    <div style="opacity:0.45;pointer-events:none;">${rubricHtml}</div>
-  `;
-}
-
-// Graded rubric — one card-row per criterion showing the awarded tier label,
-// its description, and the awarded/max points. Replaces the scrollable table.
-function buildGradeSection(gradeData){
-  const criteria = gradeData.criteria;
-  if(!criteria.length) return `<div class="section-label">Grade</div><div class="card empty-note">No rubric to show.</div>`;
-
-  const rows = criteria.map(crit=>{
-    const tier = crit.selectedTierOrder !== null ? crit.tiers[crit.selectedTierOrder] : null;
-    const tierLabel = tier ? tier.label : 'No submission';
-    const tierDesc  = tier ? (tier.desc || '') : '';
-    const awarded   = tier ? (Number(tier.points)||0) : 0;
-    return `
-      <div class="grade-row">
-        <div class="gr-crit">
-          <div class="gr-name">${crit.name}</div>
-          ${tierDesc ? `<div class="gr-desc">${tierDesc}</div>` : ''}
-        </div>
-        <div class="gr-score">
-          <span class="gr-tier">${tierLabel}</span>
-          <span class="gr-pts">${awarded} / ${crit.maxPoints} pts</span>
-        </div>
-      </div>`;
-  }).join('');
-
-  const feedbackHtml = gradeData.overallFeedback ? `
-    <div class="card feedback-card">
-      <div class="eyebrow">Teacher feedback</div>
-      <div class="feedback-text">${gradeData.overallFeedback}</div>
-    </div>` : '';
-
-  return `
-    <div class="section-label">Grade — ${gradeData.totalPoints} / ${gradeData.maxPoints} pts</div>
-    <div class="card" style="padding:12px 14px;">${rows}</div>
-    ${feedbackHtml}
-  `;
-}
-
-
-/* ============ GRAMMAR FEEDBACK SCREEN ============ */
-
-// Fetches annotation data from the grammar analysis API and renders the full
-// grammar feedback screen — annotated blog, unit selection, PDF download.
-// `week` is the week number; called from the "View grammar feedback →" button
-// on the graded rubric screen. Back button returns to that rubric screen.
-async function renderGrammarFeedback(week){
-  isWritingSomething = false;
-  showLoading('Loading grammar feedback…');
-  try{
-
-  // Fetch annotation data and this week's colour snapshot in parallel — both
-  // come from the Forum's own backend. Submission status now comes bundled
-  // in the colour response too (see existingSubmission below) — the old
-  // MasterLogin.gs status check computed a class-global "next open week"
-  // instead of using the week actually being viewed, so it could report
-  // "not submitted" for a real submission to a different week.
-  const [annotationResult, colourResult] = await Promise.allSettled([
-    callApi('getAnnotationForWeek', { classId: currentClassId, studentNumber: currentStudent, week }),
-    callApi('getColourStateForWeek', { classId: currentClassId, studentNumber: currentStudent, week }),
-  ]);
-
-  const annotationData = (annotationResult.status==='fulfilled' && annotationResult.value && annotationResult.value.success) ? annotationResult.value : null;
-  const annotation = (annotationData && annotationData.found) ? annotationData : null;
-  const colourMap = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.colours : {};
-  const ccfSettings = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.settings : { showUntreatableErrors: true };
-  const grammarSubmitDeadline = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.grammarSubmitDeadline : null;
-  const existingSubmission = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.existingSubmission : { found: false, unit: '', reason: '', submittedAt: '' };
-
-  const hasAnnotation = annotation && annotation.annotatedText;
-
-  // Submission window — controlled entirely by the Schedule tab's own
-  // "Grammar unit submission" deadline now, not the old MasterLogin.gs
-  // window. No start time: the section is reachable the moment this week's
-  // grammar-feedback page is (already gated behind past-posts visibility),
-  // and only ever closes at the deadline — no start/reopen concept at all.
-  // No deadline set = always open.
-  const deadlineDate = grammarSubmitDeadline ? new Date(grammarSubmitDeadline) : null;
-  const windowOpen = !deadlineDate || new Date() < deadlineDate;
-  const alreadySubmitted = existingSubmission.found;
-  const existingMain  = existingSubmission.unit || '';
-  const submittedAt   = existingSubmission.submittedAt || '';
-
-  // Annotated text block
-  const annotationBlockHtml = hasAnnotation
-    ? `<div class="section-label">Your entry with feedback</div>
-       <div class="card"><div class="annotated-blog">${buildAnnotatedHtml(annotation.annotatedText, colourMap, ccfSettings.showUntreatableErrors)}</div></div>
-       <div style="text-align:center;font-size:0.72rem;color:var(--ink-soft);margin:-6px 0 14px;">Tap any highlighted word to see the error type and unit</div>`
-    : `<div class="card empty-note" style="margin-bottom:14px;">
-         No analysis available for this week.<br>
-         <span style="font-size:0.8rem;">No blog entry was submitted, so there is no grammar feedback.</span>
-       </div>`;
-
-  const mistakeOptDisabled = !hasAnnotation ? 'disabled-opt' : '';
-  const mistakeOptHint = !hasAnnotation
-    ? 'Not available — no entry was submitted this week.'
-    : 'A new unit color coded green that matches one of the errors above.';
-
-  // Unit section — three states: deadline passed, deadline open + already submitted, deadline open fresh
-  let unitSectionHtml;
-  if(!windowOpen){
-    const closedNote = `Submission is closed — the deadline was ${deadlineDate.toLocaleString()}.`;
-    const previousHtml = alreadySubmitted
-      ? `<div style="background:var(--paper);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-top:12px;">
-           <div style="font-size:0.76rem;color:var(--ink-soft);margin-bottom:6px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.06em;">Your submission</div>
-           <div style="font-size:0.9rem;font-weight:600;">Unit B${existingMain}</div>
-           <div style="font-size:0.76rem;color:var(--ink-soft);margin-top:3px;">Submitted ${submittedAt}</div>
-         </div>`
-      : `<div style="font-size:0.82rem;color:var(--ink-soft);margin-top:10px;">No unit was submitted for this week.</div>`;
-    unitSectionHtml = `
-      <div class="section-label">Grammar unit</div>
-      <div class="unit-selection-card">
-        <div class="unit-sel-title">Unit submission closed</div>
-        <div class="unit-sel-desc">${closedNote}</div>
-        ${previousHtml}
-      </div>`;
-  } else {
-    const btnLabel = alreadySubmitted ? 'Update submission →' : 'Submit unit →';
-    const alreadyNote = alreadySubmitted
-      ? `<div style="font-size:0.76rem;color:var(--ink-soft);margin-bottom:14px;">You submitted Unit B${existingMain} on ${submittedAt} — submitting again will update your choice.</div>`
-      : '';
-    const countdownHtml = deadlineDate
-      ? `<div id="grammarDeadlineCountdown" style="font-size:0.76rem;color:var(--ink-soft);margin-top:8px;font-family:'IBM Plex Mono',monospace;"></div>`
-      : '';
-    unitSectionHtml = `
-      <div class="section-label">Choose your grammar unit</div>
-      <div class="unit-selection-card">
-        <div class="unit-sel-title">Which unit do you want to study?</div>
-        <div class="unit-sel-desc">Look at the feedback above. Choose a new grammar unit to study and tell your teacher why you chose it.</div>
-        ${alreadyNote}
-        <label class="reason-opt ${mistakeOptDisabled}">
-          <input type="radio" name="grammar-reason" value="mistake" ${!hasAnnotation?'disabled':''} onchange="handleGrammarReason(this)">
-          <div>
-            <span class="ro-strong">A mistake in my blog entry</span>
-            <span class="ro-soft">${mistakeOptHint}</span>
-          </div>
-        </label>
-        <label class="reason-opt">
-          <input type="radio" name="grammar-reason" value="other" onchange="handleGrammarReason(this)">
-          <div>
-            <span class="ro-strong">Other reason</span>
-            <span class="ro-soft">You will need to explain your reason.</span>
-          </div>
-        </label>
-        <div class="other-reason-wrap" id="otherReasonWrap">
-          <label style="display:block;font-family:'IBM Plex Mono',monospace;font-size:0.64rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">Explain your reason</label>
-          <textarea id="otherReasonInput" style="width:100%;min-height:70px;font-family:'IBM Plex Sans',sans-serif;font-size:0.88rem;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;background:var(--paper);color:var(--ink);resize:vertical;outline:none;" placeholder="Why are you choosing this unit?"></textarea>
-        </div>
-        <div style="margin:14px 0 18px;">
-          <label for="grammarMainUnit" style="display:block;font-family:'IBM Plex Mono',monospace;font-size:0.64rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">New unit <span style="color:var(--stamp-red)">*</span></label>
-          <div style="display:flex;gap:10px;">
-            <input class="unit-num-inp" type="text" id="grammarMainUnit" inputmode="numeric" placeholder="e.g. 11" autocomplete="off" value="${existingMain}">
-            <button class="btn btn-primary" id="grammarSubmitBtn" onclick="submitGrammarUnit(${week})" style="white-space:nowrap;">${btnLabel}</button>
-          </div>
-          ${countdownHtml}
-        </div>
-        <div class="grammar-submit-success" id="grammarSubmitSuccess"></div>
-      </div>`;
-  }
-
-  document.getElementById('content').innerHTML = `
-    <button class="back-link" onclick="renderPreviousWeekDetail(${week})">← Back to rubric</button>
-    <div class="card week-head">
-      <div class="label">Week ${String(week).padStart(2,'0')}</div>
-    </div>
-    <div class="grammar-disclaimer">
-      <p>Grammar feedback on this page is generated by AI. Highlighted words show where a mistake might be — tap to see the type and unit. It doesn't catch everything, and unit suggestions aren't always exact — ask your teacher if something seems off.</p>
-      <p>このページの文法フィードバックはAIによって生成されています。ハイライトされた単語は間違いの可能性がある箇所を示しています。タップすると種類とユニット番号が表示されます。すべての間違いを検出できるわけではなく、ユニットの提案も必ずしも正確ではありません。疑問に思ったことは先生に相談してください。</p>
-    </div>
-    ${annotationBlockHtml}
-    ${unitSectionHtml}
-    <div class="section-label">Reflection worksheet</div>
-    <div class="card pdf-download-row">
-      <div class="info">
-        <div class="ttl">Download Blog Entry Grammar Reflection Sheet</div>
-        <div class="sub">Download the reflection worksheet for this week's entry.</div>
-      </div>
-      <button class="btn-pdf" ${!hasAnnotation?'disabled title="No entry was submitted this week."':''} onclick="downloadCCFReflectionSheet()">📄 Download Reflection Sheet</button>
-    </div>
-    <div class="card pdf-download-row">
-      <div class="info">
-        <div class="ttl">Copy AI-check prompt</div>
-        <div class="sub">Copies a ready-to-paste prompt for the weekend homework step — paste into Gemini, then add your two corrected sentences at the bottom.</div>
-      </div>
-      <button class="btn-pdf" ${!hasAnnotation?'disabled title="No entry was submitted this week."':''} onclick="copyAICheckPrompt()">📋 Copy Prompt</button>
-    </div>
-  `;
-  // Stored in a plain JS variable rather than serialized into the onclick
-  // attribute above — no annotation content (quotes, apostrophes, anything)
-  // ever has to survive HTML-attribute escaping this way.
-  window._ccfPdfData = { week, annotation: Object.assign({}, annotation||{}, {colourMap, showUntreatable: ccfSettings.showUntreatableErrors}), existingMain, existingSubmittedAt: submittedAt };
-  if(windowOpen && deadlineDate) startGrammarDeadlineCountdown(deadlineDate, week);
-  } finally {
-    hideLoading();
-  }
-}
-
-
-// Live countdown next to the Submit Unit button, ticking down to that
-// week's Schedule-tab deadline. Self-cleaning: if the countdown element is
-// no longer in the DOM (the student navigated elsewhere), the interval
-// clears itself on its next tick rather than running forever in the
-// background. When the deadline actually passes, re-renders the whole
-// screen so the button correctly greys out via the normal windowOpen path,
-// rather than trying to hand-patch the DOM into a closed state here.
-function startGrammarDeadlineCountdown(deadline, week){
-  if(window._grammarCountdownInterval) clearInterval(window._grammarCountdownInterval);
-  function tick(){
-    const el = document.getElementById('grammarDeadlineCountdown');
-    if(!el){ clearInterval(window._grammarCountdownInterval); return; }
-    const diff = deadline - new Date();
-    if(diff <= 0){
-      clearInterval(window._grammarCountdownInterval);
-      renderGrammarFeedback(week);
-      return;
-    }
-    const days = Math.floor(diff / 86400000);
-    const hours = Math.floor((diff % 86400000) / 3600000);
-    const mins = Math.floor((diff % 3600000) / 60000);
-    const secs = Math.floor((diff % 60000) / 1000);
-    let text;
-    if(days > 0) text = `Closes in ${days}d ${hours}h`;
-    else if(hours > 0) text = `Closes in ${hours}h ${mins}m`;
-    else text = `Closes in ${mins}m ${secs}s`;
-    el.textContent = text;
-  }
-  tick();
-  window._grammarCountdownInterval = setInterval(tick, 1000);
-}
-
-function handleGrammarReason(radio){
-  document.getElementById('otherReasonWrap').classList.toggle('show', radio.value === 'other');
-}
-
-async function submitGrammarUnit(week){
-  const reason = document.querySelector('input[name="grammar-reason"]:checked');
-  const mainUnit = document.getElementById('grammarMainUnit').value.trim();
-  const otherText = document.getElementById('otherReasonInput').value.trim();
-
-  if(!reason){ showToast('Please choose a reason.'); return; }
-  if(!mainUnit){ showToast('Please enter a unit number.'); return; }
-  if(reason.value === 'other' && !otherText){ showToast('Please explain your reason.'); return; }
-
-  const btn = document.getElementById('grammarSubmitBtn');
-  btn.disabled = true;
-  btn.textContent = 'Submitting…';
-
-  const reasonText = reason.value === 'mistake' ? 'A mistake in my blog entry' : `Other: ${otherText}`;
-
-  try{
-    const data = await callApi('submitGrammarUnit', {
-      classId: currentClassId,
-      studentNumber: currentStudent,
-      studentName: currentStudentName || currentStudent,
-      week,
-      mainUnit,
-      reason: reasonText,
-    });
-    if(data.success){
-      btn.disabled = false;
-      btn.textContent = 'Update submission →';
-      const el = document.getElementById('grammarSubmitSuccess');
-      el.textContent = `Unit B${mainUnit} submitted — your teacher can see your choice.`;
-      el.classList.add('show');
-    } else {
-      btn.disabled = false;
-      btn.textContent = 'Submit unit →';
-      showToast(data.error || "Couldn't submit. Try again.");
-    }
-  }catch(e){
-    btn.disabled = false;
-    btn.textContent = 'Submit unit →';
-    showToast('Connection error — please try again.');
-  }
-}
-
-/* ── Unit reference titles for tooltips — Japanese for Basic (B1–B113,
-   parsed from the real unit reference doc), English for Intermediate
-   (I1–I142 — no Japanese reference doc exists for these yet, same gap
-   already flagged for Stage 2 verification). The reflection sheet PDF
-   deliberately shows only the unit number, not the title — this lookup
-   is for the on-screen tooltip only. ── */
-const UNIT_TITLES = {B1:{jp:"am/is/are (be 動詞の肯定文、否定文)",en:null},B2:{jp:"am/is/are (be 動詞の疑問文)",en:null},B3:{jp:"I am doing (現在進行形)",en:null},B4:{jp:"are you doing? (現在進行形の疑問文)",en:null},B5:{jp:"I do/work/like など (単純現在形)",en:null},B6:{jp:"I don't ... (単純現在形の否定文)",en:null},B7:{jp:"Do you ... ? (単純現在形の疑問文)",en:null},B8:{jp:"I am doing と I do (現在進行形と単純現在形)",en:null},B9:{jp:"I have ... と I've got ...",en:null},B10:{jp:"was/were (be 動詞の過去形)",en:null},B11:{jp:"worked/got/went など (単純過去形)",en:null},B12:{jp:"I didn't ... Did you ... ? (単純過去形の否定文と疑問文)",en:null},B13:{jp:"I was doing (過去進行形)",en:null},B14:{jp:"I was doing と I did (過去進行形と単純過去形)",en:null},B15:{jp:"I used to + 動詞の原形",en:null},B16:{jp:"Have you ... ? (現在完了形：現在までの経験)",en:null},B17:{jp:"How long have you ... ? (現在完了形：現在までの動作や状態の継続)",en:null},B18:{jp:"for since ago",en:null},B19:{jp:"I have done と I did (現在完了形と単純過去形)",en:null},B20:{jp:"is done was done (受動態 1)",en:null},B21:{jp:"is being done has been done (受動態 2)",en:null},B22:{jp:"be/have/do (現在形と過去形における助動詞)",en:null},B23:{jp:"規則動詞と不規則動詞",en:null},B24:{jp:"What are you doing tomorrow? (未来を表す be + -ing)",en:null},B25:{jp:"I'm going to + 動詞の原形",en:null},B26:{jp:"will",en:null},B27:{jp:"might",en:null},B28:{jp:"can と could",en:null},B29:{jp:"must",en:null},B30:{jp:"should",en:null},B31:{jp:"I have to + 動詞の原形",en:null},B32:{jp:"Would you like ... ? I'd like ...",en:null},B33:{jp:"I'd rather + 動詞の原形",en:null},B34:{jp:"Do this! Don't do that! Let's do this! (命令文)",en:null},B35:{jp:"there is there are (there + be 動詞構文 1)",en:null},B36:{jp:"there was/were there has/have been there will be (there + be 動詞構文 2)",en:null},B37:{jp:"「それ」という意味を持たない it",en:null},B38:{jp:"I am, I don't など (肯定文、否定文の後に続く語句の省略)",en:null},B39:{jp:"Have you?/Are you? など (聞き返し疑問と付加疑問)",en:null},B40:{jp:"too/either so am I/neither do I など",en:null},B41:{jp:"isn't, haven't, don't など (様々な否定文)",en:null},B42:{jp:"Is it ... ? Have you ... ? Do they ... ? など (疑問文 1)",en:null},B43:{jp:"Who saw you? Who did you see? (疑問文 2)",en:null},B44:{jp:"Who is she talking to? What is it like? (疑問文 3)",en:null},B45:{jp:"What ... ? Which ... ? How ... ? (疑問文 4)",en:null},B46:{jp:"How long does it take to + 動詞の原形 (…にはどのくらい時間がかかりますか)",en:null},B47:{jp:"Do you know where ... ? I don't know what ... など (間接疑問文)",en:null},B48:{jp:"She said that ... He told me that ... (間接話法)",en:null},B49:{jp:"work/working go/going do/doing (動詞の原形と -ing)",en:null},B50:{jp:"I want to do I enjoy doing (動詞の後ろに入る「to + 動詞の原形」と -ing)",en:null},B51:{jp:"I want you to ... / I told you to ... (want/tell + 人 + to + 動詞の原形)",en:null},B52:{jp:"I went to the store to + 動詞の原形 (目的を表す不定詞)",en:null},B53:{jp:"go to/on/for + 名詞句 go + -ing",en:null},B54:{jp:"get",en:null},B55:{jp:"do と make",en:null},B56:{jp:"have",en:null},B57:{jp:"I/me he/him they/them など (代名詞の主格と目的格)",en:null},B58:{jp:"my/his/their など (代名詞の所有格)",en:null},B59:{jp:"Whose is this? It's mine/yours/hers など (代名詞の所有格と独立所有格)",en:null},B60:{jp:"I/me/my/mine など (代名詞の格)",en:null},B61:{jp:"myself/yourself/themselves など (再帰代名詞)",en:null},B62:{jp:"-'s (Kate's camera/my brother's car など)",en:null},B63:{jp:"a/an (不定冠詞)",en:null},B64:{jp:"train(s) bus(es) (単数形と複数形)",en:null},B65:{jp:"a bottle / some water (可算名詞と不可算名詞 1)",en:null},B66:{jp:"a cake / some cake / some cakes (可算名詞と不可算名詞 2)",en:null},B67:{jp:"a/an と the (不定冠詞と定冠詞)",en:null},B68:{jp:"the ... (the の付く名詞と付かない名詞 1)",en:null},B69:{jp:"go to work go home go to the hospital (the の付く名詞と付かない名詞 2)",en:null},B70:{jp:"I like music I hate exams (the の付く名詞と付かない名詞 3)",en:null},B71:{jp:"the + 場所の名前",en:null},B72:{jp:"this/that/these/those",en:null},B73:{jp:"one/ones",en:null},B74:{jp:"some と any",en:null},B75:{jp:"not + any / no + 名詞 / none",en:null},B76:{jp:"not + anybody/anyone/anything nobody / no one / nothing",en:null},B77:{jp:"somebody/anything/nowhere など",en:null},B78:{jp:"every と all",en:null},B79:{jp:"all most some any no/none",en:null},B80:{jp:"both/either/neither",en:null},B81:{jp:"a lot / much / many",en:null},B82:{jp:"(a) little / (a) few",en:null},B83:{jp:"old/nice/interesting など (形容詞)",en:null},B84:{jp:"quickly/badly/suddenly など (副詞)",en:null},B85:{jp:"old / older expensive / more expensive (比較級 1)",en:null},B86:{jp:"older than ... more expensive than ... (比較級 2)",en:null},B87:{jp:"not as ... as (原級を用いた比較)",en:null},B88:{jp:"the oldest the most expensive (最上級)",en:null},B89:{jp:"enough",en:null},B90:{jp:"too",en:null},B91:{jp:"He speaks English very well. (語順 1：動詞─目的語、場所─時)",en:null},B92:{jp:"always/usually/often など (語順 2：時を表す副詞)",en:null},B93:{jp:"still yet already",en:null},B94:{jp:"Give me that book! Give it to me! (「動詞 + 物 + to 人」と「動詞 + 人 + 物」)",en:null},B95:{jp:"and but or so because (2 つの文をつなぐ接続詞)",en:null},B96:{jp:"when ... (時を表す節)",en:null},B97:{jp:"If we go ... If you see ... など (起きるかもしれない出来事を仮定する if 節)",en:null},B98:{jp:"If I had ... If we went ... など (事実に反することを仮定する if 節)",en:null},B99:{jp:"a person who ... a thing that/which ... (関係詞節 1：主語であることを示す関係代名詞)",en:null},B100:{jp:"the people we met the hotel you stayed at (関係詞節 2：目的語を示す関係代名詞の省略)",en:null},B101:{jp:"at 8:00 on Monday in April (時を表す前置詞)",en:null},B102:{jp:"from ... to until since for (期間を表す前置詞)",en:null},B103:{jp:"before after during while (「前・後・間」を表す前置詞／接続詞)",en:null},B104:{jp:"in/at/on (場所を表す前置詞 1)",en:null},B105:{jp:"in/at/on (場所を表す前置詞 2)",en:null},B106:{jp:"to/in/at (場所を表す前置詞 3)",en:null},B107:{jp:"next to, between, under など (位置関係を表す前置詞)",en:null},B108:{jp:"up, over, through など (方向を表す前置詞)",en:null},B109:{jp:"on/at/by/with/about (前置詞のその他の用法)",en:null},B110:{jp:"afraid of ... , good at ... など of/at/for など + -ing (「形容詞 + 前置詞」と「前置詞 + -ing」)",en:null},B111:{jp:"listen to ... , look at ... など (動詞 + 前置詞)",en:null},B112:{jp:"go in, fall off, run away など (句動詞 1：句動詞と動作の方向)",en:null},B113:{jp:"put on your shoes put your shoes on (句動詞 2：句動詞と目的語)",en:null},I1:{jp:"現在進行形 (I am doing)",en:null},I2:{jp:"単純現在形 (I do)",en:null},I3:{jp:"現在進行形と単純現在形 1 (I am doing と I do)",en:null},I4:{jp:"現在進行形と単純現在形 2 (I am doing と I do)",en:null},I5:{jp:"単純過去形 (I did)",en:null},I6:{jp:"過去進行形 (I was doing)",en:null},I7:{jp:"現在完了形 (I have done)",en:null},I8:{jp:"現在完了形と過去形 1 (I have done と I did)",en:null},I9:{jp:"現在完了進行形 (I have been doing)",en:null},I10:{jp:"現在完了進行形と現在完了形 (I have been doing と I have done)",en:null},I11:{jp:"How long have you (been) ... ?",en:null},I12:{jp:"for と since　When ... ? と How long ... ?",en:null},I13:{jp:"現在完了形と過去形 2 (I have done と I did)",en:null},I14:{jp:"過去完了形 (I had done)",en:null},I15:{jp:"過去完了進行形 (I had been doing)",en:null},I16:{jp:"have と have got",en:null},I17:{jp:"used to + 動詞の原形",en:null},I18:{jp:"未来の意味を表す現在時制 (I am doing / I do)",en:null},I19:{jp:"I'm going to (do)",en:null},I20:{jp:"will 1",en:null},I21:{jp:"will 2",en:null},I22:{jp:"I will と I'm going to",en:null},I23:{jp:"will be doing と will have done",en:null},I24:{jp:"when I do / when I've done　if と when (従属節内の時制)",en:null},I25:{jp:"can, could と (be) able to",en:null},I26:{jp:"could (do) と could have (done)",en:null},I27:{jp:"must と can't",en:null},I28:{jp:"may と might 1",en:null},I29:{jp:"may と might 2",en:null},I30:{jp:"have to と must",en:null},I31:{jp:"should",en:null},I32:{jp:"仮定法 (I suggest you do)",en:null},I33:{jp:"I'd better ... It's time ...",en:null},I34:{jp:"would",en:null},I35:{jp:"Can/Could/Would you ... ? など (要求・申し出・許可・勧誘)",en:null},I36:{jp:"if I do ... , if I did ...",en:null},I37:{jp:"if I knew ... , I wish I knew ...",en:null},I38:{jp:"if I had known ... , I wish I had known ...",en:null},I39:{jp:"wish",en:null},I40:{jp:"受動態 1 (is done / was done)",en:null},I41:{jp:"受動態 2 (be done / been done / being done)",en:null},I42:{jp:"受動態 3",en:null},I43:{jp:"It is said that ...　He is said to ...　He is supposed to ...",en:null},I44:{jp:"have/get ～ done",en:null},I45:{jp:"間接話法 1 (He said that ...)",en:null},I46:{jp:"間接話法 2",en:null},I47:{jp:"疑問文 1",en:null},I48:{jp:"疑問文 2 (間接疑問文) Do you know where ... ? / He asked me where ...",en:null},I49:{jp:"助動詞 (have/do/can など) I think so / I hope so などを用いて繰り返しを避ける表現",en:null},I50:{jp:"付加疑問 (..., do you? / ..., isn't it? など)",en:null},I51:{jp:"動詞 + -ing (enjoy doing / stop doing など)",en:null},I52:{jp:"動詞 + to ～ (decide to + 動詞の原形 / forget to + 動詞の原形 など)",en:null},I53:{jp:"動詞 + (目的語) + to ～ (I want you to + 動詞の原形 など)",en:null},I54:{jp:"動詞 + -ing と 動詞 + to + 動詞の原形 1 (remember/regret など)",en:null},I55:{jp:"動詞 + -ing と 動詞 + to + 動詞の原形 2 (try/need/help)",en:null},I56:{jp:"動詞 + -ing と 動詞 + to + 動詞の原形 3 (like / would like など)",en:null},I57:{jp:"prefer と would rather",en:null},I58:{jp:"前置詞 (in/for/about など) + -ing",en:null},I59:{jp:"be/get used to do ... (I'm used to ...)",en:null},I60:{jp:"動詞 + 前置詞 + -ing (succeed in -ing / insist on -ing など)",en:null},I61:{jp:"There is no point in -ing, it's worth -ing など",en:null},I62:{jp:"to + 動詞の原形, for ... と so that ... (目的を表す表現)",en:null},I63:{jp:"形容詞 + to + 動詞の原形",en:null},I64:{jp:"to + 動詞の原形 (afraid to do) と前置詞 + -ing (afraid of -ing)",en:null},I65:{jp:"see ～ do と see ～ doing",en:null},I66:{jp:"-ing 句 (分詞構文：He hurt his knee playing football.)",en:null},I67:{jp:"可算名詞と不可算名詞 1",en:null},I68:{jp:"可算名詞と不可算名詞 2",en:null},I69:{jp:"可算名詞の前に置く a/an や some の用法",en:null},I70:{jp:"a/an と the",en:null},I71:{jp:"the の用法 1",en:null},I72:{jp:"the の用法 2 (school / the school など)",en:null},I73:{jp:"the の用法 3 (children / the children など)",en:null},I74:{jp:"the の用法 4 (the giraffe / the telephone / the old など)",en:null},I75:{jp:"the の付く固有名詞、付かない固有名詞 1",en:null},I76:{jp:"the の付く固有名詞、付かない固有名詞 2",en:null},I77:{jp:"単数か複数か注意すべき名詞",en:null},I78:{jp:"名詞 + 名詞で作られる名詞 (a bus driver/ a headache など)",en:null},I79:{jp:"-'s (your sister's name) と of ... (the name of the book)",en:null},I80:{jp:"myself/yourself/themselves などの再帰代名詞",en:null},I81:{jp:"a friend of mine　my own house　on my own / by myself",en:null},I82:{jp:"there ... と it ...",en:null},I83:{jp:"some と any",en:null},I84:{jp:"no/none/any　nothing/nobody など",en:null},I85:{jp:"much, many, little, few, a lot, plenty",en:null},I86:{jp:"all / all of　most / most of　no / none of など",en:null},I87:{jp:"both / both of　neither / neither of　either / either of",en:null},I88:{jp:"all　every　whole",en:null},I89:{jp:"each と every",en:null},I90:{jp:"関係代名詞 1：主格の who/that/which を持つ関係代名詞",en:null},I91:{jp:"関係代名詞 2：目的格の who/that/which を持つ関係代名詞とその省略",en:null},I92:{jp:"関係代名詞 3：whose/whom/where を持つ関係代名詞",en:null},I93:{jp:"関係代名詞 4：(追加情報を示す)継続用法としての関係代名詞(1)",en:null},I94:{jp:"関係代名詞 5：(追加情報を示す)継続用法としての関係代名詞(2)",en:null},I95:{jp:"-ing 句 と -ed 句 (the woman talking to Tom, the boy injured in the accident)",en:null},I96:{jp:"-ing や -ed の語尾を持つ形容詞 (boring/bored など)",en:null},I97:{jp:"形容詞の語順：a nice new house, you look tired",en:null},I98:{jp:"形容詞と副詞 1 (quick/quickly)",en:null},I99:{jp:"形容詞と副詞 2 (well, fast, late, hard/hardly)",en:null},I100:{jp:"so と such",en:null},I101:{jp:"enough と too",en:null},I102:{jp:"比較 1 (cheaper, more expensive など)",en:null},I103:{jp:"比較 2 (much better / any better など)",en:null},I104:{jp:"比較 3 (as ～ as ... / than)",en:null},I105:{jp:"最上級 (the longest / the most enjoyable など)",en:null},I106:{jp:"語順 1：「動詞＋目的語」と「場所＋時」の語順",en:null},I107:{jp:"語順 2：副詞と結び付く動詞の語順",en:null},I108:{jp:"still　anymore　yet　already",en:null},I109:{jp:"even",en:null},I110:{jp:"although　though　even though　in spite of　despite",en:null},I111:{jp:"in case",en:null},I112:{jp:"unless　as long as　provided",en:null},I113:{jp:"as (as I walked ... / as I was ... など)",en:null},I114:{jp:"like と as",en:null},I115:{jp:"like　as if",en:null},I116:{jp:"during　for　while",en:null},I117:{jp:"by と until　by the time ...",en:null},I118:{jp:"at/on/in (時を表す前置詞)",en:null},I119:{jp:"on time と in time　at the end と in the end",en:null},I120:{jp:"in/at/on (場所を表す前置詞) 1",en:null},I121:{jp:"in/at/on (場所を表す前置詞) 2",en:null},I122:{jp:"in/at/on (場所を表す前置詞) 3",en:null},I123:{jp:"to, at, in と into",en:null},I124:{jp:"in/on/at (その他の用法)",en:null},I125:{jp:"by",en:null},I126:{jp:"名詞 + 前置詞 (reason for, cause of などの前置詞と結び付く名詞)",en:null},I127:{jp:"形容詞 + 前置詞 1",en:null},I128:{jp:"形容詞 + 前置詞 2",en:null},I129:{jp:"動詞 + 前置詞 1：to と at",en:null},I130:{jp:"動詞 + 前置詞 2：about/for/of/after",en:null},I131:{jp:"動詞 + 前置詞 3：about と of",en:null},I132:{jp:"動詞 + 前置詞 4：of/for/from/on",en:null},I133:{jp:"動詞 + 前置詞 5：in/into/with/to/on",en:null},I134:{jp:"句動詞 1：「句動詞」とは？",en:null},I135:{jp:"句動詞 2：in/out",en:null},I136:{jp:"句動詞 3：out",en:null},I137:{jp:"句動詞 4：on/off (1)",en:null},I138:{jp:"句動詞 5：on/off (2)",en:null},I139:{jp:"句動詞 6：up/down",en:null},I140:{jp:"句動詞 7：up (1)",en:null},I141:{jp:"句動詞 8：up (2)",en:null},I142:{jp:"句動詞 9：away/back",en:null}};
-
-/* ── Annotation renderer — CCF format. Uses ccfTokenize (also used by
-   downloadCCFReflectionSheet) so the on-screen view and the printed sheet
-   are always reading the exact same tags the same way. Never shows the
-   correction — only the error span/caret, the code, and the unit. ── */
-const CCF_CODE_LABELS={VT:'Verb Tense',SVA:'Subject-Verb Agreement',ART:'Articles',PREP:'Prepositions',WF:'Word Form',SP:'Singular / Plural',WO:'Word Order',MOD:'Modal Verbs',CL:'Clause-level Error',ME:'Missing / Extra Words',SC:'Spelling & Capitalisation',PU:'Punctuation',COL:'Collocation',WC:'Word Choice',IDM:'Idiom',AWK:'Awkward Phrasing'};
-function buildAnnotatedHtml(text, colourMap, showUntreatable){
-  function esc(s){ return s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''; }
-  const tokens = ccfTokenize(text, colourMap, showUntreatable);
-  const parts = tokens.map(t=>{
-    if(t.break) return '<br><br>';
-    if(t.indent) return '<span class="ccf-indent"></span>';
-    if(!t.style) return esc(t.text);
-    const noUnit = t.style.state==='purple' || t.style.state==='grey';
-    let tip = `<div class="tt-code">${esc(CCF_CODE_LABELS[t.style.code]||t.style.code)}</div>`;
-    if(!noUnit && t.style.primaryUnit){
-      const titleInfo = UNIT_TITLES[t.style.primaryUnit];
-      const titleText = titleInfo ? (titleInfo.jp || titleInfo.en || '') : '';
-      tip += `<div class="tt-unit"><span class="tt-num">${esc(t.style.primaryUnit)}</span>${titleText ? `<span class="tt-title">${esc(titleText)}</span>` : ''}</div>`;
-      if(t.style.secondaryUnit) tip += `<div class="tt-title" style="opacity:.7;margin-top:2px;">also see ${esc(t.style.secondaryUnit)}</div>`;
-    }
-    if(t.style.border) tip += `<div class="tt-title" style="opacity:.7;margin-top:2px;">Assigned by your teacher this cycle</div>`;
-    const borderClass = t.style.border ? ' ccf-border' : '';
-    return `<span class="ccf-tag ccf-${t.style.state}${borderClass}">${esc(t.text)}<span class="err-tt">${tip}</span></span>`;
-  });
-  let html='';
-  for(let i=0;i<parts.length;i++){
-    if(i>0 && parts[i]!=='<br><br>' && parts[i-1]!=='<br><br>' && parts[i-1]!=='<span class="ccf-indent"></span>') html+=' ';
-    html+=parts[i];
-  }
-  return html;
-}
-
-
-
-/* ══════════════════════════════════════════════════════════════════════
-   CCF REFLECTION SHEET — see CCF_handover.md §7
-   One page: blog entry (colour + code + unit, NEVER the correction, once
-   real annotation data exists — falls back to plain text otherwise) + New
-   Unit box + Teacher Check (in-class / homework) + Sentence 1 (new unit)
-   + Sentence 2 (recurring). No Analysis field, no checkboxes (Decision
-   #12). Sentence-finding is the student's job (Decision #11).
-   Validated through many rounds of layout iteration in a standalone test
-   script before being ported here — see conversation history if the
-   reasoning behind a specific spacing/colour choice needs revisiting.
-   ══════════════════════════════════════════════════════════════════════ */
-
-const CCF_M = 12, CCF_W = 210 - CCF_M*2;
-
-// ── Colour/recurrence engine STUB ───────────────────────────────────────
-// The real engine (StudiedSet + per-semester recurrence counts, CCF §4) is
-// not built yet, so every treatable error defaults to green (Decision #4:
-// no study history recorded = "not yet studied," never higher). Purple is
-// real, not a stub (SC/PU never carry a unit or history — that's a fact
-// about the code). Grey is also real: COL/WC/IDM/AWK (untreatable errors)
-// are never colour-coded to a unit and never selectable as a study unit,
-// but they're never silently dropped either — a class-wide toggle for
-// whether grey actually renders to students doesn't exist yet (would need
-// a new Settings field); for now grey always renders.
-const CCF_COLORS = {
-  green:  {fill:[219,242,229], text:[26,58,42]},
-  yellow: {fill:[253,244,205], text:[102,79,8]},
-  orange: {fill:[253,225,196], text:[120,58,10]},
-  red:    {fill:[252,220,220], text:[110,28,28]},
-  purple: {fill:[230,222,247], text:[74,42,128]},
-  grey:   {fill:[230,230,228], text:[90,90,86]},
+// Destination pages — relative paths, since every tool lives as a sibling
+// folder in the same repo (…/student/ is this file's own folder).
+// No per-class routing table needed anymore: one URL per tool, always —
+// each destination page reads the student's current class itself from the
+// token, server-side, via the shared Sessions lookup.
+const TOOL_URLS = {
+  typing: '../typing/',
+  forum:  '../forum/',
+  quiz:   '../quiz/'
 };
-// colourMap is {unit: {colour, border}} for THIS WEEK specifically — fetched
-// via getColourStateForWeek, one frozen snapshot per week. A unit absent from
-// the map (never studied, or studied but this is its first post-study
-// occurrence, or unstudied+unscaffolded) correctly defaults to green/no border.
-function ccfUnitState(code, unit, colourMap){
-  if(!code) return null;
-  if(code==='SC'||code==='PU') return 'purple';
-  if(code==='COL'||code==='WC'||code==='IDM'||code==='AWK') return 'grey';
-  if(unit && colourMap && colourMap[unit]) return colourMap[unit].colour;
-  return 'green';
-}
-// Border (CCF §4.5 scaffold-failure flag) is always green when it fires —
-// never coexists with yellow/orange/red (a studied unit is never bordered).
-function ccfUnitBorder(unit, colourMap){
-  return !!(unit && colourMap && colourMap[unit] && colourMap[unit].border);
-}
-function ccfTagFor(style){
-  const noUnit = style.state==='purple' || style.state==='grey';
-  return noUnit ? style.code : style.code + (style.primaryUnit ? '\u00b7'+style.primaryUnit : '');
-}
 
-// ── Tokenize the CCF tag format into word-level tokens ──────────────────
-// Tag shapes: {span|CODE|UNIT}, {span|CODE|UNIT1/UNIT2} (dual-unit,
-// slash-separated), {^|CODE|UNIT} (omission, caret only — never the
-// missing word), {span|CODE} (no unit — SC/PU/COL/WC/IDM/AWK).
-// colourMap: this week's frozen {unit: {colour, border}} snapshot.
-// showUntreatable: class Settings toggle — when false, COL/WC/IDM/AWK tokens
-// are treated as plain text (no style at all) so BOTH the on-screen view and
-// the PDF automatically stay consistent without each needing their own check.
-// The underlying tag stays in annotatedText regardless — this only affects
-// rendering, never the stored data.
-// ── Fixed ccfTokenize: pre-scans paragraph indentation on the ORIGINAL
-// text (before tag matching), so an annotated word appearing as a
-// paragraph's very first token still correctly triggers the indent —
-// this can't rely on per-call whitespace detection alone, since a tag
-// match can split a paragraph's leading whitespace away from its first
-// word. ──
-function ccfTokenize(text, colourMap, showUntreatable){
-  const re=/\{(\^|[^{}|]*)\|([A-Z]+)(?:\|([BI]\d+(?:\/[BI]\d+)?))?\}/g;
-  const tokens=[]; let last=0, m;
+// ════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════
+let session = null; // { token, studentId, nameEng, nameJP, classLabel, toolToggles }
 
-  const paraTexts = text.split(/\n\s*\n/);
-  const paraIndents = paraTexts.map(p => /^[ \t]+\S/.test(p));
-  let paraIdx = 0;
-  let needIndentMarker = paraIndents[0];
-
-  function pushWords(str, style){
-    String(str).split(/\n\s*\n/).forEach((para, i, arr)=>{
-      if(needIndentMarker){ tokens.push({indent:true}); needIndentMarker=false; }
-      para.split(/\s+/).filter(Boolean).forEach(w=> tokens.push({text:w, style}));
-      if(i < arr.length-1){
-        tokens.push({break:true});
-        paraIdx++;
-        needIndentMarker = paraIndents[paraIdx];
-      }
-    });
-  }
-  while((m=re.exec(text))!==null){
-    pushWords(text.slice(last, m.index), null);
-    const span=m[1], code=m[2].trim();
-    const unitRaw=m[3]?m[3].trim():'';
-    const [primaryUnit, secondaryUnit] = unitRaw ? unitRaw.split('/') : [null,null];
-    let state=ccfUnitState(code, primaryUnit, colourMap);
-    if(state==='grey' && showUntreatable===false) state=null;
-    const noUnit = state==='purple' || state==='grey';
-    const border = (!state || noUnit) ? false : ccfUnitBorder(primaryUnit, colourMap);
-    const style = state ? {code, primaryUnit: noUnit?null:primaryUnit, secondaryUnit: noUnit?null:secondaryUnit, state, border} : null;
-    if(needIndentMarker){ tokens.push({indent:true}); needIndentMarker=false; }
-    if(span==='^'){
-      tokens.push({text:'^', style});
-    } else {
-      span.trim().split(/\s+/).filter(Boolean).forEach(w=> tokens.push({text:w, style}));
-    }
-    last = m.index+m[0].length;
-  }
-  pushWords(text.slice(last), null);
-  return tokens;
+// ════════════════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════════════════
+function showMsg(text) {
+  const el = document.getElementById('login-msg');
+  el.textContent = text;
+  el.className = 'msg error show';
+}
+function hideMsg() { document.getElementById('login-msg').className = 'msg'; }
+function setLoading(loading) {
+  const btn = document.getElementById('login-btn');
+  btn.disabled = loading;
+  btn.innerHTML = loading ? '<span class="spinner"></span>Checking…' : 'Continue →';
+}
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function isToolEnabled(toolKey) {
+  const toggles = (session && session.toolToggles) || {};
+  return toggles[toolKey] !== false; // missing/undefined = enabled by default
 }
 
-function ccfLayoutAnnotated(doc, tokens, fontSize, maxWidth){
-  const tagFontSize = fontSize*0.62;
-  doc.setFont('helvetica','normal'); doc.setFontSize(fontSize);
-  const spaceW = doc.getTextWidth(' ');
-  const widths = tokens.map(t=>{
-    if(t.break || t.indent) return 0;
-    doc.setFont('helvetica', t.style?'bold':'normal'); doc.setFontSize(fontSize);
-    let w = doc.getTextWidth(t.text);
-    if(t.style){
-      doc.setFont('helvetica','normal'); doc.setFontSize(tagFontSize);
-      w += doc.getTextWidth(' ['+ccfTagFor(t.style)+']');
-    }
-    return w;
-  });
-  doc.setFont('helvetica','normal'); doc.setFontSize(fontSize);
-  const lines=[]; let cur=[]; let curW=0;
-  let pendingIndent = false;
-  tokens.forEach((t,i)=>{
-    if(t.indent){ pendingIndent = true; return; }
-    if(t.break){ if(cur.length){lines.push(cur); cur=[]; curW=0;} lines.push([]); return; }
-    const w=widths[i];
-    const add = cur.length? spaceW+w : w;
-    if(curW+add>maxWidth && cur.length){ lines.push(cur); cur=[]; curW=0; }
-    if(cur.length===0 && pendingIndent){ cur.indent = true; pendingIndent = false; }
-    cur.push(t); curW += (cur.length>1?spaceW:0)+w;
-  });
-  if(cur.length) lines.push(cur);
-  return lines;
-}
-function ccfDrawAnnotated(doc, tokens, x0, y0, fontSize, lineHeight, maxWidth){
-  const lines = ccfLayoutAnnotated(doc, tokens, fontSize, maxWidth);
-  doc.setFont('helvetica','normal'); doc.setFontSize(fontSize);
-  const spaceW = doc.getTextWidth(' ');
-  const tagFontSize = fontSize*0.62;
-  const PARA_INDENT_MM = 5;
-  let y=y0;
-  lines.forEach(line=>{
-    let x=x0 + (line.indent ? PARA_INDENT_MM : 0);
-    line.forEach(t=>{
-      doc.setFont('helvetica', t.style?'bold':'normal'); doc.setFontSize(fontSize);
-      let w = doc.getTextWidth(t.text);
-      let tagStr = null, tagW=0;
-      if(t.style){
-        tagStr = ' ['+ccfTagFor(t.style)+']';
-        doc.setFont('helvetica','normal'); doc.setFontSize(tagFontSize);
-        tagW = doc.getTextWidth(tagStr);
-      }
-      if(t.style){
-        const c = CCF_COLORS[t.style.state];
-        doc.setFillColor(...c.fill);
-        doc.roundedRect(x-0.6, y-fontSize*0.34, w+tagW+1.2, fontSize*0.48, 0.5, 0.5, 'F');
-        if(t.style.border){
-          doc.setDrawColor(42,122,78); doc.setLineWidth(0.35);
-          doc.roundedRect(x-0.6, y-fontSize*0.34, w+tagW+1.2, fontSize*0.48, 0.5, 0.5, 'S');
-        }
-        doc.setTextColor(...c.text);
-      } else {
-        doc.setTextColor(40,40,40);
-      }
-      doc.setFont('helvetica', t.style?'bold':'normal'); doc.setFontSize(fontSize);
-      doc.text(t.text, x, y);
-      x += w;
-      if(tagStr){
-        doc.setFont('helvetica','normal'); doc.setFontSize(tagFontSize);
-        doc.text(tagStr, x, y);
-        x += tagW;
-      }
-      x += spaceW;
-    });
-    y += lineHeight;
-  });
-  return y;
-}
+document.getElementById('num-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') doLogin();
+});
+document.getElementById('pw-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') doLogin();
+});
 
-// ── Layout helpers for the CCF reflection sheet — one physical sheet,
-// front + back (see ccfDrawReflectionSheet for the full page structure). ──
-function ccfRuled(doc, y, n, gap, width){
-  const w = width || CCF_W;
-  for(let i=0;i<n;i++){
-    doc.setDrawColor(61,90,115); doc.setLineWidth(0.35);
-    doc.line(CCF_M+2, y, CCF_M+2+w, y);
-    if(i < n-1) y += gap; // advance only BETWEEN lines, not after the last one —
-                          // an earlier version of this function advanced past
-                          // the last line too, silently baking in a hidden
-                          // trailing gap that made every "gap after ruled
-                          // lines" tuning downstream ineffective. Confirmed
-                          // and fixed; every gap below is the true, actual
-                          // visible gap now.
-  }
-  return y;
-}
-function ccfFieldLabel(doc, y, text){
-  doc.setFontSize(7.2); doc.setFont('helvetica','bold'); doc.setTextColor(91,99,88);
-  doc.text(text.toUpperCase(), CCF_M+2, y);
-  return y + 5.2;
-}
+// ════════════════════════════════════════════════════════
+//  LOGIN
+// ════════════════════════════════════════════════════════
+// Expected response shape from the Forum Engine's action=login:
+//   { ok: true, token, studentId, nameEng, nameJP, classLabel, toolToggles }
+//   { requiresPassword: true }
+//   { error: '...' }
+async function doLogin() {
+  const num = document.getElementById('num-input').value.trim();
+  const pw  = document.getElementById('pw-input').value.trim();
 
-// "How I fixed each mark" table — one row per annotation, deliberately not
-// scaled to how many the student actually used: a thin table under a
-// heavily-annotated sentence is the whole point of the fast in-class scan
-// (count-vs-count, not a reading task). Fixed at 5 rows. Unit/Page columns
-// are narrow (real content is 2-3 characters); Why? gets the most room.
-const CCF_TABLE_COLS = [
-  { label:'What I changed', frac:0.36 },
-  { label:'Unit',           frac:0.06 },
-  { label:'Page',           frac:0.06 },
-  { label:'Why?',           frac:0.52 },
-];
-function ccfDrawFixTable(doc, y, rows, width){
-  const tableStart = y;
-  const rowH = 6.3, headerH = 5;
-  let x = CCF_M + 2;
-  const colX = [];
-  CCF_TABLE_COLS.forEach(c => { colX.push(x); x += width * c.frac; });
-  colX.push(CCF_M + 2 + width);
-  doc.setFillColor(240,240,236);
-  doc.rect(CCF_M+2, y, width, headerH, 'F');
-  doc.setFontSize(6.3); doc.setFont('helvetica','bold'); doc.setTextColor(91,99,88);
-  CCF_TABLE_COLS.forEach((c,i) => { doc.text(c.label, colX[i]+1.5, y+3.6); });
-  y += headerH;
-  doc.setDrawColor(180,183,176); doc.setLineWidth(0.25);
-  for(let r=0;r<rows;r++){ doc.line(CCF_M+2, y+rowH, CCF_M+2+width, y+rowH); y += rowH; }
-  const tableEnd = y;
-  doc.setDrawColor(91,99,88); doc.setLineWidth(0.4);
-  doc.rect(CCF_M+2, tableStart, width, tableEnd-tableStart, 'S');
-  doc.setDrawColor(180,183,176); doc.setLineWidth(0.25);
-  for(let i=1;i<colX.length-1;i++){ doc.line(colX[i], tableStart, colX[i], tableEnd); }
-  return tableEnd;
-}
+  if (!num) { showMsg('Please enter your student number.'); return; }
 
-// One "Sentence N" in-class correction block: colored title bar (green for
-// the new-unit sentence, yellow for the recurring-error sentence) merged
-// onto one line with "CORRECTIONS", full page width (no gutter) ->
-// Corrections (2 lines) -> My Finished Attempt (2 lines) -> fix table.
-function ccfDrawSentenceBlock(doc, y, sentenceNum, subtitle, fillColor, textColor){
-  const boxTop = y;
-  const titleBarTop = boxTop + 1.2;
-  const titleBarH = 6.5;
-  doc.setFillColor(...fillColor);
-  doc.rect(CCF_M+0.3, titleBarTop, CCF_W-0.6, titleBarH, 'F');
-  let ty = titleBarTop + titleBarH/2 + 1.5;
-  doc.setFontSize(7.2); doc.setFont('helvetica','bold'); doc.setTextColor(...textColor);
-  doc.text(`SENTENCE ${sentenceNum} (${subtitle.toUpperCase()}) - CORRECTIONS`, CCF_M+2, ty);
+  hideMsg();
+  setLoading(true);
 
-  let y2 = boxTop + 1.2 + titleBarH + 4.5;
-  y2 = ccfRuled(doc, y2, 2, 5.8, CCF_W-4) + 3.8;
-  y2 = ccfFieldLabel(doc, y2, 'My Finished Attempt');
-  y2 = ccfRuled(doc, y2, 2, 5.8, CCF_W-4) + 1.2;
-  y2 = ccfDrawFixTable(doc, y2, 5, CCF_W-4);
-  const boxBottom = y2 + 5;
-  doc.setDrawColor(91,99,88); doc.setLineWidth(0.5);
-  doc.roundedRect(CCF_M-2, boxTop, CCF_W+4, boxBottom-boxTop, 2, 2, 'S');
-  return boxBottom;
-}
-
-// New Unit box only now - In-class Completion checkbox removed. It's no
-// longer needed: since page 1 (the in-class page) is now its own separate
-// handed-in sheet rather than the front of a double-sided page, there's no
-// completion-tracking purpose left for a checkbox living on this specific
-// row to serve.
-function ccfDrawUnitRow(doc, y, newUnitValue, submittedAt){
-  doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(91,99,88);
-  doc.text('NEW UNIT', CCF_M, y);
-  const newUnitLabelW = doc.getTextWidth('NEW UNIT');
-  const newUnitBoxX = CCF_M + newUnitLabelW + 2.5;
-  doc.setDrawColor(61,90,115); doc.setLineWidth(0.4);
-  doc.roundedRect(newUnitBoxX, y-4.4, 16, 6, 1, 1, 'S');
-  if(newUnitValue){
-    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(32,38,31);
-    doc.text(String(newUnitValue), newUnitBoxX+3, y);
-  }
-  if(newUnitValue && submittedAt){
-    doc.setFontSize(6.3); doc.setFont('helvetica','italic'); doc.setTextColor(120,126,116);
-    doc.text(`Submitted by student on ${submittedAt}`, newUnitBoxX + 16 + 4, y);
-  }
-  return y + 5;
-}
-
-// New take-home box: lets the student copy down their two in-class
-// attempts before starting the homework below, since page 1 (with their
-// actual in-class writing) gets handed in separately now rather than
-// living on the back of this same physical sheet. Plain bordered box, no
-// colored title bar - this isn't tied to either sentence's own color
-// coding, just a shared staging area for both.
-function ccfDrawInClassAttemptsBox(doc, y){
-  const boxTop = y;
-  let y2 = boxTop + 5;
-  y2 = ccfFieldLabel(doc, y2, 'In-Class Attempts');
-  y2 = ccfFieldLabel(doc, y2, 'Sentence 1:');
-  y2 = ccfRuled(doc, y2, 2, 5.8, CCF_W-4) + 3.8;
-  y2 = ccfFieldLabel(doc, y2, 'Sentence 2:');
-  y2 = ccfRuled(doc, y2, 2, 5.8, CCF_W-4) + 3;
-  const boxBottom = y2;
-  doc.setDrawColor(91,99,88); doc.setLineWidth(0.5);
-  doc.roundedRect(CCF_M-2, boxTop, CCF_W+4, boxBottom-boxTop, 2, 2, 'S');
-  return boxBottom + 4;
-}
-
-// Weekend homework block — same colored-title-bar treatment as its
-// matching in-class sentence block, so the two stay visually linked
-// across both pages. 2 lines for the confirmed sentence (matches the
-// front page's field pattern), 8 lines for the AI's explanation (real
-// Gemini output runs several sentences — verified against actual
-// responses, not assumed. Bumped from 5 to 8 once the extra vertical
-// room freed up by moving this to its own standalone page was confirmed
-// safe against the page's print margin).
-function ccfDrawHomeworkBlock(doc, y, sentenceNum, fillColor, textColor){
-  const boxTop = y;
-  const titleBarTop = boxTop + 1.2;
-  const titleBarH = 6.5;
-  doc.setFillColor(...fillColor);
-  doc.rect(CCF_M+0.3, titleBarTop, CCF_W-0.6, titleBarH, 'F');
-  let ty = titleBarTop + titleBarH/2 + 1.5;
-  doc.setFontSize(7.2); doc.setFont('helvetica','bold'); doc.setTextColor(...textColor);
-  doc.text(`SENTENCE ${sentenceNum} — AI CHECK`, CCF_M+2, ty);
-
-  let y2 = boxTop + 1.2 + titleBarH + 4.5;
-  y2 = ccfFieldLabel(doc, y2, 'Confirmed correct sentence');
-  y2 = ccfRuled(doc, y2, 2, 5.8, CCF_W-4) + 3.8;
-  y2 = ccfFieldLabel(doc, y2, 'What the AI told me');
-  y2 = ccfRuled(doc, y2, 8, 5.8, CCF_W-4) + 3;
-  const boxBottom = y2 + 5;
-  doc.setDrawColor(91,99,88); doc.setLineWidth(0.5);
-  doc.roundedRect(CCF_M-2, boxTop, CCF_W+4, boxBottom-boxTop, 2, 2, 'S');
-  return boxBottom + 8;
-}
-
-function ccfPageHeader(doc, title, meta){
-  doc.setFontSize(13); doc.setFont('helvetica','bold'); doc.setTextColor(32,38,31);
-  doc.text(title, CCF_M, 12);
-  if(meta){
-    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(91,99,88);
-    doc.text(meta, 210-CCF_M, 12, {align:'right'});
-  }
-  doc.setDrawColor(61,90,115); doc.setLineWidth(0.8);
-  doc.line(CCF_M, 16, 210-CCF_M, 16);
-}
-
-// Builds one student's complete reflection sheet — one physical page
-// front, one back. Front: blog entry (adaptive font, measured against the
-// New Unit row + both sentence blocks' real height first — measure-on-a-
-// scratch-doc-then-draw-for-real, so measurement can never drift out of
-// sync with the actual layout) + the completion row + both sentence
-// blocks. Back: both AI-check homework blocks. isFirst controls whether a
-// new page is added before this student's own front page — false only
-// for the very first student in a merged multi-student PDF.
-//
-// MAX_Y is 285, not the page's full 297 — real printers typically can't
-// print within 8-12mm of the physical edge even though a PDF viewer shows
-// no such limit; this was found and fixed after an actual print test
-// clipped Sentence 2's bottom border at the old 292 threshold.
-function ccfDrawReflectionSheet(doc, studentName, classId, week, annotation, colourMap, showUntreatable, isFirst, newUnitValue, newUnitSubmittedAt){
-  const MAX_Y = 285;
-  const hasAnnotation = annotation && annotation.annotatedText;
-  const blogTitle = (annotation && annotation.title) ? annotation.title : `Week ${week} entry`;
-  const meta = `${classId}  \u00b7  Week ${week}  \u00b7  ${studentName}`;
-
-  if(!isFirst) doc.addPage();
-  ccfPageHeader(doc, 'Blog Entry Grammar Reflection', meta);
-  let y = 24;
-  doc.setFontSize(10.5); doc.setFont('helvetica','bold'); doc.setTextColor(32,38,31);
-  doc.text(blogTitle, CCF_M + CCF_W/2, y, {align:'center'});
-  y += 5;
-  doc.setDrawColor(215,218,206); doc.setLineWidth(0.25); doc.line(CCF_M,y,210-CCF_M,y); y += 5;
-  const blogStartY = y;
-
-  const scratch = new window.jspdf.jsPDF({unit:'mm', format:'a4'});
-  let scratchY = ccfDrawUnitRow(scratch, 0, newUnitValue, newUnitSubmittedAt);
-  scratchY = ccfDrawSentenceBlock(scratch, scratchY, 1, 'New Unit', [219,242,229], [26,58,42]);
-  scratchY = ccfDrawSentenceBlock(scratch, scratchY, 2, 'Recurring', [253,244,205], [102,79,8]);
-  const FIXED_HEIGHT = scratchY;
-  const BLOG_AVAILABLE = MAX_Y - blogStartY - FIXED_HEIGHT;
-  const FONT_MIN = 5.5, FONT_MAX = 11;
-
-  let chosenFont = FONT_MIN, chosenLines = null, tokens = null;
-  if(hasAnnotation){
-    tokens = ccfTokenize(annotation.annotatedText, colourMap, showUntreatable);
-    for(let fs=FONT_MAX; fs>=FONT_MIN; fs-=0.25){
-      const testLines = ccfLayoutAnnotated(doc, tokens, fs, CCF_W-8);
-      const lineH = fs*0.352778*1.35;
-      if(testLines.length*lineH <= BLOG_AVAILABLE){ chosenFont=fs; chosenLines=testLines; break; }
-      chosenLines=testLines;
-    }
-  } else {
-    const plainText = 'No entry was submitted this week.';
-    for(let fs=FONT_MAX; fs>=FONT_MIN; fs-=0.25){
-      doc.setFontSize(fs);
-      const testLines = doc.splitTextToSize(plainText, CCF_W-8);
-      const lineH = fs*0.352778*1.35;
-      if(testLines.length*lineH <= BLOG_AVAILABLE){ chosenFont=fs; chosenLines=testLines; break; }
-      chosenLines=testLines;
-    }
-  }
-  if(chosenFont === FONT_MIN){
-    const lineH = FONT_MIN*0.352778*1.35;
-    if(chosenLines.length*lineH > BLOG_AVAILABLE){
-      console.warn('CCF reflection sheet: entry is too long to fit even at ' + FONT_MIN + 'pt — genuinely needs more room than one page allows.');
-    }
-  }
-  const lineH = chosenFont*0.352778*1.35;
-  if(hasAnnotation){
-    ccfDrawAnnotated(doc, tokens, CCF_M+4, y, chosenFont, lineH, CCF_W-8);
-  } else {
-    doc.setFontSize(chosenFont); doc.setFont('helvetica','italic'); doc.setTextColor(150,155,145);
-    chosenLines.forEach(l => { doc.text(l, CCF_M+4, y); y += lineH; });
-  }
-
-  y = blogStartY + BLOG_AVAILABLE + 2;
-  y = ccfDrawUnitRow(doc, y, newUnitValue, newUnitSubmittedAt);
-  y = ccfDrawSentenceBlock(doc, y, 1, 'New Unit', [219,242,229], [26,58,42]);
-  y = ccfDrawSentenceBlock(doc, y, 2, 'Recurring', [253,244,205], [102,79,8]);
-
-  // No longer "the back of the sheet" - this is now its own separate,
-  // standalone take-home page, so it needs its own full header (title +
-  // class/week/name meta), matching page 1's format exactly rather than
-  // the bare "Homework" title it used when it was printed on a shared
-  // physical sheet with page 1's own header already covering that.
-  doc.addPage();
-  const homeworkMeta = `${classId}  \u00b7  Week ${week}  \u00b7  ${studentName}`;
-  ccfPageHeader(doc, 'Blog Entry Grammar Reflection - Homework', homeworkMeta);
-  y = 24;
-  y = ccfDrawInClassAttemptsBox(doc, y);
-  y = ccfDrawHomeworkBlock(doc, y, 1, [219,242,229], [26,58,42]);
-  y = ccfDrawHomeworkBlock(doc, y, 2, [253,244,205], [102,79,8]);
-}
-
-function downloadCCFReflectionSheet(){
-  const stored = window._ccfPdfData;
-  if(!stored){ showToast('No data to download — try refreshing the page.'); return; }
-  const {week, annotation, existingMain, existingSubmittedAt} = stored;
-  if(!window.jspdf){ showToast('PDF generator loading — try again in a moment.'); return; }
-  const {jsPDF}=window.jspdf;
-  const doc=new jsPDF({unit:'mm',format:'a4'});
-
-  ccfDrawReflectionSheet(doc, currentStudentName||currentStudent, currentClassId, week,
-    annotation, annotation ? annotation.colourMap : {}, annotation ? annotation.showUntreatable : true, true, existingMain, existingSubmittedAt);
-
-  const safeName=(currentStudentName||currentStudent).replace(/\s+/g,'_');
-  doc.save(`EWS_Week${week}_CCF-Reflection_${safeName}.pdf`);
-}
-
-// ── AI-check prompt builder (homework copy button) ───────────────────────
-// Builds the full Japanese prompt for the weekend Gemini AI-check step:
-// explains the {text|CODE|UNIT} tag notation, includes a legend of only
-// the unit titles actually used in THIS entry (built from UNIT_TITLES,
-// not the full B1-B113/I1-I142 list every time), includes the full tagged
-// entry as context, and leaves two placeholders for the student to paste
-// in their own "My Finished Attempt" sentences before sending it to
-// Gemini. Deliberately verifies the student's own attempt rather than
-// generating a fresh correction — and deliberately does NOT give the
-// correction itself anywhere, matching the same "never show the
-// correction" principle as the paper worksheet.
-function ccfBuildUnitLegend(annotatedText){
-  const unitsUsed = [];
-  const seen = {};
-  const re = /\|([A-Z]?\d+)\}/g;
-  let m;
-  while((m = re.exec(annotatedText))){
-    const u = m[1];
-    if(!seen[u] && UNIT_TITLES[u]){ seen[u] = true; unitsUsed.push(u); }
-  }
-  unitsUsed.sort((a,b) => {
-    const pa = a[0], pb = b[0];
-    if(pa !== pb) return pa < pb ? -1 : 1;
-    return parseInt(a.slice(1)) - parseInt(b.slice(1));
-  });
-  return unitsUsed.map(u => `${u} = ${UNIT_TITLES[u].jp}`).join('\n');
-}
-
-function ccfBuildAICheckPrompt(annotatedText){
-  const legend = ccfBuildUnitLegend(annotatedText);
-  return `私は英語のライティングの授業を受けている学生です。以下は私が書いたブログ記事の全文です。
-文中の { } の部分は、先生のシステムが文法の間違いを見つけて印をつけた場所です。
-例:{is|SVA|B1} は「is という単語が、SVA(主語と動詞の一致)という種類の間違いで、
-B1という文法ユニットに関係しています」という意味です。{ } の中に記号だけで単語が
-ない場合は、「そこに何かが抜けている(足りない)」という意味です。
-
-このブログ記事で使われている文法ユニット番号の意味は下の「ユニット一覧」に
-書いてあります。修正や説明をするときは、必ずその文についている印のユニット番号を
-確認し、「ユニット一覧」でそのユニットが何を扱っているかを見てから答えてください。
-たとえ他にも直せる部分があるように見えても、印がついた箇所に集中し、説明は
-そのユニットが扱っている文法ポイントについて書いてください。修正した文を作る
-ときは、そのユニットが教えている文法の形を実際に使ってください。説明の中で
-ユニットの内容に触れるだけでなく、直した文自体がそのユニットの正しい形に
-なっている必要があります。
-
-このメッセージの最後に、私が授業中に自分で直した文を2つ書きます
-(「My Finished Attempt」)。それぞれについて、まず、ブログ記事全文の中から
-どの印つきの文を直したものか探してください(似ている文を探せば分かります)。
-見つけたら、その文についている印(いくつあるか)を確認し、私の直した文が
-その印を全部正しく直せているかチェックしてください。
-
-チェックの結果:
-・印を全部正しく直せていれば、「合っています」と伝えて、なぜ合っているのか
-  簡単に説明してください。
-・直しきれていない印がある場合(直し忘れ、または直したけどまだ間違っている)は、
-  どの印がまだ問題か具体的に指摘し、正しい文を教えてください。
-
-修正するときは、できるだけ元の文の形を残して、最小限の変更にしてください。
-もっと自然に聞こえる別の言い方があったとしても、大きく書き換えないでください。
-
-下の「ブログ記事全文」を文脈として使って、私が本当は何を言いたかったのかを
-考えてください。文だけを見ても意味がわからない場合があります。
-
-文脈を見てもよく分からない場合や、判断が難しい場合は、それでも構いません。
-一番近いと思う判断を教えてください。ただし、自信がない場合は「自信がない」と
-正直に言ってください。間違っているのに自信満々に答えるより、その方がいいです。
-
-答えは下の形式で書いてください。そうすればワークシートにそのまま書き写せます:
-
-文1 (SENTENCE 1)
-Confirmed correct sentence: [正しい文。私の直した文が合っていればそのまま、
-間違っていれば正しく直したもの]
-Explanation: [説明(日本語でOK)。関係するユニットの文法ポイントに触れること]
-
-文2 (SENTENCE 2)
-Confirmed correct sentence: [同上]
-Explanation: [同上]
-
----ユニット一覧---
-${legend}
-
----ブログ記事全文(印つき)---
-${annotatedText}
-
----私が直した2つの文(My Finished Attempt)---
-文1: (ここに1つ目の直した文を貼り付けてください)
-文2: (ここに2つ目の直した文を貼り付けてください)`;
-}
-
-async function copyAICheckPrompt(){
-  const stored = window._ccfPdfData;
-  if(!stored || !stored.annotation || !stored.annotation.annotatedText){
-    showToast('No entry available to build a prompt from.');
-    return;
-  }
-  const prompt = ccfBuildAICheckPrompt(stored.annotation.annotatedText);
-  try{
-    await navigator.clipboard.writeText(prompt);
-    showToast('Copied! Paste into Gemini, then add your two sentences at the bottom.');
-  }catch(err){
-    showToast("Couldn't copy — try again or copy manually.");
-  }
-}
-
-
-// Scoped per class+student+week so switching weeks or students never bleeds drafts together.
-function draftKey(week){
-  return `wf_draft_${currentClassId}_${currentStudent}_${week}`;
-}
-function saveDraft(week, title, text){
-  try{
-    localStorage.setItem(draftKey(week), JSON.stringify({ title, text, savedAt: Date.now() }));
-  }catch(e){ /* storage unavailable (private browsing, full quota) — fail silently, nothing to lose beyond what's already on screen */ }
-}
-function loadDraft(week){
-  try{
-    const raw = localStorage.getItem(draftKey(week));
-    return raw ? JSON.parse(raw) : null;
-  }catch(e){ return null; }
-}
-function clearDraft(week){
-  try{ localStorage.removeItem(draftKey(week)); }catch(e){}
-}
-
-async function renderNewPostTab(){
-  isWritingSomething = false;
-  showLoading('Loading…');
-  try{
-
-  const info = await callApi('getCurrentWeekInfo', { classId: currentClassId });
-  if(!info.success){
-    document.getElementById('content').innerHTML = `
-      <button class="back-link" onclick="renderDashboard()">← Back to dashboard</button>
-      <div class="card empty-note">${info.error || "Something went wrong loading this page."}</div>`;
-    return;
-  }
-  if(info.status === 'none'){
-    document.getElementById('content').innerHTML = `
-      <button class="back-link" onclick="renderDashboard()">← Back to dashboard</button>
-      <div class="card empty-note">No forum available yet — check back soon.</div>`;
-    return;
-  }
-  if(info.status === 'upcoming'){
-    document.getElementById('content').innerHTML = `
-      <button class="back-link" onclick="renderDashboard()">← Back to dashboard</button>
-      <div class="card empty-note">New forum opens on ${formatLongDate(info.postOpen)}.</div>`;
-    return;
-  }
-
-  currentWeek = info.week;
-  const data = await callApi('getNewPostData', { classId: currentClassId, studentNumber: currentStudent, week: currentWeek });
-  if(!data.success){
-    document.getElementById('content').innerHTML = `
-      <button class="back-link" onclick="renderDashboard()">← Back to dashboard</button>
-      <div class="card empty-note">${data.error || "Something went wrong loading this page."}</div>`;
-    return;
-  }
-  currentPostData = data;
-  const sched = data.schedule;
-  const now = new Date();
-  const postOpen = now >= new Date(sched.PostOpen) && now <= new Date(sched.PostClose);
-
-  let entryBlockHtml;
-  if(data.myPost){
-    entryBlockHtml = `
-      <div class="card your-entry-row">
-        <div><div class="info">Your entry</div><div class="ttl">${data.myPost.Title}</div></div>
-        <button class="btn btn-ghost" onclick="openPostDetail('${data.myPost.PostID}')">${postOpen ? 'View / Edit' : 'View'}</button>
-      </div>`;
-  } else if(!postOpen){
-    entryBlockHtml = `<div class="card" style="text-align:center;color:var(--ink-soft);">The posting window for this week has closed — no entry was submitted.</div>`;
-  } else {
-    entryBlockHtml = `
-      <div class="card composer-card" id="composerCard">
-        <button class="btn btn-primary" id="startWritingBtn" style="display:block;margin:0 auto;padding:11px 36px;" onclick="openComposer()">Start writing</button>
-        <div class="composer-form hidden" id="composerForm">
-          <input type="text" id="postTitle" placeholder="Give your entry a title...">
-          <textarea id="postText" placeholder="Write about the prompt... (typing only — pasted text is blocked)"></textarea>
-          <div class="meta-row">
-            <span id="wordCountLabel">0 words</span>
-            <span>Min 40 words for full marks</span>
-          </div>
-          ${data.settings.PictureEnabled ? `<div id="composerMediaArea"></div>` : ''}
-          <button class="btn btn-primary" style="display:block;margin:14px auto 0;padding:11px 36px;" onclick="submitPost()">Post entry</button>
-        </div>
-      </div>`;
-  }
-
-  let membersHtml = '';
-  if(data.settings.GroupsEnabled){
-    membersHtml = data.groupMembers.filter(m=>m.studentNumber!==currentStudent).map(m=>{
-      const isMe = m.studentNumber===currentStudent;
-      if(m.postId){
-        return `
-          <div class="member-row" onclick="openPostDetail('${m.postId}')">
-            <div class="avatar" style="background:var(--postal-blue)">${avatarInner(m.name, m.profilePicURL)}</div>
-            <div class="mtext"><div class="mtitle">${m.title}</div><div class="mauthor">${m.name}${isMe?' (you)':''}</div></div>
-            <div class="chev">›</div>
-          </div>`;
-      }
-      return `
-        <div class="member-row disabled">
-          <div class="avatar" style="background:var(--border);color:var(--ink-soft);">${avatarInner(m.name, m.profilePicURL)}</div>
-          <div class="mtext"><div class="mname">${m.name}${isMe?' (you)':''}</div><div class="mstatus">No posts yet</div></div>
-        </div>`;
-    }).join('');
-  }
-
-  const rubricHtml = buildRubricTable(data.rubric);
-
-  document.getElementById('content').innerHTML = `
-    <div class="card week-head">
-      <div class="label">Week ${String(sched.Week).padStart(2,'0')} · ${sched.DateRangeLabel}</div>
-      <div class="deadline-pill" style="display:block;text-align:center;margin:10px auto 0;width:fit-content;${postOpen?'':'background:#F2F0E8;color:var(--ink-soft);border-color:var(--border);'}">
-        ${postOpen ? 'Posting window is open' : 'Posting window closed'}
-      </div>
-    </div>
-    ${buildCompletionTimeline(data)}
-    <div class="card prompt-card">
-      <div class="eyebrow">Prompt</div>
-      <div class="ptext">${sched.Prompt}</div>
-    </div>
-    ${entryBlockHtml}
-    ${data.settings.GroupsEnabled ? `
-    <div class="section-label">Your group this week</div>
-    <div class="card">${membersHtml}</div>` : ''}
-    <div class="section-label">Rubric</div>
-    ${rubricHtml}
-  `;
-  wireComposerEvents();
-  currentMediaType = null;
-  currentMediaValue = null;
-  renderComposerMediaArea();
-  } finally {
-    hideLoading();
-  }
-}
-
-function openComposer(){
-  document.getElementById('startWritingBtn').classList.add('hidden');
-  document.getElementById('composerForm').classList.remove('hidden');
-  isWritingSomething = true;
-}
-
-// Silently restores an autosaved draft for this week, if one exists — opens the composer
-// already filled in rather than asking the student to confirm first.
-function restoreDraftIfPresent(week){
-  const draft = loadDraft(week);
-  if(!draft || (!draft.title && !draft.text)) return;
-  openComposer();
-  document.getElementById('postTitle').value = draft.title || '';
-  document.getElementById('postText').value = draft.text || '';
-  const postTextEl = document.getElementById('postText');
-  const words = postTextEl.value.trim().split(/\s+/).filter(Boolean).length;
-  document.getElementById('wordCountLabel').textContent = words + (words===1 ? ' word' : ' words');
-}
-
-function wireComposerEvents(){
-  const postTextEl = document.getElementById('postText');
-  const postTitleEl = document.getElementById('postTitle');
-  if(!postTextEl) return;
-  postTextEl.addEventListener('paste', e=>{ e.preventDefault(); showTabWarningModal("Pasting isn't allowed", "Please type your entry yourself — pasted text isn't accepted here."); });
-  postTextEl.addEventListener('drop', e=>{ e.preventDefault(); showTabWarningModal("Dropping text isn't allowed", "Please type your entry yourself — dropped text isn't accepted here."); });
-  let draftSaveTimer = null;
-  function scheduleDraftSave(){
-    clearTimeout(draftSaveTimer);
-    draftSaveTimer = setTimeout(()=>{ saveDraft(currentWeek, postTitleEl.value, postTextEl.value); }, 400);
-  }
-  postTextEl.addEventListener('input', ()=>{
-    const words = postTextEl.value.trim().split(/\s+/).filter(Boolean).length;
-    document.getElementById('wordCountLabel').textContent = words + (words===1 ? ' word' : ' words');
-    scheduleDraftSave();
-  });
-  postTitleEl.addEventListener('input', scheduleDraftSave);
-  window.addEventListener('pagehide', ()=>{ clearTimeout(draftSaveTimer); saveDraft(currentWeek, postTitleEl.value, postTextEl.value); });
-  window.addEventListener('beforeunload', ()=>{ clearTimeout(draftSaveTimer); saveDraft(currentWeek, postTitleEl.value, postTextEl.value); });
-  restoreDraftIfPresent(currentWeek);
-}
-
-/* ============ MEDIA: real image compression + Drive upload, real YouTube parsing ============ */
-// Photo or video, never both — tracked as one type+value pair rather than two separate slots.
-let currentMediaType = null;  // 'image' | 'youtube' | null
-let currentMediaValue = null; // URL (image) or video ID (youtube)
-let mediaUploadMode = 'compose'; // 'compose' (new post), 'editPost' (existing post), or 'profile'
-let mediaUploadPostId = null;
-let mediaUploadSlotId = 'imageSlot';
-
-function triggerImageUpload(mode, postId, slotId){
-  mediaUploadMode = mode || 'compose';
-  mediaUploadPostId = postId || null;
-  mediaUploadSlotId = slotId || 'imageSlot';
-  const input = document.getElementById('imageFileInput');
-  input.value = ''; // reset so re-selecting the same file still fires 'change'
-  input.click();
-}
-
-function renderComposerMediaArea(){
-  const area = document.getElementById('composerMediaArea');
-  if(!area) return;
-  if(!currentMediaType){
-    area.innerHTML = `
-      <div class="media-row">
-        <div class="media-slot" id="imageSlot" onclick="triggerImageUpload('compose', null, 'imageSlot')"><span>📷</span><span>Add a photo</span></div>
-        <div class="media-slot" id="ytSlot" onclick="openYouTubeInput('ytSlot','compose', null)"><span>▶</span><span>Add YouTube link</span></div>
-      </div>`;
-  } else if(currentMediaType === 'image'){
-    area.innerHTML = `
-      <img src="${currentMediaValue}" style="display:block;margin:0 auto;max-width:320px;max-height:280px;width:auto;height:auto;border-radius:10px;object-fit:contain;">
-      <div class="media-row" style="margin-top:8px;justify-content:center;">
-        <button class="btn btn-ghost btn-sm" onclick="triggerImageUpload('compose', null, 'composerMediaArea')">🔁 Replace photo</button>
-        <button class="btn btn-ghost btn-sm" onclick="removeComposerMedia()">✕ Remove photo</button>
-      </div>`;
-  } else if(currentMediaType === 'youtube'){
-    area.innerHTML = `
-      <div class="yt-thumb" style="margin:0 auto;width:320px;height:180px;border-radius:10px;background-size:cover;background-position:center;background-image:url(https://img.youtube.com/vi/${currentMediaValue}/hqdefault.jpg);"></div>
-      <div class="media-row" style="margin-top:8px;justify-content:center;">
-        <button class="btn btn-ghost btn-sm" onclick="openYouTubeInput('composerMediaArea','compose', null)">🔁 Replace video</button>
-        <button class="btn btn-ghost btn-sm" onclick="removeComposerMedia()">✕ Remove video</button>
-      </div>`;
-  }
-}
-
-function removeComposerMedia(){
-  currentMediaType = null;
-  currentMediaValue = null;
-  renderComposerMediaArea();
-}
-
-// Resizes/re-compresses the image in the browser BEFORE it ever leaves the device —
-// this is what keeps a 4-8MB phone photo down to a couple hundred KB.
-function compressImageFile(file, maxDim, quality){
-  maxDim = maxDim || 1280;
-  quality = quality || 0.72;
-  return new Promise((resolve, reject)=>{
-    const reader = new FileReader();
-    reader.onload = e=>{
-      const img = new Image();
-      img.onload = ()=>{
-        let w = img.width, h = img.height;
-        if(w > h && w > maxDim){ h = Math.round(h * maxDim / w); w = maxDim; }
-        else if(h > maxDim){ w = Math.round(w * maxDim / h); h = maxDim; }
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', quality)); // data:image/jpeg;base64,xxxx
-      };
-      img.onerror = ()=> reject(new Error('Could not read that image.'));
-      img.src = e.target.result;
-    };
-    reader.onerror = ()=> reject(new Error('Could not read that file.'));
-    reader.readAsDataURL(file);
-  });
-}
-
-async function handleImageFile(event){
-  const file = event.target.files[0];
-  if(!file) return;
-  if(!file.type.startsWith('image/')){ showToast('Please choose an image file.'); return; }
-
-  showLoading('Compressing photo…');
-  let dataUrl;
   try {
-    dataUrl = await compressImageFile(file);
-  } catch(err){
-    hideLoading();
-    showToast(err.message);
-    return;
+    const params = new URLSearchParams({ action: 'login', studentNumber: num });
+    if (pw) params.set('password', pw);
+
+    const res = await fetch(FORUM_ENGINE_URL + '?' + params.toString());
+    const data = await res.json();
+
+    setLoading(false);
+
+    if (data.error) { showMsg(data.error); return; }
+
+    if (data.requiresPassword) {
+      document.getElementById('password-field').style.display = 'block';
+      document.getElementById('pw-input').focus();
+      if (pw) showMsg('Incorrect password.');
+      else showMsg('This account is password-protected. Please enter your password.');
+      return;
+    }
+
+    if (data.ok) {
+      session = data;
+      try { sessionStorage.setItem('ewsHubSession', JSON.stringify(session)); } catch (e) { /* storage unavailable - session still works for this page load */ }
+      showTiles();
+    }
+  } catch (err) {
+    setLoading(false);
+    showMsg('Connection error. Please try again.');
   }
+}
 
-  const slot = document.getElementById(mediaUploadSlotId);
-  if(slot) slot.innerHTML = `<img src="${dataUrl}" style="width:100%;border-radius:10px;max-height:220px;object-fit:cover;display:block;">`;
+function doLogout() {
+  session = null;
+  try { sessionStorage.removeItem('ewsHubSession'); } catch (e) { /* ignore */ }
+  document.getElementById('num-input').value = '';
+  document.getElementById('pw-input').value = '';
+  document.getElementById('password-field').style.display = 'none';
+  hideMsg();
+  document.getElementById('login-panel').style.display = 'block';
+  document.getElementById('tiles-panel').style.display = 'none';
+  document.getElementById('logout-btn').style.display = 'none';
+}
 
-  const oldImageURL = mediaUploadMode === 'editPost'
-    ? (currentDetailData && currentDetailData.post ? currentDetailData.post.ImageURL : '')
-    : mediaUploadMode === 'profile'
-      ? currentProfilePicURL
-      : (currentMediaType === 'image' ? currentMediaValue : '');
-
-  showLoading('Uploading photo…');
-  const base64Data = dataUrl.split(',')[1];
-  const result = await callApi('uploadImage', {
-    classId: currentClassId, studentNumber: currentStudent,
-    base64Data, mimeType: 'image/jpeg', oldImageURL,
+// ════════════════════════════════════════════════════════
+//  TILES
+// ════════════════════════════════════════════════════════
+function tileUrl(base, extra) {
+  const params = new URLSearchParams({
+    token: session.token, studentNumber: session.studentNumber || '', classId: session.classId || '',
+    classLabel: session.classLabel || '', nameEng: session.nameEng || '', nameJP: session.nameJP || '',
+    profilePicURL: session.profilePicURL || '', textbookTier: session.textbookTier || 'Basic'
   });
-
-  if(!result.success){
-    hideLoading();
-    if(mediaUploadMode === 'compose') renderComposerMediaArea();
-    else if(mediaUploadMode === 'profile' && slot) slot.innerHTML = avatarInner(currentName, currentProfilePicURL);
-    showToast(result.error || "Couldn't upload that photo — try again.");
-    return;
-  }
-
-  if(mediaUploadMode === 'editPost'){
-    showLoading('Saving photo…');
-    const saveResult = await callApi('updatePost', { classId: currentClassId, studentNumber: currentStudent, postId: mediaUploadPostId, imageURL: result.url });
-    hideLoading();
-    if(saveResult.success){ showToast('Photo updated.'); openPostDetail(mediaUploadPostId, postDetailOrigin); }
-    else showToast(saveResult.error || "Couldn't save that photo.");
-  } else if(mediaUploadMode === 'profile'){
-    showLoading('Saving profile picture…');
-    const saveResult = await callApi('updateProfilePic', { classId: currentClassId, studentNumber: currentStudent, profilePicURL: result.url });
-    hideLoading();
-    if(saveResult.success){
-      currentProfilePicURL = result.url;
-      document.getElementById('whoAvatar').innerHTML = avatarInner(currentName, currentProfilePicURL);
-      const bigSlot = document.getElementById('profileAvatarBig');
-      if(bigSlot) bigSlot.innerHTML = avatarInner(currentName, currentProfilePicURL);
-      showToast('Profile picture updated.');
-      renderProfilePage();
-    } else {
-      showToast(saveResult.error || "Couldn't save that profile picture.");
-    }
-  } else {
-    hideLoading();
-    currentMediaType = 'image';
-    currentMediaValue = result.url;
-    renderComposerMediaArea();
-    showToast('Photo attached.');
-  }
+  if (extra) Object.keys(extra).forEach(function(k) { params.set(k, extra[k]); });
+  return base + '?' + params.toString();
 }
 
-function extractYouTubeId(url){
-  const m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
-  return m ? m[1] : null;
-}
+function showTiles() {
+  document.getElementById('greeting-name').textContent =
+    'Welcome, ' + (session.nameEng || session.studentId).trim().split(' ').pop() + '!';
+  document.getElementById('greeting-class').textContent = session.classLabel || '';
 
-function openYouTubeInput(slotId, mode, postId){
-  mediaUploadMode = mode || 'compose';
-  mediaUploadPostId = postId || null;
-  const slot = document.getElementById(slotId);
-  if(!slot){ showToast("Couldn't open that — try refreshing the page."); return; }
-  if(document.getElementById('ytInlineInput')) return; // already open
-  slot.innerHTML = `
-    <div style="width:100%;" onclick="event.stopPropagation()">
-      <input type="text" id="ytInlineInput" placeholder="Paste YouTube link..." style="margin-bottom:6px;">
-      <button class="btn btn-ghost btn-sm" style="width:100%;" onclick="confirmYouTubeLink('${slotId}')">Add</button>
-    </div>`;
-  document.getElementById('ytInlineInput').focus();
-}
+  const tiles = [];
 
-async function confirmYouTubeLink(slotId){
-  const input = document.getElementById('ytInlineInput');
-  const id = extractYouTubeId(input.value.trim());
-  if(!id){
-    showToast("That doesn't look like a YouTube link — try pasting the full URL.");
-    return;
-  }
-
-  if(mediaUploadMode === 'editPost'){
-    showLoading('Saving video…');
-    const result = await callApi('updatePost', { classId: currentClassId, studentNumber: currentStudent, postId: mediaUploadPostId, youtubeURL: id });
-    hideLoading();
-    if(result.success){ showToast('Video updated.'); openPostDetail(mediaUploadPostId, postDetailOrigin); }
-    else showToast(result.error || "Couldn't save that video.");
-  } else {
-    currentMediaType = 'youtube';
-    currentMediaValue = id;
-    renderComposerMediaArea();
-    showToast('YouTube video attached.');
-  }
-}
-
-// Removing media on an existing (already-posted) entry — calls the server directly,
-// no upload involved, then refreshes from the real data.
-async function removeDetailMedia(postId, type){
-  showLoading('Removing…');
-  const result = await callApi('updatePost', { classId: currentClassId, studentNumber: currentStudent, postId, imageURL: '', youtubeURL: '' });
-  hideLoading();
-  if(result.success){ showToast('Removed.'); openPostDetail(postId, postDetailOrigin); }
-  else showToast(result.error || "Couldn't remove that.");
-}
-
-async function removeProfilePic(){
-  showLoading('Removing…');
-  const result = await callApi('updateProfilePic', { classId: currentClassId, studentNumber: currentStudent, profilePicURL: '' });
-  hideLoading();
-  if(result.success){
-    currentProfilePicURL = '';
-    document.getElementById('whoAvatar').innerHTML = avatarInner(currentName, '');
-    showToast('Profile picture removed.');
-    renderProfilePage();
-  } else {
-    showToast(result.error || "Couldn't remove that.");
-  }
-}
-
-async function submitPost(){
-  const title = document.getElementById('postTitle').value.trim();
-  const text = document.getElementById('postText').value;
-  if(!title){ showToast("Give your entry a title first."); return; }
-  if(!text.trim()){ showToast("Write something before posting."); return; }
-  showLoading('Submitting…');
-  const result = await callApi('createPost', {
-    classId: currentClassId, studentNumber: currentStudent, week: currentWeek,
-    title, textContent: text,
-    imageURL: currentMediaType === 'image' ? currentMediaValue : '',
-    youtubeURL: currentMediaType === 'youtube' ? currentMediaValue : '',
-  });
-  hideLoading();
-  if(result.success){
-    currentMediaType = null; currentMediaValue = null;
-    clearDraft(currentWeek);
-    showToast("Entry posted.");
-    renderNewPostTab();
-  } else {
-    showToast(result.error || "Couldn't post — try again.");
-  }
-}
-
-/* ============ POST DETAIL ============ */
-let currentDetailData = null;
-let postDetailOrigin = { type: 'newpost' }; // {type:'newpost'} or {type:'previousWeek', week:N}
-
-function goBackFromPostDetail(){
-  if(postDetailOrigin && postDetailOrigin.type === 'previousWeek') renderPreviousWeekDetail(postDetailOrigin.week);
-  else renderNewPostTab();
-}
-
-async function openPostDetail(postId, origin){
-  postDetailOrigin = origin || { type: 'newpost' };
-  showLoading('Loading…');
-  try{
-
-  const data = await callApi('getPostDetail', { classId: currentClassId, postId, studentNumber: currentStudent });
-  if(!data.success){
-    document.getElementById('content').innerHTML = `
-      <button class="back-link" onclick="goBackFromPostDetail()">← Back</button>
-      <div class="card empty-note">${data.error || "Something went wrong loading this post."}</div>`;
-    return;
-  }
-  currentDetailData = data;
-  const post = data.post;
-  const wc = post.TextContent.trim().split(/\s+/).filter(Boolean).length;
-
-  // Arm writing-protection if there's an actual writing control on this page (a comment box,
-  // or the possibility of a reply box) — not just because the post happens to be open.
-  const hasReplyableComment = data.comments.some(c=>!c.reply);
-  isWritingSomething = (data.commentOpen && !data.isOwnPost) || (data.isOwnPost && data.replyOpen && hasReplyableComment);
-
-  const commentsHtml = data.comments.map(c=>{
-    let replyHtml = '';
-    if(c.reply){
-      replyHtml = `<div class="reply"><div class="comment"><div class="avatar" style="background:var(--postal-blue)">${avatarInner(c.reply.name, c.reply.profilePicURL)}</div><div class="comment-body"><div class="c-name">${c.reply.name}</div><div class="c-text">${c.reply.text}</div></div></div></div>`;
-    } else if(data.replyOpen && data.isOwnPost){
-      replyHtml = `<div class="reply"><button class="reply-link" onclick="showReplyBox('${c.commentId}')">Reply</button>
-        <div class="reply-box-wrap hidden" id="replybox-${c.commentId}">
-          <div class="reply-box">
-            <textarea id="replyinput-${c.commentId}" rows="2" placeholder="Write a reply..."></textarea>
-            <button class="btn btn-ghost" onclick="submitReply('${c.commentId}')">Send</button>
-          </div>
-          <div class="word-count" id="replyinput-wc-${c.commentId}">0 words (30+ needed for credit)</div>
-        </div></div>`;
-    } else if(!c.reply && data.isOwnPost && !data.replyOpen){
-      replyHtml = `<div class="reply"><div class="closed-note" style="margin-top:6px;">Reply period closed.</div></div>`;
-    }
-    return `<div class="comment"><div class="avatar" style="background:var(--postal-blue)">${avatarInner(c.name, c.profilePicURL)}</div><div class="comment-body"><div class="c-name">${c.name}</div><div class="c-text">${c.text}</div></div></div>${replyHtml}`;
-  }).join('');
-
-  const alreadyCommented = data.comments.some(c=>String(c.studentNumber)===String(currentStudent));
-  let commentInputHtml;
-  if(!data.commentOpen){
-    commentInputHtml = `<div class="closed-note">Comment period closed for this week.</div>`;
-  } else if(data.isOwnPost || alreadyCommented){
-    commentInputHtml = '';
-  } else {
-    commentInputHtml = `<div class="comment-input-row"><textarea id="newcomment" rows="2" placeholder="Write a comment..."></textarea><button class="btn btn-primary" onclick="submitComment('${postId}')">Send</button></div>
-       <div class="word-count" id="newcomment-wc">0 words (30+ needed for credit)</div>`;
-  }
-
-  // Photo OR video, never both. Three states: neither set (show both add-options),
-  // photo set (show it + replace/remove), or video set (show it + replace/remove).
-  let mediaColHtml = '';
-  let mediaEditHtml = '';
-  const canEditMedia = data.isOwnPost && data.pictureEditable;
-
-  if(post.ImageURL){
-    mediaColHtml = `<img src="${post.ImageURL}">`;
-    if(canEditMedia){
-      mediaEditHtml = `<div class="media-row" style="margin-top:8px;">
-        <button class="btn btn-ghost btn-sm" onclick="triggerImageUpload('editPost','${postId}','detailMediaArea')">🔁 Replace photo</button>
-        <button class="btn btn-ghost btn-sm" onclick="removeDetailMedia('${postId}','image')">✕ Remove photo</button>
-      </div>`;
-    }
-  } else if(post.YouTubeURL){
-    mediaColHtml = `<a href="https://www.youtube.com/watch?v=${post.YouTubeURL}" target="_blank" style="display:block;position:relative;border-radius:10px;overflow:hidden;">
-      <img src="https://img.youtube.com/vi/${post.YouTubeURL}/hqdefault.jpg" style="width:100%;height:150px;object-fit:cover;display:block;">
-      <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.8rem;background:rgba(0,0,0,0.15);">▶</span>
-    </a>`;
-    if(canEditMedia){
-      mediaEditHtml = `<div class="media-row" style="margin-top:8px;">
-        <button class="btn btn-ghost btn-sm" onclick="openYouTubeInput('detailMediaArea','editPost','${postId}')">🔁 Replace video</button>
-        <button class="btn btn-ghost btn-sm" onclick="removeDetailMedia('${postId}','youtube')">✕ Remove video</button>
-      </div>`;
-    }
-  } else if(canEditMedia){
-    mediaEditHtml = `<div class="media-row">
-      <div class="media-slot" id="detailImageSlot" onclick="triggerImageUpload('editPost','${postId}','detailImageSlot')"><span>📷</span><span>Add a photo</span></div>
-      <div class="media-slot" id="detailYtSlot" onclick="openYouTubeInput('detailYtSlot','editPost','${postId}')"><span>▶</span><span>Add YouTube link</span></div>
-    </div>`;
-  }
-
-  const hasMediaCol = !!(mediaColHtml || mediaEditHtml);
-
-  const editButtonHtml = (data.isOwnPost && data.postOpen)
-    ? `<button class="btn btn-ghost btn-sm" style="margin-bottom:12px;" onclick="startEditPost('${postId}')">✏️ Edit entry</button>`
-    : '';
-
-  document.getElementById('content').innerHTML = `
-    <button class="back-link" onclick="goBackFromPostDetail()">← Back</button>
-    <div class="card post-card">
-      <div class="stamp"><span class="wk">WEEK</span><span class="num">${String(post.Week).padStart(2,'0')}</span></div>
-      <div id="postDetailTitleArea">
-        <div class="post-detail-title">${post.Title}</div>
-        ${editButtonHtml}
-      </div>
-      <div class="post-head">
-        <div class="avatar" style="background:var(--postal-blue)">${avatarInner(data.authorName, data.authorProfilePicURL)}</div>
-        <div><div class="name">${data.authorName}</div><div class="when">${data.scheduleLabel}</div></div>
-      </div>
-      <div class="post-detail-grid">
-        <div id="postDetailBodyArea">
-          <div class="post-body">${post.TextContent}</div>
-          <div class="word-count">${wc} words</div>
-        </div>
-        ${hasMediaCol ? `<div class="post-detail-media-col" id="detailMediaArea">${mediaColHtml}${mediaEditHtml}</div>` : ''}
-      </div>
-      <div class="comments">
-        ${commentsHtml}
-        ${commentInputHtml}
-      </div>
-    </div>
-  `;
-
-  if(data.commentOpen && !data.isOwnPost) wireWordCounter('newcomment', 'newcomment-wc');
-  if(data.replyOpen && data.isOwnPost){
-    data.comments.filter(c=>!c.reply).forEach(c=>{
-      wireWordCounter(`replyinput-${c.commentId}`, `replyinput-wc-${c.commentId}`);
+  if (isToolEnabled('typing')) {
+    tiles.push({
+      icon: 'keyboard', iconColor: '#2e5ba8', title: 'Typing Skills',
+      desc: 'Typing check, practice, and spelling drills.',
+      url: tileUrl(TOOL_URLS.typing)
     });
+  } else {
+    tiles.push({ icon: 'keyboard', iconColor: '#2e5ba8', title: 'Typing Skills', desc: 'Not available yet.', url: null });
   }
-  } finally {
-    hideLoading();
-  }
-}
 
-function startEditPost(postId){
-  isWritingSomething = true;
-  const post = currentDetailData.post;
-  document.getElementById('postDetailTitleArea').innerHTML = `
-    <input type="text" id="editTitleInput" value="${post.Title.replace(/"/g,'&quot;')}" style="font-weight:600;font-size:1.1rem;margin-bottom:10px;">`;
-  document.getElementById('postDetailBodyArea').innerHTML = `
-    <textarea id="editTextInput" style="min-height:200px;line-height:1.6;">${post.TextContent}</textarea>
-    <div class="meta-row"><span id="editWordCountLabel">${wordCountOf(post.TextContent)} words</span><span></span></div>
-    <div class="grade-actions" style="margin-top:10px;">
-      <button class="btn btn-ghost" style="flex:1;" onclick="openPostDetail('${postId}', postDetailOrigin)">Cancel</button>
-      <button class="btn btn-primary" style="flex:1;" onclick="savePostEdit('${postId}')">Save changes</button>
-    </div>`;
-  const ta = document.getElementById('editTextInput');
-  ta.addEventListener('paste', e=>{ e.preventDefault(); showTabWarningModal("Pasting isn't allowed", "Please type your entry yourself — pasted text isn't accepted here."); });
-  ta.addEventListener('input', ()=>{
-    document.getElementById('editWordCountLabel').textContent = wordCountOf(ta.value) + ' words';
-  });
-}
-function wordCountOf(text){ return text.trim().split(/\s+/).filter(Boolean).length; }
-
-async function savePostEdit(postId){
-  const title = document.getElementById('editTitleInput').value.trim();
-  const text = document.getElementById('editTextInput').value;
-  if(!title){ showToast('Title can\'t be empty.'); return; }
-  if(!text.trim()){ showToast("Entry can't be empty."); return; }
-  showLoading('Saving…');
-  const result = await callApi('updatePost', { classId: currentClassId, studentNumber: currentStudent, postId, title, textContent: text });
-  hideLoading();
-  if(result.success){ showToast('Entry updated.'); openPostDetail(postId, postDetailOrigin); }
-  else showToast(result.error || "Couldn't save changes.");
-}
-
-function wireWordCounter(inputId, labelId){
-  const el = document.getElementById(inputId);
-  const label = document.getElementById(labelId);
-  if(!el || !label) return;
-  el.addEventListener('input', ()=>{
-    const words = el.value.trim().split(/\s+/).filter(Boolean).length;
-    label.textContent = words + (words===1 ? ' word' : ' words') + ' (30+ needed for credit)';
-    label.style.color = words>=30 ? 'var(--postal-blue)' : 'var(--ink-soft)';
-  });
-  el.addEventListener('paste', e=>{ e.preventDefault(); showTabWarningModal("Pasting isn't allowed", "Please type your comment or reply yourself — pasted text isn't accepted here."); });
-  el.addEventListener('drop', e=>{ e.preventDefault(); showTabWarningModal("Dropping text isn't allowed", "Please type your comment or reply yourself — dropped text isn't accepted here."); });
-}
-
-function showReplyBox(commentId){
-  document.getElementById(`replybox-${commentId}`).classList.toggle('hidden');
-}
-
-async function submitComment(postId){
-  const input = document.getElementById('newcomment');
-  const text = input.value.trim();
-  if(!text) return;
-  showLoading('Submitting…');
-  const result = await callApi('createComment', { classId: currentClassId, postId, studentNumber: currentStudent, content: text });
-  hideLoading();
-  if(result.success) openPostDetail(postId, postDetailOrigin);
-  else showToast(result.error || "Couldn't post comment.");
-}
-
-async function submitReply(commentId){
-  const input = document.getElementById(`replyinput-${commentId}`);
-  const text = input.value.trim();
-  if(!text) return;
-  showLoading('Submitting…');
-  const result = await callApi('createReply', { classId: currentClassId, commentId, studentNumber: currentStudent, content: text });
-  hideLoading();
-  if(result.success) openPostDetail(currentDetailData.post.PostID, postDetailOrigin);
-  else showToast(result.error || "Couldn't post reply.");
-}
-
-/* ============ RUBRIC TABLE (read-only preview) ============ */
-function qualityClass(label, points, maxPoints){
-  const l = (label||'').toLowerCase();
-  if(l.includes('excellent') || l.includes('good') || l.includes('on time')) return 'qual-green';
-  if(l.includes('average')) return 'qual-yellow';
-  if(l.includes('needs improvement') || l.includes('no submission') || l.includes('late') || l.includes('missing')) return 'qual-red';
-  const ratio = maxPoints>0 ? points/maxPoints : 0;
-  if(ratio>=0.7) return 'qual-green';
-  if(ratio>=0.3) return 'qual-yellow';
-  return 'qual-red';
-}
-
-function formatDeadline(d){
-  if(!d) return '';
-  const dt = new Date(d);
-  return dt.toLocaleString('en-US', {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'});
-}
-
-function formatLongDate(d){
-  if(!d) return '';
-  const dt = new Date(d);
-  return dt.toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'});
-}
-
-function buildCompletionTimeline(data){
-  const now = new Date();
-  const sched = data.schedule;
-  const steps = [];
-
-  const postDone = !!data.myPost;
-  steps.push({
-    label: 'Post blog', sub: '', done: postDone, deadline: sched.PostClose,
-    submittedHtml: postDone ? `<div class="tl-submitted">Submitted: ${formatDeadline(data.myPost.CreatedAt)}</div>` : '',
-  });
-
-  if(data.settings.PictureEnabled){
-    const pictureDone = !!(data.myPost && (data.myPost.ImageURL || data.myPost.YouTubeURL));
-    steps.push({
-      label: 'Post picture', sub: '', done: pictureDone, deadline: sched.PictureDeadline,
-      submittedHtml: pictureDone ? `<div class="tl-submitted">Submitted: ${formatDeadline(data.myPost.LastEditedAt)}</div>` : '',
+  if (isToolEnabled('forum')) {
+    tiles.push({
+      icon: 'message-2', iconColor: '#b23a2e', title: 'Weekly Forum & Feedback',
+      desc: 'Blog post, comments, grammar feedback, and unit submissions.',
+      url: tileUrl(TOOL_URLS.forum)
     });
+  } else {
+    tiles.push({ icon: 'message-2', iconColor: '#b23a2e', title: 'Weekly Forum & Feedback', desc: 'Not available yet.', url: null });
   }
 
-  // "Done" requires either real completed work, OR confirmation that nothing was ever
-  // possible (the other side's window closed with zero participation) — not a perpetual
-  // "0 of 0" that would otherwise sit stuck on red forever through no fault of the student.
-  const postClosePassed = now > new Date(sched.PostClose);
-  const commentDeadlinePassed = now > new Date(sched.CommentDeadline);
+  if (isToolEnabled('quiz')) {
+    tiles.push({
+      icon: 'clipboard-text', iconColor: '#c9a227', title: 'Grammar Quiz',
+      desc: 'Your class’s weekly grammar quiz (' + (session.classLabel || '') + ').',
+      url: tileUrl(TOOL_URLS.quiz)
+    });
+  } else {
+    tiles.push({ icon: 'clipboard-text', iconColor: '#c9a227', title: 'Grammar Quiz', desc: 'Not available yet.', url: null });
+  }
 
-  const commentDetails = data.commentDetails || [];
-  const commentsDone = (commentDetails.length > 0 && commentDetails.every(c=>c.done))
-    || (commentDetails.length === 0 && postClosePassed); // no groupmate ever posted, and posting's now closed
-  steps.push({
-    label: 'Comments', sub: '(1 per member)', done: commentsDone, deadline: sched.CommentDeadline,
-    submittedHtml: commentDetails.length
-      ? commentDetails.map(c=> `<div class="tl-submitted">${c.name}: ${c.done ? formatDeadline(c.createdAt) : '—'}</div>`).join('')
-      : (postClosePassed ? `<div class="tl-submitted">No groupmates posted — nothing to comment on.</div>` : ''),
-  });
+  // Jumps straight to this class's current grammar-selection cycle (the
+  // colour-coded feedback + choose-your-unit screen) rather than the
+  // forum's own dashboard — same shortcut the old all-in-one dashboard's
+  // "Blog Grammar Analysis" tile provided, just routed dynamically via
+  // getCurrentGrammarCycle instead of a fixed URL.
+  if (isToolEnabled('forum')) {
+    tiles.push({
+      icon: 'search', iconColor: '#534ab7', title: 'Grammar Analysis / Unit Submission',
+      desc: 'View feedback on your latest blog entry and choose your next unit.',
+      url: tileUrl(TOOL_URLS.forum, { goto: 'grammar' })
+    });
+  } else {
+    tiles.push({ icon: 'search', iconColor: '#534ab7', title: 'Grammar Analysis / Unit Submission', desc: 'Not available yet.', url: null });
+  }
 
-  const replyDetails = data.replyDetails || [];
-  const repliesDone = !!data.myPost && (
-    (replyDetails.length > 0 && replyDetails.every(r=>r.done))
-    || (replyDetails.length === 0 && commentDeadlinePassed) // nobody ever commented, and commenting's now closed
-  );
-  steps.push({
-    label: 'Replies', sub: '(1 per comment received)', done: repliesDone, deadline: sched.ReplyDeadline,
-    submittedHtml: replyDetails.length
-      ? replyDetails.map(r=> `<div class="tl-submitted">${r.name}: ${r.done ? formatDeadline(r.createdAt) : '—'}</div>`).join('')
-      : (data.myPost && commentDeadlinePassed ? `<div class="tl-submitted">No comments received — nothing to reply to.</div>` : ''),
-  });
-
-  const stepsHtml = steps.map((s, i)=>{
-    let status = s.done ? 'done' : (now > new Date(s.deadline) ? 'overdue' : 'pending');
-    // Cascade: missing the blog post entirely makes "Post picture" and "Replies" impossible —
-    // force those to overdue immediately rather than waiting on their own deadlines. Comments
-    // is unaffected since commenting depends on groupmates' posts, not your own.
-    const postStep = steps[0];
-    const postOverdue = !postStep.done && now > new Date(postStep.deadline);
-    if(postOverdue && (s.label === 'Post picture' || s.label === 'Replies')) status = 'overdue';
-    const icon = status === 'done' ? '✓' : (status === 'overdue' ? '✕' : '');
-    return `
-      <div class="tl-step ${status}">
-        <div class="tl-node">${icon}</div>
-        <div class="tl-label">${s.label}</div>
-        ${s.sub ? `<div class="tl-sub">${s.sub}</div>` : ''}
-        <div class="tl-date">Due: ${formatDeadline(s.deadline)}</div>
-        ${s.submittedHtml}
-      </div>`;
-  }).join('');
-
-  return `<div class="card"><div class="completion-timeline">${stepsHtml}</div></div>`;
-}
-
-function buildRubricTable(rubric){
-  if(!rubric || rubric.length===0) return `<div class="card empty-note">No rubric set up yet.</div>`;
-  const maxTiers = Math.max(...rubric.map(c=>c.tiers.length));
-  const rows = rubric.map(crit=>{
-    const maxPoints = Math.max(...crit.tiers.map(t=>Number(t.points)||0));
-    const cells = [];
-    for(let i=0;i<maxTiers;i++){
-      const t = crit.tiers[i];
-      if(!t){ cells.push('<td class="tier-cell empty"></td>'); continue; }
-      const cls = qualityClass(t.label, Number(t.points)||0, maxPoints);
-      cells.push(`
-        <td class="tier-cell ${cls}">
-          <div class="tlabel">${t.label}</div>
-          ${t.desc ? `<div class="tdesc">${t.desc}</div>` : ''}
-          <span class="tpts">${t.points} pts</span>
-        </td>`);
+  const container = document.getElementById('tiles-container');
+  container.innerHTML = tiles.map(function(t) {
+    const iconHtml = '<div class="tile-icon" style="background:' + t.iconColor + '">' +
+      '<i class="ti ti-' + t.icon + '" aria-hidden="true"></i></div>';
+    if (!t.url) {
+      return '<div class="tile disabled">' + iconHtml +
+        '<div class="tile-text"><div class="tile-title">' + escHtml(t.title) + '</div>' +
+        '<div class="tile-desc">' + escHtml(t.desc) + '</div></div></div>';
     }
-    return `<tr><td class="crit-name">${crit.name}<div class="crit-max">${maxPoints} pts max</div></td>${cells.join('')}</tr>`;
+    return '<a class="tile" href="' + t.url + '">' + iconHtml +
+      '<div class="tile-text"><div class="tile-title">' + escHtml(t.title) + '</div>' +
+      '<div class="tile-desc">' + escHtml(t.desc) + '</div></div>' +
+      '<div class="tile-arrow">→</div></a>';
   }).join('');
-  return `
-    <div class="rubric-table-wrap" id="rubricTableWrap">
-      <table class="rubric-table"><tbody>${rows}</tbody></table>
-    </div>
-    <div class="rubric-scroll-hint">Scroll sideways to see all levels →</div>
-  `;
+
+  document.getElementById('login-panel').style.display = 'none';
+  document.getElementById('tiles-panel').style.display = 'block';
+  document.getElementById('logout-btn').style.display = 'inline-block';
 }
 
-/* ============ TAB-SWITCH DETECTION — only while actively writing, not the whole app ============ */
-let tabAwaySince = null;
-let isWritingSomething = false; // set explicitly when a writing UI opens/closes — see openComposer, startEditPost, openPostDetail, etc.
+// ── RESTORE AN EXISTING SESSION, OR AUTO-LOGIN FROM AN EXTERNAL WIDGET ──────
+// Runs once on every page load, including navigating "back to hub" from a
+// tool page. If this tab already has a session (from having logged in
+// earlier in the same tab), restore it straight to the tiles screen with
+// no re-login. Otherwise, fall back to the studentNumber URL param (e.g.
+// a Moodle-embedded quick-login box) exactly as before.
+(function () {
+  try {
+    const stored = sessionStorage.getItem('ewsHubSession');
+    if (stored) {
+      session = JSON.parse(stored);
+      showTiles();
+      return;
+    }
+  } catch (e) { /* storage unavailable or corrupt - fall through to normal login */ }
 
-function isWritingFieldId(id){
-  if(!id) return false;
-  return id === 'postText' || id === 'editTextInput' || id === 'newcomment' || id.startsWith('replyinput-');
-}
-function markTabAway(){
-  const active = document.activeElement;
-  if(!active || !isWritingFieldId(active.id)) return; // cursor wasn't actually in a writing field
-  if(tabAwaySince) return;
-  tabAwaySince = Date.now();
-}
-function markTabReturn(){
-  if(!tabAwaySince) return;
-  const awayMs = Date.now() - tabAwaySince;
-  tabAwaySince = null;
-  if(awayMs > 1500 && currentStudent) showTabWarningModal();
-}
-function showTabWarningModal(title, text){
-  document.getElementById('tabWarningTitle').textContent = title || 'Stay on this page';
-  document.getElementById('tabWarningText').textContent = text || "You switched away while writing. Please stay on this page — using translation tools or other apps while writing isn't allowed, and this has been logged.";
-  document.getElementById('tabWarningModal').classList.add('show');
-}
-function closeTabWarningModal(){ document.getElementById('tabWarningModal').classList.remove('show'); }
-window.addEventListener('blur', markTabAway);
-window.addEventListener('focus', markTabReturn);
-document.addEventListener('visibilitychange', ()=>{ if(document.hidden) markTabAway(); else markTabReturn(); });
-window.addEventListener('pagehide', markTabAway);
-window.addEventListener('pageshow', markTabReturn);
-
-// ── AUTO-LOGIN FROM DASHBOARD ────────────────────────────────────────────
-(function() {
   const params = new URLSearchParams(window.location.search);
-  const autoStudent = params.get('student');
-  const goto = params.get('goto');
-  if (goto) gotoDestination = goto;
-  if (autoStudent) {
-    const input = document.getElementById('studentNumberInput');
-    if (input) {
-      input.value = autoStudent;
-      login();
-    }
+  const autoNum = params.get('studentNumber');
+  if (autoNum) {
+    document.getElementById('num-input').value = autoNum;
+    doLogin();
   }
 })();
 </script>
-
 </body>
 </html>
