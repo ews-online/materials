@@ -116,7 +116,7 @@
   function goToHub() {
     const num = document.getElementById('num-input').value.trim();
     const base = 'https://ews-online.github.io/materials/student/';
-    const url = num ? base + '?student=' + encodeURIComponent(num) : base;
+    const url = num ? base + '?studentNumber=' + encodeURIComponent(num) : base;
     window.open(url, '_blank');
   }
 </script>
