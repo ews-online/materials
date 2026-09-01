@@ -8,62 +8,137 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
 <style>
   :root {
-    --ink: #1a1a2e; --ink-soft: #4a4a6a; --ink-mute: #8888aa;
-    --paper: #faf9f6; --paper-2: #f2f0eb; --paper-3: #e8e5de;
-    --accent: #2e5ba8; --accent-lt: #dde7f7;
-    --red: #b03030; --red-lt: #fce8e8;
-    --green: #2a7a4e; --green-lt: #e3f3ea;
-    --rule: rgba(26,26,46,0.10); --shadow: 0 2px 16px rgba(26,26,46,0.08);
+    --ink: #1a1a2e;
+    --ink-soft: #4a4a6a;
+    --ink-mute: #8888aa;
+    --paper: #faf9f6;
+    --paper-2: #f2f0eb;
+    --paper-3: #e8e5de;
+    --accent: #2e5ba8;
+    --accent-lt: #dde7f7;
+    --red: #b03030;
+    --red-lt: #fce8e8;
+    --green: #2a7a4e;
+    --green-lt: #e3f3ea;
+    --rule: rgba(26,26,46,0.10);
+    --shadow: 0 2px 16px rgba(26,26,46,0.08);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'DM Sans', sans-serif; background: var(--paper); color: var(--ink); min-height: 100vh; line-height: 1.6; }
-  header { background: var(--ink); padding: 28px 40px; display: flex; align-items: center; justify-content: center; position: relative; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+  header {
+    background: var(--ink);
+    padding: 28px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
   .header-left { display: flex; align-items: center; gap: 16px; }
-  .header-mark { width: 36px; height: 36px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; color: #fff; flex-shrink: 0; }
+  .header-mark {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600;
+    color: #fff;
+    flex-shrink: 0;
+  }
   .header-text h1 { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; color: #fff; }
-  .header-text p { font-size: 11px; color: rgba(255,255,255,0.45); letter-spacing: .04em; text-transform: uppercase; margin-top: 2px; }
-  .logout-btn { font-size: 12px; color: rgba(255,255,255,0.6); background: none; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; padding: 6px 14px; cursor: pointer; transition: border-color .2s, color .2s; display: none; position: absolute; right: 40px; top: 50%; transform: translateY(-50%); }
+  .header-text p {
+    font-size: 11px; color: rgba(255,255,255,0.45);
+    letter-spacing: 0.04em; text-transform: uppercase; margin-top: 2px;
+  }
+  .logout-btn {
+    font-size: 12px; color: rgba(255,255,255,0.6);
+    background: none; border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 8px; padding: 6px 14px; cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+    display: none; position: absolute; right: 40px; top: 50%; transform: translateY(-50%);
+  }
   .logout-btn:hover { border-color: rgba(255,255,255,0.5); color: #fff; }
+
   main { max-width: 760px; margin: 0 auto; padding: 56px 24px 80px; }
-  .login-card { background: #fff; border: 1px solid var(--rule); border-radius: 16px; padding: 48px; max-width: 400px; margin: 0 auto; box-shadow: var(--shadow); }
+
+  .login-card {
+    background: #fff; border: 1px solid var(--rule); border-radius: 16px;
+    padding: 48px; max-width: 400px; margin: 0 auto; box-shadow: var(--shadow);
+  }
   .login-card h2 { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; margin-bottom: 8px; }
   .login-card .subtitle { font-size: 13px; color: var(--ink-mute); margin-bottom: 28px; }
-  .field-label { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 8px; display: block; }
+  .field-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--ink-soft); margin-bottom: 8px; display: block;
+  }
   .field { margin-bottom: 16px; }
-  .text-input { width: 100%; height: 48px; border: 1.5px solid var(--paper-3); border-radius: 10px; padding: 0 16px; font-family: 'DM Sans', sans-serif; font-size: 17px; font-weight: 500; color: var(--ink); background: var(--paper); outline: none; transition: border-color .2s, box-shadow .2s; letter-spacing: .04em; }
+  .text-input {
+    width: 100%; height: 48px; border: 1.5px solid var(--paper-3); border-radius: 10px;
+    padding: 0 16px; font-family: 'DM Sans', sans-serif; font-size: 17px; font-weight: 500;
+    color: var(--ink); background: var(--paper); outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s; letter-spacing: 0.04em;
+  }
   .text-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-lt); }
-  .login-btn { width: 100%; height: 48px; background: var(--accent); color: #fff; border: none; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: .03em; cursor: pointer; margin-top: 8px; transition: background .2s, transform .1s; }
+  .login-btn {
+    width: 100%; height: 48px; background: var(--accent); color: #fff; border: none;
+    border-radius: 10px; font-size: 14px; font-weight: 600; letter-spacing: 0.03em;
+    cursor: pointer; margin-top: 8px; transition: background 0.2s, transform 0.1s;
+  }
   .login-btn:hover { background: #1f4690; }
   .login-btn:active { transform: scale(0.99); }
   .login-btn:disabled { background: var(--paper-3); color: var(--ink-mute); cursor: default; }
+
   .msg { padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-top: 16px; display: none; }
   .msg.error { background: var(--red-lt); color: var(--red); border: 1px solid #f5c0c0; }
   .msg.show { display: block; }
+
   #tiles-panel { display: none; }
   .greeting { margin-bottom: 32px; }
   .greeting h2 { font-family: 'Fraunces', serif; font-size: 24px; font-weight: 600; }
   .greeting p { font-size: 13px; color: var(--ink-mute); margin-top: 4px; }
-  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; background: var(--ink); color: #fff; letter-spacing: .04em; margin-top: 8px; }
+  .badge {
+    display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 10px;
+    border-radius: 20px; background: var(--ink); color: #fff;
+    letter-spacing: 0.04em; margin-top: 8px;
+  }
+
   .tiles { display: grid; grid-template-columns: 1fr; gap: 14px; }
-  .tile { background: #fff; border: 1px solid var(--rule); border-radius: 14px; padding: 22px 26px; display: flex; align-items: center; gap: 18px; text-decoration: none; color: var(--ink); box-shadow: var(--shadow); transition: border-color .2s, transform .15s; cursor: pointer; }
+  .tile {
+    background: #fff; border: 1px solid var(--rule); border-radius: 14px;
+    padding: 22px 26px; display: flex; align-items: center; gap: 18px;
+    text-decoration: none; color: var(--ink); box-shadow: var(--shadow);
+    transition: border-color 0.2s, transform 0.15s; cursor: pointer;
+  }
   .tile:hover { border-color: var(--accent); transform: translateY(-1px); }
-  .tile:active { transform: scale(0.99); }
-  .tile-icon { width: 46px; height: 46px; border-radius: 14px; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+  .tile-icon {
+    width: 46px; height: 46px; border-radius: 14px; color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;
+  }
   .tile-text { flex: 1; min-width: 0; }
   .tile-title { font-family: 'Fraunces', serif; font-size: 16px; font-weight: 600; margin-bottom: 2px; }
   .tile-desc { font-size: 13px; color: var(--ink-mute); }
-  .tile-arrow { color: var(--ink-mute); font-size: 1rem; transition: color .2s, transform .2s; flex-shrink: 0; }
+  .tile-arrow { color: var(--ink-mute); font-size: 1rem; transition: color 0.2s, transform 0.2s; flex-shrink: 0; }
   .tile:hover .tile-arrow { color: var(--accent); transform: translateX(3px); }
-  .tile.disabled { cursor: default; opacity: .55; }
+  .tile.disabled { cursor: default; opacity: 0.55; }
   .tile.disabled:hover { border-color: var(--rule); transform: none; }
-  .tile.success { background: var(--green-lt); border-color: var(--green); }
-  .tile.success:hover { border-color: var(--green); }
-  .tile-status { font-size: 14px; font-weight: 700; color: var(--green); margin-top: 4px; }
-  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; margin-right: 6px; }
+
+  .spinner {
+    display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite;
+    vertical-align: middle; margin-right: 6px;
+  }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .fade-in { animation: fadeIn .3s ease forwards; }
+  .fade-in { animation: fadeIn 0.3s ease forwards; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-  @media (max-width: 600px) { header { padding: 20px; } .login-card { padding: 32px 24px; } }
+
+  @media (max-width: 600px) {
+    header { padding: 20px; }
+    .login-card { padding: 32px 24px; }
+  }
 </style>
 </head>
 <body>
@@ -80,24 +155,30 @@
 </header>
 
 <main>
+
+  <!-- LOGIN -->
   <div id="login-panel">
     <div class="login-card fade-in">
       <h2>Sign in</h2>
       <p class="subtitle">Enter your student number to begin.</p>
+
       <div class="field">
         <label class="field-label" for="num-input">Student Number</label>
         <input class="text-input" type="text" id="num-input" placeholder="e.g. 2511003" autocomplete="off" inputmode="numeric">
       </div>
+
       <div class="field" id="password-field" style="display:none">
         <label class="field-label" for="pw-input">Password</label>
         <input class="text-input" type="password" id="pw-input" placeholder="Your password" autocomplete="off">
       </div>
+
       <button class="login-btn" id="login-btn" onclick="doLogin()">Continue →</button>
       <div class="msg" id="login-msg"></div>
-      <div style="text-align:center;margin-top:20px;font-size:11px;color:var(--ink-mute);letter-spacing:.06em;">v2.3</div>
+      <div style="text-align:center; margin-top:20px; font-size:11px; color:var(--ink-mute); letter-spacing:0.06em;">v1.1 — textbook tier passed through SSO</div>
     </div>
   </div>
 
+  <!-- TILES -->
   <div id="tiles-panel">
     <div class="greeting fade-in">
       <h2 id="greeting-name"></h2>
@@ -106,182 +187,230 @@
     </div>
     <div class="tiles fade-in" id="tiles-container"></div>
   </div>
+
 </main>
 
 <script>
-const MASTER_LOGIN_URL = 'https://script.google.com/macros/s/AKfycbys09mRRw7bocSfAmEk1D7U7o9JQ1XJxGWk_NyOBEq62HKyQ6jspO_uTKbNt9lHMcsEgQ/exec';
+// ════════════════════════════════════════════════════════
+//  CONFIGURATION
+// ════════════════════════════════════════════════════════
 
+// Filled in automatically by generateDeploymentPackage() in Genesis.gs once
+// the Forum/CCF/Typing Engine is deployed and registered — this is the ONLY
+// engine the dashboard talks to directly. Login lives here (Decision Log
+// §8), and the resulting token is what every tool below uses.
+const FORUM_ENGINE_URL = 'https://script.google.com/macros/s/AKfycbw5J9WRH-wsUVkFLaTI18MBMnjv3K8WHdF3l7_GwtXTADyHPheHDxHt8E4sqbGxXz8M/exec';
+
+// Destination pages — relative paths, since every tool lives as a sibling
+// folder in the same repo (…/student/ is this file's own folder).
+// No per-class routing table needed anymore: one URL per tool, always —
+// each destination page reads the student's current class itself from the
+// token, server-side, via the shared Sessions lookup.
 const TOOL_URLS = {
-  typingCheck:  'https://mdlohrniu-ai.github.io/typing-check/',
-  weeklyForum:  'https://mdlohrniu-ai.github.io/ews-onlineforum/',
-  blogAnalysis: 'https://mdlohrniu-ai.github.io/ews-grammar-analysis/',
-  quizByClass: {
-    'EWSI':   'https://mdlohrniu-ai.github.io/grammarquiz/',
-    'EWSII':  'https://mdlohrniu-ai.github.io/grammarquizEWSII/',
-    'EWSIII': 'https://mdlohrniu-ai.github.io/grammarquizEWSIII/'
-  }
+  typing: '../typing/',
+  forum:  '../forum/',
+  quiz:   '../quiz/'
 };
 
-let currentStudent = null;
+// ════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════
+let session = null; // { token, studentId, nameEng, nameJP, classLabel, toolToggles }
 
-function showMsg(text){ const el=document.getElementById('login-msg'); el.textContent=text; el.className='msg error show'; }
-function hideMsg(){ document.getElementById('login-msg').className='msg'; }
-function setLoading(loading){ const btn=document.getElementById('login-btn'); btn.disabled=loading; btn.innerHTML=loading?'<span class="spinner"></span>Checking…':'Continue →'; }
-function escHtml(s){ return s?String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'):''; }
-function isToolEnabled(toolName){
-  const toggles=currentStudent.featureToggles||{};
-  const toolKey=toolName.toLowerCase();
-  const classKey=(currentStudent.className||'').trim().toLowerCase();
-  if(!(toolKey in toggles)) return true;
-  const classMap=toggles[toolKey];
-  if(!(classKey in classMap)) return true;
-  return classMap[classKey]!==false;
+// ════════════════════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════════════════════
+function showMsg(text) {
+  const el = document.getElementById('login-msg');
+  el.textContent = text;
+  el.className = 'msg error show';
+}
+function hideMsg() { document.getElementById('login-msg').className = 'msg'; }
+function setLoading(loading) {
+  const btn = document.getElementById('login-btn');
+  btn.disabled = loading;
+  btn.innerHTML = loading ? '<span class="spinner"></span>Checking…' : 'Continue →';
+}
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function isToolEnabled(toolKey) {
+  const toggles = (session && session.toolToggles) || {};
+  return toggles[toolKey] !== false; // missing/undefined = enabled by default
 }
 
-document.getElementById('num-input').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
-document.getElementById('pw-input').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+document.getElementById('num-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') doLogin();
+});
+document.getElementById('pw-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') doLogin();
+});
 
-async function doLogin(){
-  const num=document.getElementById('num-input').value.trim();
-  const pw=document.getElementById('pw-input').value.trim();
-  if(!num){ showMsg('Please enter your student number.'); return; }
-  hideMsg(); setLoading(true);
-  try{
-    const params=new URLSearchParams({action:'login',studentNumber:num});
-    if(pw) params.set('password',pw);
-    const res=await fetch(MASTER_LOGIN_URL+'?'+params.toString());
-    const data=await res.json();
+// ════════════════════════════════════════════════════════
+//  LOGIN
+// ════════════════════════════════════════════════════════
+// Expected response shape from the Forum Engine's action=login:
+//   { ok: true, token, studentId, nameEng, nameJP, classLabel, toolToggles }
+//   { requiresPassword: true }
+//   { error: '...' }
+async function doLogin() {
+  const num = document.getElementById('num-input').value.trim();
+  const pw  = document.getElementById('pw-input').value.trim();
+
+  if (!num) { showMsg('Please enter your student number.'); return; }
+
+  hideMsg();
+  setLoading(true);
+
+  try {
+    const params = new URLSearchParams({ action: 'login', studentNumber: num });
+    if (pw) params.set('password', pw);
+
+    const res = await fetch(FORUM_ENGINE_URL + '?' + params.toString());
+    const data = await res.json();
+
     setLoading(false);
-    if(data.error){ showMsg(data.error); return; }
-    if(data.requiresPassword){
-      document.getElementById('password-field').style.display='block';
+
+    if (data.error) { showMsg(data.error); return; }
+
+    if (data.requiresPassword) {
+      document.getElementById('password-field').style.display = 'block';
       document.getElementById('pw-input').focus();
-      if(pw) showMsg('Incorrect password.');
+      if (pw) showMsg('Incorrect password.');
       else showMsg('This account is password-protected. Please enter your password.');
       return;
     }
-    if(data.ok){ currentStudent=data; showTiles(); }
-  }catch(err){ setLoading(false); showMsg('Connection error. Please try again.'); }
+
+    if (data.ok) {
+      session = data;
+      try { sessionStorage.setItem('ewsHubSession', JSON.stringify(session)); } catch (e) { /* storage unavailable - session still works for this page load */ }
+      showTiles();
+    }
+  } catch (err) {
+    setLoading(false);
+    showMsg('Connection error. Please try again.');
+  }
 }
 
-function doLogout(){
-  currentStudent=null;
-  document.getElementById('num-input').value='';
-  document.getElementById('pw-input').value='';
-  document.getElementById('password-field').style.display='none';
+function doLogout() {
+  session = null;
+  try { sessionStorage.removeItem('ewsHubSession'); } catch (e) { /* ignore */ }
+  document.getElementById('num-input').value = '';
+  document.getElementById('pw-input').value = '';
+  document.getElementById('password-field').style.display = 'none';
   hideMsg();
-  document.getElementById('login-panel').style.display='block';
-  document.getElementById('tiles-panel').style.display='none';
-  document.getElementById('logout-btn').style.display='none';
+  document.getElementById('login-panel').style.display = 'block';
+  document.getElementById('tiles-panel').style.display = 'none';
+  document.getElementById('logout-btn').style.display = 'none';
 }
 
-function showTiles(){
-  document.getElementById('greeting-name').textContent='Welcome, '+(currentStudent.nameEng||currentStudent.studentNumber).trim().split(' ').pop()+'!';
-  document.getElementById('greeting-class').textContent=currentStudent.className||'';
+// ════════════════════════════════════════════════════════
+//  TILES
+// ════════════════════════════════════════════════════════
+function tileUrl(base, extra) {
+  const params = new URLSearchParams({
+    token: session.token, studentNumber: session.studentNumber || '', classId: session.classId || '',
+    classLabel: session.classLabel || '', nameEng: session.nameEng || '', nameJP: session.nameJP || '',
+    profilePicURL: session.profilePicURL || '', textbookTier: session.textbookTier || 'Basic'
+  });
+  if (extra) Object.keys(extra).forEach(function(k) { params.set(k, extra[k]); });
+  return base + '?' + params.toString();
+}
 
-  const quizUrl=TOOL_URLS.quizByClass[currentStudent.className]||null;
-  const studentParam=encodeURIComponent(currentStudent.studentNumber);
-  const tiles=[];
+function showTiles() {
+  document.getElementById('greeting-name').textContent =
+    'Welcome, ' + (session.nameEng || session.studentId).trim().split(' ').pop() + '!';
+  document.getElementById('greeting-class').textContent = session.classLabel || '';
 
-  // Typing Check
-  if(isToolEnabled('Typing Check')){
-    tiles.push({icon:'keyboard',iconColor:'#2e5ba8',title:'Typing Check',desc:'Timed typing exercise — speed and accuracy.',url:TOOL_URLS.typingCheck+'?student='+studentParam});
+  const tiles = [];
+
+  if (isToolEnabled('typing')) {
+    tiles.push({
+      icon: 'keyboard', iconColor: '#2e5ba8', title: 'Typing Skills',
+      desc: 'Typing check, practice, and spelling drills.',
+      url: tileUrl(TOOL_URLS.typing)
+    });
   } else {
-    tiles.push({icon:'keyboard',iconColor:'#2e5ba8',title:'Typing Check',desc:'Not available yet.',url:null});
+    tiles.push({ icon: 'keyboard', iconColor: '#2e5ba8', title: 'Typing Skills', desc: 'Not available yet.', url: null });
   }
 
-  // Weekly Forum
-  if(isToolEnabled('Weekly Forum')){
-    tiles.push({icon:'message-2',iconColor:'#b23a2e',title:'Weekly Forum',desc:'Blog post, comments, and replies for this week.',url:TOOL_URLS.weeklyForum+'?student='+studentParam});
+  if (isToolEnabled('forum')) {
+    tiles.push({
+      icon: 'message-2', iconColor: '#b23a2e', title: 'Weekly Forum & Feedback',
+      desc: 'Blog post, comments, grammar feedback, and unit submissions.',
+      url: tileUrl(TOOL_URLS.forum)
+    });
   } else {
-    tiles.push({icon:'message-2',iconColor:'#b23a2e',title:'Weekly Forum',desc:'Not available yet.',url:null});
+    tiles.push({ icon: 'message-2', iconColor: '#b23a2e', title: 'Weekly Forum & Feedback', desc: 'Not available yet.', url: null });
   }
 
-  // Weekly Grammar Quiz
-  const quizEnabled=isToolEnabled('Weekly Grammar Quiz');
-  if(!quizUrl){
-    tiles.push({icon:'clipboard-text',iconColor:'#c9a227',title:'Weekly Grammar Quiz',desc:'No quiz found for class "' +(currentStudent.className||'unknown')+'". Ask your teacher.',url:null});
-  } else if(!quizEnabled){
-    tiles.push({icon:'clipboard-text',iconColor:'#c9a227',title:'Weekly Grammar Quiz',desc:'Not available yet.',url:null});
+  if (isToolEnabled('quiz')) {
+    tiles.push({
+      icon: 'clipboard-text', iconColor: '#c9a227', title: 'Grammar Quiz',
+      desc: 'Your class’s weekly grammar quiz (' + (session.classLabel || '') + ').',
+      url: tileUrl(TOOL_URLS.quiz)
+    });
   } else {
-    const win=currentStudent.quizWindow;
-    if(win&&!win.isOpen){
-      tiles.push({icon:'clipboard-text',iconColor:'#c9a227',title:'Weekly Grammar Quiz',desc:'Opens '+win.day+', '+win.start+'–'+win.end+'.',url:null});
-    } else {
-      const openNote=win?' (open until '+win.end+')':'';
-      tiles.push({icon:'clipboard-text',iconColor:'#c9a227',title:'Weekly Grammar Quiz',desc:'Your class\'s grammar quiz ('+currentStudent.className+')'+openNote+'.',url:quizUrl+'?student='+studentParam});
+    tiles.push({ icon: 'clipboard-text', iconColor: '#c9a227', title: 'Grammar Quiz', desc: 'Not available yet.', url: null });
+  }
+
+  // Jumps straight to this class's current grammar-selection cycle (the
+  // colour-coded feedback + choose-your-unit screen) rather than the
+  // forum's own dashboard — same shortcut the old all-in-one dashboard's
+  // "Blog Grammar Analysis" tile provided, just routed dynamically via
+  // getCurrentGrammarCycle instead of a fixed URL.
+  if (isToolEnabled('forum')) {
+    tiles.push({
+      icon: 'search', iconColor: '#534ab7', title: 'Grammar Analysis / Unit Submission',
+      desc: 'View feedback on your latest blog entry and choose your next unit.',
+      url: tileUrl(TOOL_URLS.forum, { goto: 'grammar' })
+    });
+  } else {
+    tiles.push({ icon: 'search', iconColor: '#534ab7', title: 'Grammar Analysis / Unit Submission', desc: 'Not available yet.', url: null });
+  }
+
+  const container = document.getElementById('tiles-container');
+  container.innerHTML = tiles.map(function(t) {
+    const iconHtml = '<div class="tile-icon" style="background:' + t.iconColor + '">' +
+      '<i class="ti ti-' + t.icon + '" aria-hidden="true"></i></div>';
+    if (!t.url) {
+      return '<div class="tile disabled">' + iconHtml +
+        '<div class="tile-text"><div class="tile-title">' + escHtml(t.title) + '</div>' +
+        '<div class="tile-desc">' + escHtml(t.desc) + '</div></div></div>';
     }
-  }
-
-  // Submit Grammar Unit — now links directly to the forum's grammar flow
-  const submitEnabled=isToolEnabled('Submit Grammar Unit');
-  if(quizUrl){
-    if(!submitEnabled){
-      tiles.push({icon:'send',iconColor:'#3b6d11',title:'Submit Grammar Unit',desc:'Not available yet.',url:null});
-    } else {
-      const gwin=currentStudent.grammarWindow;
-      const gLocked=gwin&&!gwin.isOpen;
-      if(gLocked){
-        tiles.push({icon:'send',iconColor:'#3b6d11',title:'Submit Grammar Unit',desc:'Opens '+gwin.openDay+' '+gwin.openTime+'.',url:null});
-      } else {
-        const gsub=currentStudent.grammarSubmission;
-        const grammarUrl=TOOL_URLS.weeklyForum+'?student='+studentParam+'&goto=grammar';
-        const tile={
-          icon:'send',iconColor:'#3b6d11',
-          title:'Submit Grammar Unit',
-          desc:'Choose the grammar unit you want to study this week.',
-          url:grammarUrl
-        };
-        if(gsub&&gsub.submittedAt){
-          tile.success=true;
-          tile.statusText='\u2713 Submitted '+gsub.submittedAt;
-          tile.desc='Update or review your grammar unit selection.';
-        }
-        tiles.push(tile);
-      }
-    }
-  }
-
-  // Blog Grammar Analysis
-  if(isToolEnabled('Blog Grammar Analysis')){
-    tiles.push({icon:'search',iconColor:'#534ab7',title:'Blog Grammar Analysis',desc:'View grammar feedback on your blog entries.',url:TOOL_URLS.blogAnalysis+'?student='+studentParam});
-  } else {
-    tiles.push({icon:'search',iconColor:'#534ab7',title:'Blog Grammar Analysis',desc:'Not available yet.',url:null});
-  }
-
-  const container=document.getElementById('tiles-container');
-  container.innerHTML=tiles.map(t=>{
-    const statusHtml=t.statusText?'<div class="tile-status">'+escHtml(t.statusText)+'</div>':'';
-    const successClass=t.success?' success':'';
-    const iconHtml='<div class="tile-icon" style="background:'+t.iconColor+'"><i class="ti ti-'+t.icon+'" aria-hidden="true"></i></div>';
-    if(!t.url){
-      return '<div class="tile disabled">'+iconHtml+'<div class="tile-text"><div class="tile-title">'+escHtml(t.title)+'</div><div class="tile-desc">'+escHtml(t.desc)+'</div></div></div>';
-    }
-    return '<a class="tile'+successClass+'" href="'+t.url+'" target="_blank" rel="noopener">'+iconHtml+'<div class="tile-text"><div class="tile-title">'+escHtml(t.title)+'</div><div class="tile-desc">'+escHtml(t.desc)+'</div>'+statusHtml+'</div><div class="tile-arrow">→</div></a>';
+    return '<a class="tile" href="' + t.url + '">' + iconHtml +
+      '<div class="tile-text"><div class="tile-title">' + escHtml(t.title) + '</div>' +
+      '<div class="tile-desc">' + escHtml(t.desc) + '</div></div>' +
+      '<div class="tile-arrow">→</div></a>';
   }).join('');
 
-  document.getElementById('login-panel').style.display='none';
-  document.getElementById('tiles-panel').style.display='block';
-  document.getElementById('logout-btn').style.display='inline-block';
+  document.getElementById('login-panel').style.display = 'none';
+  document.getElementById('tiles-panel').style.display = 'block';
+  document.getElementById('logout-btn').style.display = 'inline-block';
 }
 
-// ── AUTO-LOGIN FROM EMBED CARD ──────────────────────────────────────────
-// Matches the same convention every other tool page on this platform
-// already uses (typing-check-index, grammarquiz-EWS*, student-forum-live,
-// weekly-forum-index, blog-analysis-index) - reads a URL param called
-// 'student', fills the number field, and calls this page's own login
-// function. If the account turns out to be password-protected, doLogin()
-// already handles that itself by prompting for a password - this block
-// doesn't need to special-case it.
-(function() {
-  const params = new URLSearchParams(window.location.search);
-  const autoStudent = params.get('student');
-  if (autoStudent) {
-    const input = document.getElementById('num-input');
-    if (input) {
-      input.value = autoStudent;
-      doLogin();
+// ── RESTORE AN EXISTING SESSION, OR AUTO-LOGIN FROM AN EXTERNAL WIDGET ──────
+// Runs once on every page load, including navigating "back to hub" from a
+// tool page. If this tab already has a session (from having logged in
+// earlier in the same tab), restore it straight to the tiles screen with
+// no re-login. Otherwise, fall back to the studentNumber URL param (e.g.
+// a Moodle-embedded quick-login box) exactly as before.
+(function () {
+  try {
+    const stored = sessionStorage.getItem('ewsHubSession');
+    if (stored) {
+      session = JSON.parse(stored);
+      showTiles();
+      return;
     }
+  } catch (e) { /* storage unavailable or corrupt - fall through to normal login */ }
+
+  const params = new URLSearchParams(window.location.search);
+  const autoNum = params.get('studentNumber');
+  if (autoNum) {
+    document.getElementById('num-input').value = autoNum;
+    doLogin();
   }
 })();
 </script>
