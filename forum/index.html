@@ -2287,7 +2287,7 @@ window.addEventListener('pageshow', markTabReturn);
 // ── AUTO-LOGIN FROM DASHBOARD ────────────────────────────────────────────
 (function() {
   const params = new URLSearchParams(window.location.search);
-  const autoStudent = params.get('student');
+  const autoStudent = params.get('studentNumber');
   const goto = params.get('goto');
   if (goto) gotoDestination = goto;
   if (autoStudent) {
