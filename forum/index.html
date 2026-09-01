@@ -40,6 +40,8 @@
   .home-btn{font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:0.86rem;color:#fff;background:var(--stamp-red);border:none;border-radius:10px;padding:9px 16px;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(178,58,46,0.3);}
   .home-btn:hover{opacity:0.92;}
   .home-btn:active{transform:scale(0.97);}
+  .hub-link{font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:0.86rem;color:var(--ink);background:none;border:1px solid var(--border);border-radius:10px;padding:9px 16px;cursor:pointer;display:flex;align-items:center;gap:6px;text-decoration:none;}
+  .hub-link:hover{background:#F7F8F4;}
 
   .dash-intro{font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.07em;margin:6px 4px 14px;}
   .dash-grid{display:flex;flex-direction:column;gap:14px;}
@@ -334,6 +336,7 @@
     <header class="topbar">
       <div class="brand">Weekly Forum<small>EFL BLOG &amp; DISCUSSION</small></div>
       <div class="who">
+        <a class="hub-link" href="../student/">← Hub</a>
         <button class="home-btn hidden" id="homeBtn" onclick="renderDashboard()">🏠 Dashboard</button>
         <button class="who-self" onclick="renderProfilePage()">
           <span id="whoName">—</span>
