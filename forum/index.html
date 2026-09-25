@@ -737,6 +737,13 @@ async function renderGrammarFeedback(week){
   const ccfSettings = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.settings : { showUntreatableErrors: true };
   const grammarSubmitDeadline = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.grammarSubmitDeadline : null;
   const existingSubmission = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.existingSubmission : { found: false, unit: '', reason: '', submittedAt: '' };
+  // Units highlighted green in THIS week's own feedback (prefixed, e.g. "B64") —
+  // the same set actionSubmitGrammarUnit itself validates against when the class
+  // requires green-coded selection, so the picker below can never offer something
+  // the server would then reject.
+  const greenUnits = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? (colourResult.value.greenUnits || []) : [];
+  const forceGreen = !!ccfSettings.forceGreenUnitSelection;
+  const hasGreenUnits = greenUnits.length > 0;
 
   const hasAnnotation = annotation && annotation.annotatedText;
 
@@ -762,10 +769,27 @@ async function renderGrammarFeedback(week){
          <span style="font-size:0.8rem;">No blog entry was submitted, so there is no grammar feedback.</span>
        </div>`;
 
-  const mistakeOptDisabled = !hasAnnotation ? 'disabled-opt' : '';
+  // Whether each reason radio is usable, and what to say next to it, depends on
+  // three things: no entry at all (mistake never usable), the class requiring
+  // green-coded selection AND this week having no green units (mistake not
+  // usable — nothing new to flag), or the reverse (other reason not usable —
+  // teacher requires picking one of the highlighted errors instead).
+  const mistakeUnusable = !hasAnnotation || (forceGreen && !hasGreenUnits);
+  const otherUnusable = forceGreen && hasGreenUnits;
+  const mistakeOptDisabled = mistakeUnusable ? 'disabled-opt' : '';
+  const otherOptDisabled = otherUnusable ? 'disabled-opt' : '';
   const mistakeOptHint = !hasAnnotation
     ? 'Not available — no entry was submitted this week.'
-    : 'A new unit color coded green that matches one of the errors above.';
+    : (forceGreen && !hasGreenUnits)
+      ? 'No new, not-yet-studied errors were found in your entry this week — choose "Other reason" instead.'
+      : 'A new unit color coded green that matches one of the errors above.';
+  const otherOptHint = otherUnusable
+    ? 'Your teacher requires choosing one of your own highlighted errors this week.'
+    : 'You will need to explain your reason.';
+  // When only one reason is actually usable, pre-check it so the student isn't
+  // stuck clicking a radio whose outcome was never in question.
+  const mistakeForcedChecked = forceGreen && hasGreenUnits && hasAnnotation;
+  const otherForcedChecked = forceGreen && !hasGreenUnits;
 
   // Unit section — three states: deadline passed, deadline open + already submitted, deadline open fresh
   let unitSectionHtml;
@@ -800,27 +824,37 @@ async function renderGrammarFeedback(week){
         <div class="unit-sel-desc">Look at the feedback above. Choose a new grammar unit to study and tell your teacher why you chose it.</div>
         ${alreadyNote}
         <label class="reason-opt ${mistakeOptDisabled}">
-          <input type="radio" name="grammar-reason" value="mistake" ${!hasAnnotation?'disabled':''} onchange="handleGrammarReason(this)">
+          <input type="radio" name="grammar-reason" value="mistake" ${mistakeUnusable?'disabled':''} ${mistakeForcedChecked?'checked':''} onchange="handleGrammarReason(this)">
           <div>
             <span class="ro-strong">A mistake in my blog entry</span>
             <span class="ro-soft">${mistakeOptHint}</span>
           </div>
         </label>
-        <label class="reason-opt">
-          <input type="radio" name="grammar-reason" value="other" onchange="handleGrammarReason(this)">
+        <label class="reason-opt ${otherOptDisabled}">
+          <input type="radio" name="grammar-reason" value="other" ${otherUnusable?'disabled':''} ${otherForcedChecked?'checked':''} onchange="handleGrammarReason(this)">
           <div>
             <span class="ro-strong">Other reason</span>
-            <span class="ro-soft">You will need to explain your reason.</span>
+            <span class="ro-soft">${otherOptHint}</span>
           </div>
         </label>
-        <div class="other-reason-wrap" id="otherReasonWrap">
+        <div class="other-reason-wrap ${otherForcedChecked?'show':''}" id="otherReasonWrap">
           <label style="display:block;font-family:'IBM Plex Mono',monospace;font-size:0.64rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">Explain your reason</label>
           <textarea id="otherReasonInput" style="width:100%;min-height:70px;font-family:'IBM Plex Sans',sans-serif;font-size:0.88rem;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;background:var(--paper);color:var(--ink);resize:vertical;outline:none;" placeholder="Why are you choosing this unit?"></textarea>
         </div>
         <div style="margin:14px 0 18px;">
           <label for="grammarMainUnit" style="display:block;font-family:'IBM Plex Mono',monospace;font-size:0.64rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">New unit <span style="color:var(--stamp-red)">*</span></label>
           <div style="display:flex;gap:10px;">
-            <input class="unit-num-inp" type="text" id="grammarMainUnit" inputmode="numeric" placeholder="e.g. 11" autocomplete="off" value="${existingMain}">
+            ${mistakeForcedChecked
+              ? `<select class="unit-num-inp" id="grammarMainUnit">
+                   <option value="" disabled ${!existingMain?'selected':''}>Choose one of your highlighted units…</option>
+                   ${greenUnits.map(function(u){
+                     const bare = u.replace(/^[BI]/, '');
+                     const info = UNIT_TITLES[u];
+                     const label = u + (info && info.jp ? ' — ' + info.jp : '');
+                     return `<option value="${bare}" ${String(bare)===String(existingMain)?'selected':''}>${label}</option>`;
+                   }).join('')}
+                 </select>`
+              : `<input class="unit-num-inp" type="text" id="grammarMainUnit" inputmode="numeric" placeholder="e.g. 11" autocomplete="off" value="${existingMain}">`}
             <button class="btn btn-primary" id="grammarSubmitBtn" onclick="submitGrammarUnit(${week})" style="white-space:nowrap;">${btnLabel}</button>
           </div>
           ${countdownHtml}
