@@ -405,6 +405,7 @@ let currentStudentName = null; // full name string e.g. "Rei YAMAGUCHI", set at 
 let currentToken = null; // session token from login — the new engine requires this on every call after login
 let gotoDestination = null;    // set from ?goto= URL param, consumed once after login
 let currentClassId = null;
+let currentClassLabel = null; // human-readable class name (e.g. "EWS II"), set at login — currentClassId is the internal cls_xxxxx key and isn't meant for display
 let currentName = null;
 let activeTab = 'dashboard';
 let currentPostData = null; // cached response from getNewPostData, so we don't refetch on every small render
@@ -442,6 +443,7 @@ async function login(){
     currentToken = result.token;
     currentStudent = result.studentNumber || val;
     currentClassId = result.classId;
+    currentClassLabel = result.classLabel || result.classId;
     currentName = result.nameEng || result.nameJP || currentStudent;
     currentStudentName = result.nameEng || result.nameJP || currentStudent;
     currentProfilePicURL = result.profilePicURL || '';
@@ -532,7 +534,7 @@ function renderProfilePage(){
     <div class="card" style="text-align:center;">
       <div class="profile-avatar-big" id="profileAvatarBig">${avatarInner(currentName, currentProfilePicURL)}</div>
       <div class="profile-name">${currentName}</div>
-      <div class="profile-sn">${currentStudent} · ${currentClassId}</div>
+      <div class="profile-sn">${currentStudent} · ${currentClassLabel||currentClassId}</div>
       <div style="display:flex;gap:10px;justify-content:center;margin-top:16px;flex-wrap:wrap;">
         <button class="btn btn-primary" onclick="triggerImageUpload('profile', null, 'profileAvatarBig')">Change profile picture</button>
         ${currentProfilePicURL ? `<button class="btn btn-ghost" onclick="removeProfilePic()">Remove picture</button>` : ''}
@@ -1466,7 +1468,7 @@ function downloadCCFReflectionSheet(){
   const {jsPDF}=window.jspdf;
   const doc=new jsPDF({unit:'mm',format:'a4'});
 
-  ccfDrawReflectionSheet(doc, currentStudentName||currentStudent, currentClassId, week,
+  ccfDrawReflectionSheet(doc, currentStudentName||currentStudent, currentClassLabel||currentClassId, week,
     annotation, annotation ? annotation.colourMap : {}, annotation ? annotation.showUntreatable : true, true, existingMain, existingSubmittedAt);
 
   const safeName=(currentStudentName||currentStudent).replace(/\s+/g,'_');
