@@ -198,7 +198,7 @@
   .revcheck-legend .swatch-cap { background: #D9B8F0; border: 1px solid #B37DDE; }
   .revcheck-legend .swatch-punct { background: #F0B36B; border: 1px solid #D6903A; }
   .revcheck-legend .swatch-spacing { background: #F3D34A; border: 1px solid #D1AE1E; }
-  .revcheck-err-mark { display: block; font-size: 10px; line-height: 1; font-weight: 800; color: #1a1a2e; cursor: help; }
+  .revcheck-mark { display: block; font-size: 10px; line-height: 1; font-weight: 800; color: #1a1a2e; cursor: help; }
   mark.rc-indent { background: #B9D0F0; color: inherit; border-radius: 3px; padding: 0 1px; cursor: help; }
   mark.rc-cap { background: #D9B8F0; color: inherit; border-radius: 3px; padding: 0 1px; cursor: help; }
   mark.rc-punct { background: #F0B36B; color: inherit; border-radius: 3px; padding: 0 2px; cursor: help; font-weight: 600; }
@@ -1610,7 +1610,9 @@ async function renderGrading() {
     // error in it — so a grader can tell which checks are worth double-
     // checking without reading the highlights first.
     function legendItem(swatchClass, label, ok) {
-      const markHtml = ok ? '' : '<span class="revcheck-err-mark" title="Found an issue in this category">✓</span>';
+      const markHtml = ok
+        ? '<span class="revcheck-mark" title="No issue found in this category">○</span>'
+        : '<span class="revcheck-mark" title="Found an issue in this category">✕</span>';
       return '<span><span class="swatch ' + swatchClass + '">' + markHtml + '</span>' + label + '</span>';
     }
     const revLegendHtml = revHi ? '<div class="revcheck-legend">' +
