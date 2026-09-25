@@ -998,7 +998,7 @@ function buildAnnotatedHtml(text, colourMap, showUntreatable){
   function esc(s){ return s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''; }
   const tokens = ccfTokenize(text, colourMap, showUntreatable);
   const parts = tokens.map(t=>{
-    if(t.break) return '<br><br>';
+    if(t.break) return '<br>';
     if(t.indent) return '<span class="ccf-indent"></span>';
     if(!t.style) return esc(t.text);
     const noUnit = t.style.state==='purple' || t.style.state==='grey';
@@ -1015,7 +1015,7 @@ function buildAnnotatedHtml(text, colourMap, showUntreatable){
   });
   let html='';
   for(let i=0;i<parts.length;i++){
-    if(i>0 && parts[i]!=='<br><br>' && parts[i-1]!=='<br><br>' && parts[i-1]!=='<span class="ccf-indent"></span>') html+=' ';
+    if(i>0 && parts[i]!=='<br>' && parts[i-1]!=='<br>' && parts[i-1]!=='<span class="ccf-indent"></span>') html+=' ';
     html+=parts[i];
   }
   return html;
@@ -1162,7 +1162,7 @@ function ccfLayoutAnnotated(doc, tokens, fontSize, maxWidth){
   let pendingIndent = false;
   tokens.forEach((t,i)=>{
     if(t.indent){ pendingIndent = true; return; }
-    if(t.break){ if(cur.length){lines.push(cur); cur=[]; curW=0;} lines.push([]); return; }
+    if(t.break){ if(cur.length){lines.push(cur); cur=[]; curW=0;} return; }
     const w=widths[i];
     const add = cur.length? spaceW+w : w;
     if(curW+add>maxWidth && cur.length){ lines.push(cur); cur=[]; curW=0; }
