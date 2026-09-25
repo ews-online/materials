@@ -191,6 +191,11 @@
   .sub-meta .nm { font-weight: 600; font-size: 13px; }
   .sub-meta .wc { font-size: 11px; color: var(--ink-mute); }
   .sub-body { line-height: 1.65; font-size: 14px; white-space: pre-wrap; margin-bottom: 10px; }
+  .sub-body p, .sub-body > div { margin: 0 0 12px; }
+  .revcheck-legend { font-size: 11px; color: var(--ink-mute); margin: -4px 0 10px; }
+  .revcheck-legend .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #FBF6E2; border: 1px solid #E0C948; vertical-align: -1px; margin-right: 4px; }
+  .revcheck-para-flag { background: #FBF6E2; border: 1px solid #E9DFA8; border-radius: 6px; padding: 8px 10px; cursor: help; }
+  mark.revcheck-flag { background: #F3D34A; color: inherit; border-radius: 3px; padding: 0 1px; cursor: help; }
   .sub-media img { width: 100%; border-radius: 10px; margin-bottom: 10px; }
   .sub-subhead { font-size: 10px; color: var(--ink-mute); text-transform: uppercase; letter-spacing: 0.06em; margin: 18px 0 8px; border-top: 1px solid var(--rule); padding-top: 14px; }
   .sub-comment { display: flex; gap: 9px; margin-bottom: 10px; }
@@ -1309,6 +1314,40 @@ function countRevisionChecks(title, text) {
   return [indentOk, capOk, punctOk, spacingOk].filter(Boolean).length;
 }
 
+// Renders the entry's title/body with a yellow highlight over exactly what
+// countRevisionChecks() flagged — a whole paragraph if it fails indentation,
+// capitalization, or end punctuation, or just the extra space(s) themselves
+// for the spacing check — so a teacher reviewing the "X of 4 checks passed"
+// auto-suggestion can see at a glance whether it holds up, and hover a
+// highlight for the specific reason. Only called when the rubric actually
+// uses RevisionCheck (see renderGrading) — the checks aren't meaningful otherwise.
+function revisionCheckHighlight(title, text) {
+  const t = String(title || '').trim();
+  const titleReasons = [];
+  if (!/^[A-Z]/.test(t)) titleReasons.push('Title should start with a capital letter.');
+  if (/\.\s*$/.test(t)) titleReasons.push('Title should not end with a period.');
+  const titleHtml = titleReasons.length
+    ? '<mark class="revcheck-flag" title="' + esc(titleReasons.join(' ')) + '">' + esc(title || '') + '</mark>'
+    : esc(title || '');
+
+  const paras = String(text || '').split(/\n\s*\n/);
+  const bodyHtml = paras.map(function(p) {
+    if (!p.trim()) return '';
+    const reasons = [];
+    if (!/^[ \t]+\S/.test(p)) reasons.push('Not indented.');
+    if (!/^[ \t]*[A-Z]/.test(p)) reasons.push('Should start with a capital letter.');
+    if (!/[.!?]\s*$/.test(p.trim())) reasons.push('Should end with . ! or ?');
+    const spacingFlagged = esc(p).replace(/ {2,}/g, function(m) {
+      return '<mark class="revcheck-flag" title="Extra space(s) between words.">' + m + '</mark>';
+    });
+    return reasons.length
+      ? '<div class="revcheck-para-flag" title="' + esc(reasons.join(' ')) + '">' + spacingFlagged + '</div>'
+      : '<div>' + spacingFlagged + '</div>';
+  }).join('');
+
+  return { titleHtml: titleHtml, bodyHtml: bodyHtml };
+}
+
 function autoSelectTier(crit, sub, sn, week, schedule) {
   if (crit.autoType === 'RevisionCheck') {
     if (!sub.title) return 0;
@@ -1496,9 +1535,16 @@ async function renderGrading() {
         '<div class="ct">' + esc(c.text) + '</div><div class="cwc">' + cwc + ' words</div>' + replyHtml + '</div></div>';
     }).join('') : '<div class="empty-note">No comments made on groupmates.</div>';
 
-    bodyHtml = '<div class="card submission-card"><div class="sub-title">' + esc(sub.title) + '</div>' +
+    const hasRevisionCheck = rubric.some(function(c) { return c.autoType === 'RevisionCheck'; });
+    const revHi = hasRevisionCheck ? revisionCheckHighlight(sub.title, sub.text) : null;
+    const titleHtml = revHi ? revHi.titleHtml : esc(sub.title);
+    const bodyInner = revHi ? revHi.bodyHtml : esc(sub.text);
+    const revLegendHtml = revHi ? '<div class="revcheck-legend"><span class="swatch"></span>Flagged by the Revision & Editing autograder — hover a highlight for why.</div>' : '';
+
+    bodyHtml = '<div class="card submission-card"><div class="sub-title">' + titleHtml + '</div>' +
       '<div class="sub-meta"><div class="avatar">' + initials(author.name) + '</div><div><div class="nm">' + esc(author.name) + '</div><div class="wc">' + wc + ' words ' + postTs + '</div></div></div>' +
-      '<div class="sub-body">' + esc(sub.text) + '</div>' + mediaHtml + groupMembersHtml +
+      revLegendHtml +
+      '<div class="sub-body">' + bodyInner + '</div>' + mediaHtml + groupMembersHtml +
       '<div class="sub-subhead">Comments received (on their post)</div>' + receivedHtml +
       '<div class="sub-subhead">Comments made (on groupmates\u2019 posts)</div>' + madeHtml + '</div>';
   }
@@ -2060,7 +2106,10 @@ function addCriterion() {
 function updateTier(ci, ti, field, value) {
   const crit = forumClassData.rubricVersions[rubricEditorVersionIdx].criteria[ci];
   crit.tiers[ti][field] = value;
-  if (field === 'points') crit.maxPoints = Math.max.apply(null, crit.tiers.map(function(t) { return t.points; }));
+  if (field === 'points') {
+    crit.maxPoints = Math.max.apply(null, crit.tiers.map(function(t) { return t.points; }));
+    renderRubricTab(); // refreshes this criterion's Max Points field and the page-top Total immediately, instead of only on next login
+  }
 }
 function removeTier(ci, ti) {
   const crit = forumClassData.rubricVersions[rubricEditorVersionIdx].criteria[ci];
