@@ -1296,6 +1296,15 @@ function commentsQualify(commentsArr, deadline) {
   if (!deadline) return commentsArr.every(function(c) { return wordCount(c.text) >= 30; });
   return commentsArr.every(function(c) { return wordCount(c.text) >= 30 && new Date(c.createdAt) <= new Date(deadline); });
 }
+// Splits an entry into paragraphs on EITHER a single Enter or a full blank
+// line — students here mostly write with one Enter between paragraphs (no
+// blank line), but a blank line is also accepted. The blank-line pattern is
+// tried first so a run of multiple newlines collapses into one break
+// instead of producing an empty paragraph in between.
+function splitIntoParagraphs(text) {
+  return String(text || '').split(/\n[ \t]*\n|\n/);
+}
+
 // RevisionCheck — counts how many of the 4 mechanics checks named in this
 // criterion's own tier text (paragraph indentation, capitalization, end
 // punctuation, spacing) the entry passes, then maps that count onto tiers
@@ -1307,7 +1316,7 @@ function commentsQualify(commentsArr, deadline) {
 // 5-space indent, so the deliberate indent itself is never mistaken for a
 // double-space violation.
 function countRevisionChecks(title, text) {
-  const paras = String(text || '').split(/\n\s*\n/).filter(function(p) { return p.trim() !== ''; });
+  const paras = splitIntoParagraphs(text).filter(function(p) { return p.trim() !== ''; });
   if (!paras.length) return 0;
   const t = String(title || '').trim();
   const rests = paras.map(function(p) { return p.replace(/^ */, ''); });
@@ -1337,7 +1346,7 @@ function revisionCheckHighlight(title, text) {
     ? '<mark class="revcheck-flag" title="' + esc(titleReasons.join(' ')) + '">' + esc(title || '') + '</mark>'
     : esc(title || '');
 
-  const paras = String(text || '').split(/\n\s*\n/);
+  const paras = splitIntoParagraphs(text);
   const bodyHtml = paras.map(function(p) {
     if (!p.trim()) return '';
 
