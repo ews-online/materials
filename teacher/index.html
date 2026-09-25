@@ -192,12 +192,16 @@
   .sub-meta .wc { font-size: 11px; color: var(--ink-mute); }
   .sub-body { line-height: 1.65; font-size: 14px; white-space: pre-wrap; margin-bottom: 10px; }
   .sub-body p, .sub-body > div { margin: 0 0 12px; }
-  .revcheck-legend { font-size: 11px; color: var(--ink-mute); margin: -4px 0 10px; }
-  .revcheck-legend .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #FBF6E2; border: 1px solid #E0C948; vertical-align: -1px; margin-right: 4px; }
-  .revcheck-legend .swatch-indent { background: #DCE8FA; border: 1px solid #8FAEDE; margin-left: 10px; }
-  .revcheck-para-flag { background: #FBF6E2; border: 1px solid #E9DFA8; border-radius: 6px; padding: 8px 10px; cursor: help; }
-  mark.revcheck-flag { background: #F3D34A; color: inherit; border-radius: 3px; padding: 0 1px; cursor: help; }
-  mark.revcheck-indent-flag { background: #B9D0F0; color: inherit; border-radius: 3px; padding: 0 1px; cursor: help; }
+  .revcheck-legend { font-size: 11px; color: var(--ink-mute); margin: -4px 0 10px; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; }
+  .revcheck-legend .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 4px; }
+  .revcheck-legend .swatch-indent { background: #B9D0F0; border: 1px solid #7FA3DE; }
+  .revcheck-legend .swatch-cap { background: #D9B8F0; border: 1px solid #B37DDE; }
+  .revcheck-legend .swatch-punct { background: #F0B36B; border: 1px solid #D6903A; }
+  .revcheck-legend .swatch-spacing { background: #F3D34A; border: 1px solid #D1AE1E; }
+  mark.rc-indent { background: #B9D0F0; color: inherit; border-radius: 3px; padding: 0 1px; cursor: help; }
+  mark.rc-cap { background: #D9B8F0; color: inherit; border-radius: 3px; padding: 0 1px; cursor: help; }
+  mark.rc-punct { background: #F0B36B; color: inherit; border-radius: 3px; padding: 0 2px; cursor: help; font-weight: 600; }
+  mark.rc-spacing { background: #F3D34A; color: inherit; border-radius: 3px; padding: 0 1px; cursor: help; }
   .sub-media img { width: 100%; border-radius: 10px; margin-bottom: 10px; }
   .sub-subhead { font-size: 10px; color: var(--ink-mute); text-transform: uppercase; letter-spacing: 0.06em; margin: 18px 0 8px; border-top: 1px solid var(--rule); padding-top: 14px; }
   .sub-comment { display: flex; gap: 9px; margin-bottom: 10px; }
@@ -1328,58 +1332,75 @@ function countRevisionChecks(title, text) {
   return [indentOk, capOk, punctOk, spacingOk].filter(Boolean).length;
 }
 
-// Renders the entry's title/body with highlights over exactly what
-// countRevisionChecks() flagged, so a teacher reviewing the "X of 4 checks
-// passed" auto-suggestion can see at a glance whether it holds up, and
-// hover a highlight for the specific reason. Two colors, matching the
-// legend shown above the entry: blue for the indentation run itself (with
-// the exact space count in the tooltip), yellow for everything else
-// (capitalization/end-punctuation as a whole-paragraph box, double-spacing
-// as an inline mark). Only called when the rubric actually uses
+// Highlights the title with one color per check that applies to it
+// (capitalization, end punctuation — indentation and spacing don't apply to
+// a title). Each highlight wraps the actual offending character(s), not the
+// whole title, so multiple problems in one title stay distinguishable.
+function revisionCheckTitleHtml(title) {
+  const raw = String(title || '');
+  if (!raw.trim()) return esc(raw);
+  const leadWs = raw.match(/^\s*/)[0];
+  const afterLead = raw.slice(leadWs.length);
+  const firstChar = afterLead[0] || '';
+  const rest = afterLead.slice(1);
+
+  const firstHtml = firstChar
+    ? (/[A-Z]/.test(firstChar) ? esc(firstChar) : '<mark class="rc-cap" title="Should be capitalized.">' + esc(firstChar) + '</mark>')
+    : '';
+
+  const punctMatch = rest.match(/([.,])(\s*)$/);
+  const restHtml = punctMatch
+    ? esc(rest.slice(0, punctMatch.index)) + '<mark class="rc-punct" title="Should not end with a period or comma.">' + esc(punctMatch[1]) + '</mark>' + esc(punctMatch[2])
+    : esc(rest);
+
+  return esc(leadWs) + firstHtml + restHtml;
+}
+
+// Highlights one paragraph with all 4 checks, each its own color: blue for
+// the indentation run (exact space count in the tooltip), purple for the
+// first letter if it's not capitalized, yellow for double-space runs
+// (checked after the indent, so the indent itself is never mistaken for a
+// spacing error), and orange for end punctuation — the actual character on
+// a title, but a small inserted marker on a paragraph, since there's no
+// wrong character to point at when punctuation is simply missing.
+function revisionCheckParaHtml(p) {
+  const leadingSpaces = (p.match(/^ */) || [''])[0];
+  const n = leadingSpaces.length;
+  let indentHtml;
+  if (n === 5) {
+    indentHtml = esc(leadingSpaces);
+  } else {
+    const reason = n === 0 ? 'Not indented — needs exactly 5 spaces.' : 'Indented ' + n + ' space' + (n === 1 ? '' : 's') + ' — needs exactly 5.';
+    indentHtml = '<mark class="rc-indent" title="' + esc(reason) + '">' + (n > 0 ? esc(leadingSpaces) : '␣') + '</mark>';
+  }
+
+  const rest = p.slice(n);
+  const firstChar = rest[0] || '';
+  const afterFirst = rest.slice(1);
+  const capHtml = firstChar
+    ? (/[A-Z]/.test(firstChar) ? esc(firstChar) : '<mark class="rc-cap" title="Should be capitalized.">' + esc(firstChar) + '</mark>')
+    : '';
+
+  const spacingHtml = esc(afterFirst).replace(/ {2,}/g, function(m) {
+    return '<mark class="rc-spacing" title="Extra space(s) between words.">' + m + '</mark>';
+  });
+
+  const punctOk = /[.!?]\s*$/.test(p.trim());
+  const punctMarkerHtml = punctOk ? '' : ' <mark class="rc-punct" title="Should end with . ! or ?">●</mark>';
+
+  return '<div>' + indentHtml + capHtml + spacingHtml + punctMarkerHtml + '</div>';
+}
+
+// Renders the entry's title/body with color-coded highlights over exactly
+// what countRevisionChecks() flagged, so a teacher reviewing the "X of 4
+// checks passed" auto-suggestion can see which check is wrong at a glance,
+// not just that something is. Only called when the rubric actually uses
 // RevisionCheck (see renderGrading) — the checks aren't meaningful otherwise.
 function revisionCheckHighlight(title, text) {
-  const t = String(title || '').trim();
-  const titleReasons = [];
-  if (!/^[A-Z]/.test(t)) titleReasons.push('Title should start with a capital letter.');
-  if (/[.,]\s*$/.test(t)) titleReasons.push('Title should not end with a period or comma.');
-  const titleHtml = titleReasons.length
-    ? '<mark class="revcheck-flag" title="' + esc(titleReasons.join(' ')) + '">' + esc(title || '') + '</mark>'
-    : esc(title || '');
-
-  const paras = splitIntoParagraphs(text);
-  const bodyHtml = paras.map(function(p) {
-    if (!p.trim()) return '';
-
-    // Indentation — must be exactly 5 literal spaces. Highlighted on its
-    // own (blue), reporting the exact count so a wrong indent is easy to fix.
-    const leadingSpaces = (p.match(/^ */) || [''])[0];
-    const n = leadingSpaces.length;
-    let indentHtml;
-    if (n === 5) {
-      indentHtml = esc(leadingSpaces);
-    } else {
-      const reason = n === 0 ? 'Not indented — needs exactly 5 spaces.' : 'Indented ' + n + ' space' + (n === 1 ? '' : 's') + ' — needs exactly 5.';
-      indentHtml = '<mark class="revcheck-indent-flag" title="' + esc(reason) + '">' + (n > 0 ? esc(leadingSpaces) : '␣') + '</mark>';
-    }
-    const rest = p.slice(n);
-
-    // Capitalization / end punctuation — whole-paragraph box (yellow).
-    const reasons = [];
-    if (!/^[A-Z]/.test(rest)) reasons.push('Should start with a capital letter.');
-    if (!/[.!?]\s*$/.test(p.trim())) reasons.push('Should end with . ! or ?');
-
-    // Double-spacing — inline marks (yellow), checked on the text AFTER the
-    // indent so the indent itself never gets flagged as a spacing error.
-    const spacingFlagged = esc(rest).replace(/ {2,}/g, function(m) {
-      return '<mark class="revcheck-flag" title="Extra space(s) between words.">' + m + '</mark>';
-    });
-
-    const innerHtml = indentHtml + spacingFlagged;
-    return reasons.length
-      ? '<div class="revcheck-para-flag" title="' + esc(reasons.join(' ')) + '">' + innerHtml + '</div>'
-      : '<div>' + innerHtml + '</div>';
+  const titleHtml = revisionCheckTitleHtml(title);
+  const bodyHtml = splitIntoParagraphs(text).map(function(p) {
+    return p.trim() ? revisionCheckParaHtml(p) : '';
   }).join('');
-
   return { titleHtml: titleHtml, bodyHtml: bodyHtml };
 }
 
@@ -1574,7 +1595,12 @@ async function renderGrading() {
     const revHi = hasRevisionCheck ? revisionCheckHighlight(sub.title, sub.text) : null;
     const titleHtml = revHi ? revHi.titleHtml : esc(sub.title);
     const bodyInner = revHi ? revHi.bodyHtml : esc(sub.text);
-    const revLegendHtml = revHi ? '<div class="revcheck-legend"><span class="swatch"></span>Capitalization / punctuation / spacing<span class="swatch swatch-indent"></span>Indentation — hover any highlight for the exact reason.</div>' : '';
+    const revLegendHtml = revHi ? '<div class="revcheck-legend">' +
+      '<span><span class="swatch swatch-indent"></span>Indentation</span>' +
+      '<span><span class="swatch swatch-cap"></span>Capitalization</span>' +
+      '<span><span class="swatch swatch-punct"></span>Punctuation</span>' +
+      '<span><span class="swatch swatch-spacing"></span>Spacing</span>' +
+      '<span>— hover any highlight for the exact reason.</span></div>' : '';
 
     bodyHtml = '<div class="card submission-card"><div class="sub-title">' + titleHtml + '</div>' +
       '<div class="sub-meta"><div class="avatar">' + initials(author.name) + '</div><div><div class="nm">' + esc(author.name) + '</div><div class="wc">' + wc + ' words ' + postTs + '</div></div></div>' +
