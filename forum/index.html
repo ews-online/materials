@@ -375,7 +375,7 @@ async function callApi(action, payload) {
     const res = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" }, // avoids a CORS preflight
-      body: JSON.stringify(Object.assign({ action }, payload || {})),
+      body: JSON.stringify(Object.assign({ action, token: currentToken }, payload || {})),
     });
     const json = await res.json();
     if(typeof json.success === 'undefined'){
@@ -391,6 +391,7 @@ async function callApi(action, payload) {
 
 let currentStudent = null;
 let currentStudentName = null; // full name string e.g. "Rei YAMAGUCHI", set at login
+let currentToken = null; // session token from login — the new engine requires this on every call after login
 let gotoDestination = null;    // set from ?goto= URL param, consumed once after login
 let currentClassId = null;
 let currentName = null;
@@ -424,13 +425,14 @@ async function login(){
   if(!val) return;
   document.getElementById('loginError').style.display = 'none';
   showLoading('Logging in…');
-  const result = await callApi('studentLogin', { studentNumber: val });
+  const result = await callApi('login', { studentNumber: val });
   hideLoading();
   if(result.success){
-    currentStudent = val;
+    currentToken = result.token;
+    currentStudent = result.studentNumber || val;
     currentClassId = result.classId;
-    currentName = result.name;
-    currentStudentName = result.name;
+    currentName = result.nameEng || result.nameJP || currentStudent;
+    currentStudentName = result.nameEng || result.nameJP || currentStudent;
     currentProfilePicURL = result.profilePicURL || '';
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('mainApp').classList.remove('hidden');
