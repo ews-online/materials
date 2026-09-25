@@ -595,6 +595,7 @@ async function renderPreviousWeekDetail(week){
         <div class="card empty-note">${data.error || "Something went wrong loading this week."}</div>`;
       return;
     }
+    currentPostData = data; // so openPostDetail (reached from here) knows the feature toggles
     const sched = data.schedule;
 
     let entryBlockHtml;
@@ -1976,6 +1977,13 @@ async function openPostDetail(postId, origin){
   const post = data.post;
   const wc = post.TextContent.trim().split(/\s+/).filter(Boolean).length;
 
+  // getPostDetail itself doesn't return the class's feature toggles, so fall back to
+  // whatever getNewPostData last cached (the screen you had to come through to get here).
+  // Unknown defaults to "on" so behavior is unchanged if that cache is somehow empty.
+  const cachedSettings = currentPostData && currentPostData.settings;
+  const commentsFeatureOn = !cachedSettings || cachedSettings.CommentsEnabled !== false;
+  const repliesFeatureOn = !cachedSettings || cachedSettings.RepliesEnabled !== false;
+
   // Arm writing-protection if there's an actual writing control on this page (a comment box,
   // or the possibility of a reply box) — not just because the post happens to be open.
   const hasReplyableComment = data.comments.some(c=>!c.reply);
@@ -1994,7 +2002,7 @@ async function openPostDetail(postId, origin){
           </div>
           <div class="word-count" id="replyinput-wc-${c.commentId}">0 words (30+ needed for credit)</div>
         </div></div>`;
-    } else if(!c.reply && data.isOwnPost && !data.replyOpen){
+    } else if(!c.reply && data.isOwnPost && !data.replyOpen && repliesFeatureOn){
       replyHtml = `<div class="reply"><div class="closed-note" style="margin-top:6px;">Reply period closed.</div></div>`;
     }
     return `<div class="comment"><div class="avatar" style="background:var(--postal-blue)">${avatarInner(c.name, c.profilePicURL)}</div><div class="comment-body"><div class="c-name">${c.name}</div><div class="c-text">${c.text}</div></div></div>${replyHtml}`;
@@ -2003,7 +2011,7 @@ async function openPostDetail(postId, origin){
   const alreadyCommented = data.comments.some(c=>String(c.studentNumber)===String(currentStudent));
   let commentInputHtml;
   if(!data.commentOpen){
-    commentInputHtml = `<div class="closed-note">Comment period closed for this week.</div>`;
+    commentInputHtml = commentsFeatureOn ? `<div class="closed-note">Comment period closed for this week.</div>` : '';
   } else if(data.isOwnPost || alreadyCommented){
     commentInputHtml = '';
   } else {
