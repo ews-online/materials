@@ -139,9 +139,15 @@
   .feedback-card .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--postal-blue);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;}
   .feedback-card .feedback-text{font-size:0.92rem;line-height:1.55;}
   .rubric-scroll-hint{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--ink-soft);text-align:right;margin:6px 4px 0;}
-  .rubric-toggle{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.07em;margin:18px 4px 8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;}
-  .rubric-toggle .rt-chev{font-size:0.8rem;transition:transform 0.15s;}
-  .rubric-toggle.open .rt-chev{transform:rotate(90deg);}
+  .rubric-toggle{font-family:'IBM Plex Sans',sans-serif;font-size:0.86rem;font-weight:600;color:var(--ink);
+    background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+    margin:18px 0 0;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;
+    cursor:pointer;user-select:none;transition:background 0.15s,border-color 0.15s;}
+  .rubric-toggle:hover{background:#F7F8F4;border-color:var(--ink-soft);}
+  .rubric-toggle .rt-hint{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;font-weight:400;color:var(--ink-soft);text-transform:none;letter-spacing:0;margin-left:8px;}
+  .rubric-toggle .rt-chev{font-size:1rem;color:var(--ink-soft);transition:transform 0.15s;display:inline-block;}
+  .rubric-toggle.open .rt-chev{transform:rotate(180deg);}
+  .rubric-toggle .rt-left{display:flex;align-items:baseline;}
 
   .floating-scrollbar{
     position:fixed;left:50%;bottom:16px;transform:translateX(-50%);
@@ -1657,7 +1663,8 @@ async function renderNewPostTab(){
     <div class="section-label">Your group this week</div>
     <div class="card">${membersHtml}</div>` : ''}
     <div class="rubric-toggle" id="rubricToggle" onclick="toggleRubricSection()">
-      <span>Rubric</span><span class="rt-chev">›</span>
+      <span class="rt-left">📋 Rubric<span class="rt-hint" id="rubricHint">— tap to view how this week is scored</span></span>
+      <span class="rt-chev">⌄</span>
     </div>
     <div class="hidden" id="rubricSection">${rubricHtml}</div>
   `;
@@ -2251,10 +2258,12 @@ function buildCompletionTimeline(data){
 function toggleRubricSection(){
   const section = document.getElementById('rubricSection');
   const toggle = document.getElementById('rubricToggle');
+  const hint = document.getElementById('rubricHint');
   if(!section || !toggle) return;
   const opening = section.classList.contains('hidden');
   section.classList.toggle('hidden', !opening);
   toggle.classList.toggle('open', opening);
+  if(hint) hint.textContent = opening ? '— tap to hide' : '— tap to view how this week is scored';
 }
 
 function buildRubricTable(rubric){

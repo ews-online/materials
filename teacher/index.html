@@ -1289,7 +1289,33 @@ function commentsQualify(commentsArr, deadline) {
   if (!deadline) return commentsArr.every(function(c) { return wordCount(c.text) >= 30; });
   return commentsArr.every(function(c) { return wordCount(c.text) >= 30 && new Date(c.createdAt) <= new Date(deadline); });
 }
+// RevisionCheck — counts how many of the 4 mechanics checks named in this
+// criterion's own tier text (paragraph indentation, capitalization, end
+// punctuation, spacing) the entry passes, then maps that count onto tiers
+// the same way the tier text is written: 0-1 checks = tier 1, 2 checks =
+// tier 2, 3 checks = tier 3, all 4 = tier 4 (index 0 stays "No submission").
+// "Paragraph indentation" uses the same definition as the CCF PDF renderer
+// (see ccfTokenize in the student forum page): split on a blank line, and a
+// paragraph counts as indented if it starts with leading spaces/tabs before
+// its first word.
+function countRevisionChecks(title, text) {
+  const paras = String(text || '').split(/\n\s*\n/).filter(function(p) { return p.trim() !== ''; });
+  if (!paras.length) return 0;
+  const t = String(title || '').trim();
+  const indentOk = paras.every(function(p) { return /^[ \t]+\S/.test(p); });
+  const capOk = /^[A-Z]/.test(t) && paras.every(function(p) { return /^[ \t]*[A-Z]/.test(p); });
+  const punctOk = paras.every(function(p) { return /[.!?]\s*$/.test(p.trim()); }) && !/\.\s*$/.test(t);
+  const spacingOk = !/ {2,}/.test(text || '') && !/ {2,}/.test(t);
+  return [indentOk, capOk, punctOk, spacingOk].filter(Boolean).length;
+}
+
 function autoSelectTier(crit, sub, sn, week, schedule) {
+  if (crit.autoType === 'RevisionCheck') {
+    if (!sub.title) return 0;
+    const passed = countRevisionChecks(sub.title, sub.text);
+    const idx = passed <= 1 ? 1 : (passed === 2 ? 2 : (passed === 3 ? 3 : 4));
+    return Math.min(idx, crit.tiers.length - 1);
+  }
   if (crit.autoType === 'WordCount') {
     const wc = wordCount(sub.text);
     if (wc === 0) return 0;
@@ -1877,7 +1903,7 @@ function parseRubricCsv(text) {
 
 function downloadRubricCsvTemplate() {
   const headerRow = csvRow(['Criterion', 'AutoType', 'TierLabel', 'TierDescription', 'TierPoints', 'AutoMin', 'AutoMax']);
-  const note = ['# AutoType must be exactly one of: Manual, WordCount, PictureTimeliness, CommentCompletion, ReplyCompletion',
+  const note = ['# AutoType must be exactly one of: Manual, WordCount, RevisionCheck, PictureTimeliness, CommentCompletion, ReplyCompletion',
     '# AutoMin/AutoMax only apply to WordCount tiers (the word-count range that earns that tier) — leave blank otherwise.',
     '# Repeat the Criterion name on every tier row that belongs to it — rows are grouped by that name, in the order they first appear.'];
   const sampleRows = [
@@ -1986,7 +2012,7 @@ function renderRubricTab() {
       '<div><label class="field-label">Criterion name</label><input class="text-input" value="' + esc(crit.name || '') + '" onchange="updateCriterion(' + ci + ',\'name\',this.value)"></div>' +
       '<div><label class="field-label">Max points</label><input class="text-input" value="' + (Number(crit.maxPoints) || 0) + '" disabled></div>' +
       '<div><label class="field-label">Auto-grade by</label><select onchange="updateCriterion(' + ci + ',\'autoType\',this.value)">' +
-      ['Manual', 'WordCount', 'PictureTimeliness', 'CommentCompletion', 'ReplyCompletion'].map(function(t) { return '<option value="' + t + '" ' + (crit.autoType === t ? 'selected' : '') + '>' + t + '</option>'; }).join('') +
+      ['Manual', 'WordCount', 'RevisionCheck', 'PictureTimeliness', 'CommentCompletion', 'ReplyCompletion'].map(function(t) { return '<option value="' + t + '" ' + (crit.autoType === t ? 'selected' : '') + '>' + t + '</option>'; }).join('') +
       '</select></div><button class="icon-btn" onclick="removeCriterion(' + ci + ')">✕</button></div>' +
       '<label class="field-label">Tiers</label>' + tiersHtml +
       '<button class="btn btn-ghost btn-sm" onclick="addTier(' + ci + ')">+ Add tier</button></div>';
