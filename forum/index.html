@@ -1096,13 +1096,22 @@ function ccfTokenize(text, colourMap, showUntreatable){
   const re=/\{(\^|[^{}|]*)\|([A-Z]+)(?:\|([BI]\d+(?:\/[BI]\d+)?))?\}/g;
   const tokens=[]; let last=0, m;
 
-  const paraTexts = text.split(/\n\s*\n/);
+  // Any run of newlines the student actually typed counts as one paragraph
+  // break — not just a full blank line. There's no soft-wrap concept here
+  // (entries come from a plain textarea rendered with white-space:pre-wrap,
+  // where every \n the student typed already shows as a break on screen),
+  // and the AI annotation pipeline's JSON output isn't guaranteed to
+  // preserve a literal blank line between paragraphs even when the
+  // original entry had one — a single \n between paragraphs is the more
+  // common shape it actually returns. Requiring \n\s*\n silently dropped
+  // paragraph structure for every entry annotated that way.
+  const paraTexts = text.split(/\n+/);
   const paraIndents = paraTexts.map(p => /^[ \t]+\S/.test(p));
   let paraIdx = 0;
   let needIndentMarker = paraIndents[0];
 
   function pushWords(str, style){
-    String(str).split(/\n\s*\n/).forEach((para, i, arr)=>{
+    String(str).split(/\n+/).forEach((para, i, arr)=>{
       if(needIndentMarker){ tokens.push({indent:true}); needIndentMarker=false; }
       para.split(/\s+/).filter(Boolean).forEach(w=> tokens.push({text:w, style}));
       if(i < arr.length-1){
