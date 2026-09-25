@@ -198,6 +198,7 @@
   .revcheck-legend .swatch-cap { background: #D9B8F0; border: 1px solid #B37DDE; }
   .revcheck-legend .swatch-punct { background: #F0B36B; border: 1px solid #D6903A; }
   .revcheck-legend .swatch-spacing { background: #F3D34A; border: 1px solid #D1AE1E; }
+  .revcheck-err-mark { color: var(--stamp-red, #b03030); font-weight: 700; cursor: help; }
   mark.rc-indent { background: #B9D0F0; color: inherit; border-radius: 3px; padding: 0 1px; cursor: help; }
   mark.rc-cap { background: #D9B8F0; color: inherit; border-radius: 3px; padding: 0 1px; cursor: help; }
   mark.rc-punct { background: #F0B36B; color: inherit; border-radius: 3px; padding: 0 2px; cursor: help; font-weight: 600; }
@@ -1309,19 +1310,20 @@ function splitIntoParagraphs(text) {
   return String(text || '').split(/\n[ \t]*\n|\n/);
 }
 
-// RevisionCheck — counts how many of the 4 mechanics checks named in this
-// criterion's own tier text (paragraph indentation, capitalization, end
-// punctuation, spacing) the entry passes, then maps that count onto tiers
-// the same way the tier text is written: 0-1 checks = tier 1, 2 checks =
-// tier 2, 3 checks = tier 3, all 4 = tier 4 (index 0 stays "No submission").
-// Indentation requires exactly 5 literal spaces at the start of each
-// paragraph — not "any" leading whitespace — and the spacing check (no
-// double spaces) is evaluated on each paragraph AFTER stripping that
-// 5-space indent, so the deliberate indent itself is never mistaken for a
-// double-space violation.
-function countRevisionChecks(title, text) {
+// RevisionCheck — evaluates the 4 mechanics checks named in this criterion's
+// own tier text (paragraph indentation, capitalization, end punctuation,
+// spacing) and returns each one's pass/fail individually, plus the count —
+// the count is what maps onto tiers the same way the tier text is written:
+// 0-1 checks = tier 1, 2 checks = tier 2, 3 checks = tier 3, all 4 = tier 4
+// (index 0 stays "No submission"). The individual booleans are what drive
+// the ✓ marks in the legend above the entry (see renderGrading). Indentation
+// requires exactly 5 literal spaces at the start of each paragraph — not
+// "any" leading whitespace — and the spacing check (no double spaces) is
+// evaluated on each paragraph AFTER stripping that 5-space indent, so the
+// deliberate indent itself is never mistaken for a double-space violation.
+function evaluateRevisionChecks(title, text) {
   const paras = splitIntoParagraphs(text).filter(function(p) { return p.trim() !== ''; });
-  if (!paras.length) return 0;
+  if (!paras.length) return { indentOk: false, capOk: false, punctOk: false, spacingOk: false, count: 0 };
   const t = String(title || '').trim();
   const rests = paras.map(function(p) { return p.replace(/^ */, ''); });
 
@@ -1329,7 +1331,11 @@ function countRevisionChecks(title, text) {
   const capOk = /^[A-Z]/.test(t) && rests.every(function(r) { return /^[A-Z]/.test(r); });
   const punctOk = paras.every(function(p) { return /[.!?]\s*$/.test(p.trim()); }) && !/[.,]\s*$/.test(t);
   const spacingOk = rests.every(function(r) { return !/ {2,}/.test(r); }) && !/ {2,}/.test(t);
-  return [indentOk, capOk, punctOk, spacingOk].filter(Boolean).length;
+  return { indentOk: indentOk, capOk: capOk, punctOk: punctOk, spacingOk: spacingOk,
+    count: [indentOk, capOk, punctOk, spacingOk].filter(Boolean).length };
+}
+function countRevisionChecks(title, text) {
+  return evaluateRevisionChecks(title, text).count;
 }
 
 // Highlights the title with one color per check that applies to it
@@ -1597,13 +1603,21 @@ async function renderGrading() {
 
     const hasRevisionCheck = rubric.some(function(c) { return c.autoType === 'RevisionCheck'; });
     const revHi = hasRevisionCheck ? revisionCheckHighlight(sub.title, sub.text) : null;
+    const revChecks = hasRevisionCheck ? evaluateRevisionChecks(sub.title, sub.text) : null;
     const titleHtml = revHi ? revHi.titleHtml : esc(sub.title);
     const bodyInner = revHi ? revHi.bodyHtml : esc(sub.text);
+    // A ✓ appears next to a category only when this entry actually has an
+    // error in it — so a grader can tell which checks are worth double-
+    // checking without reading the highlights first.
+    function legendItem(swatchClass, label, ok) {
+      return '<span><span class="swatch ' + swatchClass + '"></span>' + label +
+        (ok ? '' : ' <span class="revcheck-err-mark" title="Found an issue in this category">✓</span>') + '</span>';
+    }
     const revLegendHtml = revHi ? '<div class="revcheck-legend">' +
-      '<span><span class="swatch swatch-indent"></span>Indentation</span>' +
-      '<span><span class="swatch swatch-cap"></span>Capitalization</span>' +
-      '<span><span class="swatch swatch-punct"></span>Punctuation</span>' +
-      '<span><span class="swatch swatch-spacing"></span>Spacing</span>' +
+      legendItem('swatch-indent', 'Indentation', revChecks.indentOk) +
+      legendItem('swatch-cap', 'Capitalization', revChecks.capOk) +
+      legendItem('swatch-punct', 'Punctuation', revChecks.punctOk) +
+      legendItem('swatch-spacing', 'Spacing', revChecks.spacingOk) +
       '<span>— hover any highlight for the exact reason.</span></div>' : '';
 
     const commentsSectionsHtml = commentsRepliesOn
