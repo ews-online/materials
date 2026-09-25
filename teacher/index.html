@@ -1310,6 +1310,42 @@ function splitIntoParagraphs(text) {
   return String(text || '').split(/\n[ \t]*\n|\n/);
 }
 
+// Title-case rule for the title's capitalization check (paragraphs only ever
+// need their first letter capitalized — this stricter word-by-word rule is
+// title-only). Standard style-guide minor words stay lowercase in a title
+// UNLESS they're the first word; every other word must be capitalized.
+const TITLE_CASE_MINOR_WORDS = new Set([
+  'a', 'an', 'the', 'and', 'but', 'or', 'nor', 'for', 'so', 'yet',
+  'as', 'at', 'by', 'in', 'of', 'off', 'on', 'per', 'to', 'up', 'via', 'with', 'from', 'into', 'onto', 'over'
+]);
+function isTitleCaseMinorWord(word) {
+  return TITLE_CASE_MINOR_WORDS.has(word.toLowerCase());
+}
+// Word tokens (with their position in the raw string) to check/highlight individually.
+function titleWordsWithPositions(title) {
+  const re = /[A-Za-z]+(?:'[A-Za-z]+)?/g;
+  const words = [];
+  let m;
+  while ((m = re.exec(title)) !== null) words.push({ text: m[0], start: m.index, end: m.index + m[0].length });
+  return words;
+}
+// First word always capitalized; a later minor word must stay lowercase;
+// every other word must be capitalized. Returns which rule (if any) failed,
+// so the highlight can explain the actual reason rather than a generic one.
+function evaluateTitleCaseWord(word, index) {
+  const minor = isTitleCaseMinorWord(word);
+  const mustCap = index === 0 || !minor;
+  const firstUpper = /^[A-Z]/.test(word);
+  if (mustCap && !firstUpper) return { ok: false, reason: 'Should be capitalized.' };
+  if (!mustCap && firstUpper) return { ok: false, reason: 'Minor words like this stay lowercase in a title, unless they start it.' };
+  return { ok: true };
+}
+function titleCaseOk(title) {
+  const words = titleWordsWithPositions(title);
+  if (!words.length) return false;
+  return words.every(function(w, i) { return evaluateTitleCaseWord(w.text, i).ok; });
+}
+
 // RevisionCheck — evaluates the 4 mechanics checks named in this criterion's
 // own tier text (paragraph indentation, capitalization, end punctuation,
 // spacing) and returns each one's pass/fail individually, plus the count —
@@ -1321,6 +1357,8 @@ function splitIntoParagraphs(text) {
 // "any" leading whitespace — and the spacing check (no double spaces) is
 // evaluated on each paragraph AFTER stripping that 5-space indent, so the
 // deliberate indent itself is never mistaken for a double-space violation.
+// Capitalization is title-case for the title (see titleCaseOk above) and
+// first-letter-only for each paragraph.
 function evaluateRevisionChecks(title, text) {
   const paras = splitIntoParagraphs(text).filter(function(p) { return p.trim() !== ''; });
   if (!paras.length) return { indentOk: false, capOk: false, punctOk: false, spacingOk: false, count: 0 };
@@ -1328,7 +1366,7 @@ function evaluateRevisionChecks(title, text) {
   const rests = paras.map(function(p) { return p.replace(/^ */, ''); });
 
   const indentOk = paras.every(function(p) { return (p.match(/^ */) || [''])[0].length === 5; });
-  const capOk = /^[A-Z]/.test(t) && rests.every(function(r) { return /^[A-Z]/.test(r); });
+  const capOk = titleCaseOk(t) && rests.every(function(r) { return /^[A-Z]/.test(r); });
   const punctOk = paras.every(function(p) { return /[.!?]\s*$/.test(p.trim()); }) && !/[.,]\s*$/.test(t);
   const spacingOk = rests.every(function(r) { return !/ {2,}/.test(r); }) && !/ {2,}/.test(t);
   return { indentOk: indentOk, capOk: capOk, punctOk: punctOk, spacingOk: spacingOk,
@@ -1340,26 +1378,33 @@ function countRevisionChecks(title, text) {
 
 // Highlights the title with one color per check that applies to it
 // (capitalization, end punctuation — indentation and spacing don't apply to
-// a title). Each highlight wraps the actual offending character(s), not the
-// whole title, so multiple problems in one title stay distinguishable.
+// a title). Capitalization is checked word-by-word (title case, see
+// titleCaseOk above), so every offending word gets its own highlight, not
+// just the title's very first letter.
 function revisionCheckTitleHtml(title) {
   const raw = String(title || '');
   if (!raw.trim()) return esc(raw);
-  const leadWs = raw.match(/^\s*/)[0];
-  const afterLead = raw.slice(leadWs.length);
-  const firstChar = afterLead[0] || '';
-  const rest = afterLead.slice(1);
 
-  const firstHtml = firstChar
-    ? (/[A-Z]/.test(firstChar) ? esc(firstChar) : '<mark class="rc-cap" title="Should be capitalized.">' + esc(firstChar) + '</mark>')
-    : '';
+  const words = titleWordsWithPositions(raw);
+  function markTrailingPunct(tail) {
+    const m = tail.match(/([.,])(\s*)$/);
+    if (!m) return esc(tail);
+    return esc(tail.slice(0, m.index)) + '<mark class="rc-punct" title="Should not end with a period or comma.">' + esc(m[1]) + '</mark>' + esc(m[2]);
+  }
 
-  const punctMatch = rest.match(/([.,])(\s*)$/);
-  const restHtml = punctMatch
-    ? esc(rest.slice(0, punctMatch.index)) + '<mark class="rc-punct" title="Should not end with a period or comma.">' + esc(punctMatch[1]) + '</mark>' + esc(punctMatch[2])
-    : esc(rest);
+  let html = '';
+  let cursor = 0;
+  words.forEach(function(w, i) {
+    html += esc(raw.slice(cursor, w.start));
+    const check = evaluateTitleCaseWord(w.text, i);
+    html += check.ok
+      ? esc(w.text)
+      : '<mark class="rc-cap" title="' + esc(check.reason) + '">' + esc(w.text[0]) + '</mark>' + esc(w.text.slice(1));
+    cursor = w.end;
+  });
+  html += markTrailingPunct(raw.slice(cursor));
 
-  return esc(leadWs) + firstHtml + restHtml;
+  return html;
 }
 
 // Highlights one paragraph with all 4 checks, each its own color: blue for
