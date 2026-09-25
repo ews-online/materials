@@ -2186,27 +2186,31 @@ function buildCompletionTimeline(data){
   const postClosePassed = now > new Date(sched.PostClose);
   const commentDeadlinePassed = now > new Date(sched.CommentDeadline);
 
-  const commentDetails = data.commentDetails || [];
-  const commentsDone = (commentDetails.length > 0 && commentDetails.every(c=>c.done))
-    || (commentDetails.length === 0 && postClosePassed); // no groupmate ever posted, and posting's now closed
-  steps.push({
-    label: 'Comments', sub: '(1 per member)', done: commentsDone, deadline: sched.CommentDeadline,
-    submittedHtml: commentDetails.length
-      ? commentDetails.map(c=> `<div class="tl-submitted">${c.name}: ${c.done ? formatDeadline(c.createdAt) : '—'}</div>`).join('')
-      : (postClosePassed ? `<div class="tl-submitted">No groupmates posted — nothing to comment on.</div>` : ''),
-  });
+  if(data.settings.CommentsEnabled){
+    const commentDetails = data.commentDetails || [];
+    const commentsDone = (commentDetails.length > 0 && commentDetails.every(c=>c.done))
+      || (commentDetails.length === 0 && postClosePassed); // no groupmate ever posted, and posting's now closed
+    steps.push({
+      label: 'Comments', sub: '(1 per member)', done: commentsDone, deadline: sched.CommentDeadline,
+      submittedHtml: commentDetails.length
+        ? commentDetails.map(c=> `<div class="tl-submitted">${c.name}: ${c.done ? formatDeadline(c.createdAt) : '—'}</div>`).join('')
+        : (postClosePassed ? `<div class="tl-submitted">No groupmates posted — nothing to comment on.</div>` : ''),
+    });
+  }
 
-  const replyDetails = data.replyDetails || [];
-  const repliesDone = !!data.myPost && (
-    (replyDetails.length > 0 && replyDetails.every(r=>r.done))
-    || (replyDetails.length === 0 && commentDeadlinePassed) // nobody ever commented, and commenting's now closed
-  );
-  steps.push({
-    label: 'Replies', sub: '(1 per comment received)', done: repliesDone, deadline: sched.ReplyDeadline,
-    submittedHtml: replyDetails.length
-      ? replyDetails.map(r=> `<div class="tl-submitted">${r.name}: ${r.done ? formatDeadline(r.createdAt) : '—'}</div>`).join('')
-      : (data.myPost && commentDeadlinePassed ? `<div class="tl-submitted">No comments received — nothing to reply to.</div>` : ''),
-  });
+  if(data.settings.RepliesEnabled){
+    const replyDetails = data.replyDetails || [];
+    const repliesDone = !!data.myPost && (
+      (replyDetails.length > 0 && replyDetails.every(r=>r.done))
+      || (replyDetails.length === 0 && commentDeadlinePassed) // nobody ever commented, and commenting's now closed
+    );
+    steps.push({
+      label: 'Replies', sub: '(1 per comment received)', done: repliesDone, deadline: sched.ReplyDeadline,
+      submittedHtml: replyDetails.length
+        ? replyDetails.map(r=> `<div class="tl-submitted">${r.name}: ${r.done ? formatDeadline(r.createdAt) : '—'}</div>`).join('')
+        : (data.myPost && commentDeadlinePassed ? `<div class="tl-submitted">No comments received — nothing to reply to.</div>` : ''),
+    });
+  }
 
   const stepsHtml = steps.map((s, i)=>{
     let status = s.done ? 'done' : (now > new Date(s.deadline) ? 'overdue' : 'pending');
