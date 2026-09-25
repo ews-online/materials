@@ -1909,69 +1909,18 @@ function renderRosterGroups() {
 /* ====================== UNIT HISTORY TAB ======================
    Per-student view is read-only, deliberately — this is meant to be
    automated and controlled by the Grammar Quiz system once it exists (a
-   unit becomes "studied" on quiz completion). The bulk-import box below it
-   is the one write path here: it drives the backend's existing
-   actionAddStudiedUnits (one call per student, looped client-side — it was
-   already fully built, just never had a UI), for backfilling real history
-   from before this platform existed. */
+   unit becomes "studied" on quiz completion). Historical backfills (e.g.
+   pre-platform prior-semester units) are done directly in the StudiedUnits
+   sheet, not through a UI here. */
 async function renderUnitHistory() {
   const options = forumClassData.roster.map(function(r) { return '<option value="' + esc(r.StudentNumber) + '">' + esc(r.Name) + '</option>'; }).join('');
   document.getElementById('forum-content').innerHTML =
     '<div class="card"><h3>Unit History</h3>' +
-    '<p style="font-size:12px;color:var(--ink-mute);margin-bottom:14px">This is what drives the colour-coded grammar feedback — a unit only starts tracking recurring errors once it\'s marked studied. Read-only per-student view below on purpose: this is meant to be controlled by the Grammar Quiz system once it exists. Use "Bulk import prior knowledge" further down to backfill real history from before this platform existed.</p>' +
+    '<p style="font-size:12px;color:var(--ink-mute);margin-bottom:14px">This is what drives the colour-coded grammar feedback — a unit only starts tracking recurring errors once it\'s marked studied. Read-only per-student view: this is meant to be controlled by the Grammar Quiz system once it exists.</p>' +
     '<div class="week-edit-grid" style="margin-bottom:14px"><div><label class="field-label">Student</label>' +
     '<select id="unitHistoryStudent" onchange="loadUnitHistoryFor()">' + options + '</select></div></div>' +
-    '<div id="unitHistoryList"><div class="empty-note">Loading…</div></div></div>' +
-    '<div class="card"><h3>Bulk import prior knowledge</h3>' +
-    '<p style="font-size:12px;color:var(--ink-mute);margin-bottom:12px">Paste one line per student: their student number, then their unit list (comma or space separated, e.g. <code>B37</code> or <code>I5</code>). Example:<br>' +
-    '<code>2611006: B1, B4, B12</code><br><code>2611007  B2 B3 B9</code></p>' +
-    '<textarea id="bulkUnitsInput" class="text-input autogrow" rows="6" style="width:100%;font-family:\'IBM Plex Mono\',monospace" placeholder="2611006: B1, B4, B12&#10;2611007: B2, B3, B9"></textarea>' +
-    '<div class="week-edit-grid" style="margin:12px 0"><div><label class="field-label">Mark as studied in week</label><input class="text-input" type="number" id="bulkUnitsWeek" value="0" min="0"></div></div>' +
-    '<button class="btn" onclick="bulkImportStudiedUnits()">Import for all students listed</button>' +
-    '<div id="bulkImportResult" style="margin-top:12px"></div></div>';
+    '<div id="unitHistoryList"><div class="empty-note">Loading…</div></div></div>';
   await loadUnitHistoryFor();
-}
-
-// Loops actionAddStudiedUnits (already built server-side, just unused) once
-// per pasted line, sequentially — an Apps Script web app handles calls one
-// at a time anyway, and sequential keeps per-line error reporting simple.
-// Each line's first token is the student number; everything else on the
-// line is handed to the backend as-is, since it already splits units on
-// commas/whitespace/newlines itself and validates the B##/I## format.
-async function bulkImportStudiedUnits() {
-  const raw = document.getElementById('bulkUnitsInput').value;
-  const week = parseInt(document.getElementById('bulkUnitsWeek').value);
-  const weekVal = isNaN(week) ? 0 : week;
-  const lines = raw.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
-  if (!lines.length) { alert('Paste at least one line first.'); return; }
-
-  const resultEl = document.getElementById('bulkImportResult');
-  resultEl.innerHTML = '<div class="empty-note">Importing ' + lines.length + ' line' + (lines.length === 1 ? '' : 's') + '…</div>';
-
-  const rows = [];
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const m = line.match(/^\s*([^\s:,]+)[\s:,]+(.+)$/);
-    if (!m) { rows.push({ ok: false, msg: 'Couldn’t read a student number and unit list from: "' + line + '"' }); continue; }
-    const studentNumber = m[1], unitsStr = m[2];
-    try {
-      const result = await api('forum', { action: 'addStudiedUnits', studentNumber: studentNumber, units: unitsStr, week: weekVal, source: 'Bulk import' });
-      rows.push(result.ok
-        ? { ok: true, msg: result.added + ' unit' + (result.added === 1 ? '' : 's') + ' added for ' + studentNumber + '.' }
-        : { ok: false, msg: (result.error || 'Failed') + ' (' + studentNumber + ')' });
-    } catch (e) {
-      rows.push({ ok: false, msg: 'Connection error for ' + studentNumber + '.' });
-    }
-  }
-
-  const failCount = rows.filter(function(r) { return !r.ok; }).length;
-  resultEl.innerHTML =
-    '<div class="total-pts-note" style="margin-bottom:8px">' + (rows.length - failCount) + ' of ' + rows.length + ' line' + (rows.length === 1 ? '' : 's') + ' imported successfully' + (failCount ? ', ' + failCount + ' failed' : '') + '.</div>' +
-    '<div style="font-size:12px;line-height:1.7">' +
-    rows.map(function(r) { return '<div style="color:' + (r.ok ? 'var(--ink-mute)' : 'var(--stamp-red,#b03030)') + '">' + (r.ok ? '✓' : '✕') + ' ' + esc(r.msg) + '</div>'; }).join('') +
-    '</div>';
-
-  loadUnitHistoryFor(); // refresh in case the selected student was part of this import
 }
 
 async function loadUnitHistoryFor() {
