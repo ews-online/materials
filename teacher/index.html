@@ -1681,11 +1681,16 @@ async function addNewWeek() {
 
     // Auto-randomize groups for the new week too, using the same group
     // count as last time — easy for a teacher to forget to do by hand
-    // every single week, so it just happens automatically here.
-    const groupCount = getDefaultGroupCount();
-    const groupResult = await api('forum', { action: 'generateGroups', classId: currentClassId, week: w, numberOfGroups: groupCount });
-    if (groupResult.ok) {
-      forumClassData = await api('forum', { action: 'getClassData', classId: currentClassId });
+    // every single week, so it just happens automatically here. Skipped
+    // entirely when Comments & Replies are off — groups only exist to
+    // support commenting, so there's nothing to randomize students into.
+    const settingsNow = forumClassData.settings;
+    if (settingsNow.CommentsEnabled && settingsNow.RepliesEnabled) {
+      const groupCount = getDefaultGroupCount();
+      const groupResult = await api('forum', { action: 'generateGroups', classId: currentClassId, week: w, numberOfGroups: groupCount });
+      if (groupResult.ok) {
+        forumClassData = await api('forum', { action: 'getClassData', classId: currentClassId });
+      }
     }
 
     renderSchedule();
@@ -1709,6 +1714,7 @@ function getDefaultGroupCount() {
 }
 
 function renderRosterGroups() {
+  const commentsRepliesOn = !!(forumClassData.settings.CommentsEnabled && forumClassData.settings.RepliesEnabled);
   const rosterRows = forumClassData.roster.map(function(m) {
     return '<tr><td>' + esc(m.StudentNumber) + '</td><td>' + esc(m.NameJP) + '</td><td>' + esc(m.Name) + '</td>' +
       '<td><label class="switch"><input type="checkbox" ' + (m.Active ? 'checked' : '') + ' onchange="toggleRosterActive(\'' + m.StudentId + '\', this.checked)"><span class="slider"></span></label></td></tr>';
@@ -1735,7 +1741,9 @@ function renderRosterGroups() {
     '<div><label class="field-label">Number of groups</label><input class="text-input" type="number" id="numGroupsInput" value="' + defaultGroups + '" min="1" max="' + (activeCount || 1) + '"></div>' +
     '<div><label class="field-label">Generate for</label><select id="groupWeekSelect">' + weekOptions + '</select></div></div>' +
     '<div style="font-size:12px;color:var(--ink-mute);margin-bottom:12px">' + activeCount + ' active student' + (activeCount === 1 ? '' : 's') + '</div>' +
-    '<button class="btn" onclick="doGenerateGroups()">🎲 Generate fresh groups</button>' +
+    (commentsRepliesOn
+      ? '<button class="btn" onclick="doGenerateGroups()">🎲 Generate fresh groups</button>'
+      : '<button class="btn" disabled title="Turn on Comments & Replies in Settings first">🎲 Generate fresh groups</button><div class="total-pts-note" style="padding-top:8px">Groups are off while Comments &amp; Replies is off for this class — turn that on in Settings to generate groups.</div>') +
     '<div class="sub-subhead" style="margin-top:18px">Current groups' + (latestWeek !== null ? ' (Week ' + String(latestWeek).padStart(2, '0') + ')' : '') + '</div>' +
     (groupsHtml || '<div class="empty-note">No groups yet.</div>') + '</div>';
 }
@@ -2071,18 +2079,44 @@ async function saveAsNewVersion() {
 /* ====================== SETTINGS TAB ====================== */
 function renderSettings() {
   const s = forumClassData.settings;
+  // Comments and Replies are driven together — there's no real scenario where a
+  // class wants one but not the other, and Groups only exists to support
+  // commenting, so it's disabled here (and forced off) whenever this is off.
+  const commentsRepliesOn = !!(s.CommentsEnabled && s.RepliesEnabled);
+  const groupsLocked = !commentsRepliesOn;
   document.getElementById('forum-content').innerHTML =
     '<div class="card"><h3>Feature toggles — ' + esc(currentClassLabel) + '</h3>' +
-    '<div class="toggle-row"><div><div class="tname">Groups</div><div class="tdesc">Randomize students into weekly groups for commenting.</div></div>' +
-    '<label class="switch"><input type="checkbox" ' + (s.GroupsEnabled ? 'checked' : '') + ' onchange="saveSettingsField(\'groupsEnabled\',this.checked)"><span class="slider"></span></label></div>' +
-    '<div class="toggle-row"><div><div class="tname">Comments</div><div class="tdesc">Allow students to comment on groupmates\u2019 posts.</div></div>' +
-    '<label class="switch"><input type="checkbox" ' + (s.CommentsEnabled ? 'checked' : '') + ' onchange="saveSettingsField(\'commentsEnabled\',this.checked)"><span class="slider"></span></label></div>' +
-    '<div class="toggle-row"><div><div class="tname">Replies</div><div class="tdesc">Allow students to reply to comments they receive.</div></div>' +
-    '<label class="switch"><input type="checkbox" ' + (s.RepliesEnabled ? 'checked' : '') + ' onchange="saveSettingsField(\'repliesEnabled\',this.checked)"><span class="slider"></span></label></div>' +
+    '<div class="toggle-row"><div><div class="tname">Comments &amp; Replies</div><div class="tdesc">Allow students to comment on groupmates\u2019 posts and reply to comments they receive. Turning this off also turns off Groups, since groups only exist to support commenting.</div></div>' +
+    '<label class="switch"><input type="checkbox" ' + (commentsRepliesOn ? 'checked' : '') + ' onchange="saveCommentsRepliesToggle(this.checked)"><span class="slider"></span></label></div>' +
+    '<div class="toggle-row"><div><div class="tname">Groups</div><div class="tdesc">Randomize students into weekly groups for commenting.' + (groupsLocked ? ' Off while Comments &amp; Replies is off.' : '') + '</div></div>' +
+    '<label class="switch"><input type="checkbox" ' + ((s.GroupsEnabled && !groupsLocked) ? 'checked' : '') + (groupsLocked ? ' disabled' : '') + ' onchange="saveSettingsField(\'groupsEnabled\',this.checked)"><span class="slider"></span></label></div>' +
     '<div class="toggle-row"><div><div class="tname">Picture / video</div><div class="tdesc">Allow photo uploads and YouTube links on posts.</div></div>' +
     '<label class="switch"><input type="checkbox" ' + (s.PictureEnabled ? 'checked' : '') + ' onchange="saveSettingsField(\'pictureEnabled\',this.checked)"><span class="slider"></span></label></div>' +
     '<div class="total-pts-note" style="padding:10px 0 0">Scaffold mode is controlled from the Scaffold tab; "Show untreatable errors" from the Grammar Analysis tab — both live with the features they affect.</div>' +
     '</div>';
+}
+
+// Comments and Replies now live behind one switch. Turning it off also turns
+// off Groups in the same save (groups have no purpose with nothing to comment
+// on); turning it back on leaves Groups off — the teacher re-enables that
+// separately if they still want it.
+async function saveCommentsRepliesToggle(value) {
+  const s = forumClassData.settings;
+  s.CommentsEnabled = value;
+  s.RepliesEnabled = value;
+  if (!value) s.GroupsEnabled = false;
+  const result = await api('forum', {
+    action: 'saveSettings', classId: currentClassId, groupSize: s.GroupSize,
+    groupsEnabled: s.GroupsEnabled,
+    commentsEnabled: value,
+    repliesEnabled: value,
+    pictureEnabled: s.PictureEnabled,
+    scaffoldEnabled: s.ScaffoldEnabled,
+    showUntreatableErrors: s.ShowUntreatableErrors,
+    forceGreenUnitSelection: s.ForceGreenUnitSelection
+  });
+  if (!result.ok) { alert(result.error || "Couldn't save."); return; }
+  renderSettings();
 }
 
 async function saveSettingsField(field, value) {
