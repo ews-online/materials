@@ -139,6 +139,9 @@
   .feedback-card .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--postal-blue);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;}
   .feedback-card .feedback-text{font-size:0.92rem;line-height:1.55;}
   .rubric-scroll-hint{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--ink-soft);text-align:right;margin:6px 4px 0;}
+  .rubric-toggle{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.07em;margin:18px 4px 8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;}
+  .rubric-toggle .rt-chev{font-size:0.8rem;transition:transform 0.15s;}
+  .rubric-toggle.open .rt-chev{transform:rotate(90deg);}
 
   .floating-scrollbar{
     position:fixed;left:50%;bottom:16px;transform:translateX(-50%);
@@ -1653,8 +1656,10 @@ async function renderNewPostTab(){
     ${data.settings.GroupsEnabled ? `
     <div class="section-label">Your group this week</div>
     <div class="card">${membersHtml}</div>` : ''}
-    <div class="section-label">Rubric</div>
-    ${rubricHtml}
+    <div class="rubric-toggle" id="rubricToggle" onclick="toggleRubricSection()">
+      <span>Rubric</span><span class="rt-chev">›</span>
+    </div>
+    <div class="hidden" id="rubricSection">${rubricHtml}</div>
   `;
   wireComposerEvents();
   currentMediaType = null;
@@ -2238,6 +2243,18 @@ function buildCompletionTimeline(data){
   }).join('');
 
   return `<div class="card"><div class="completion-timeline">${stepsHtml}</div></div>`;
+}
+
+// Collapsed by default — the composer view starts hidden every time it's
+// rendered (a fresh render, e.g. loading the week, always collapses it again),
+// so it never stays stuck open from a previous visit.
+function toggleRubricSection(){
+  const section = document.getElementById('rubricSection');
+  const toggle = document.getElementById('rubricToggle');
+  if(!section || !toggle) return;
+  const opening = section.classList.contains('hidden');
+  section.classList.toggle('hidden', !opening);
+  toggle.classList.toggle('open', opening);
 }
 
 function buildRubricTable(rubric){
