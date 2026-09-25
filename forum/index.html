@@ -336,7 +336,7 @@
     <header class="topbar">
       <div class="brand">Weekly Forum<small>EFL BLOG &amp; DISCUSSION</small></div>
       <div class="who">
-        <a class="hub-link" href="../student/">← Hub</a>
+        <a class="hub-link" id="hubLink" href="../student/">← Hub</a>
         <button class="home-btn hidden" id="homeBtn" onclick="renderDashboard()">🏠 Dashboard</button>
         <button class="who-self" onclick="renderProfilePage()">
           <span id="whoName">—</span>
@@ -438,6 +438,12 @@ async function login(){
     document.getElementById('mainApp').classList.remove('hidden');
     document.getElementById('whoName').textContent = currentName;
     document.getElementById('whoAvatar').innerHTML = avatarInner(currentName, currentProfilePicURL);
+    // Pass the student number through so the Hub link works whether or not
+    // this session actually started at the Hub (e.g. a bookmarked forum URL,
+    // or a hub session that didn't survive to this tab) — the Hub reads this
+    // param and logs the student straight back into the tile screen instead
+    // of falling through to its own sign-in screen.
+    document.getElementById('hubLink').href = '../student/?studentNumber=' + encodeURIComponent(currentStudent);
     renderDashboard();
   } else {
     document.getElementById('loginError').textContent = result.error || 'Student number not found.';

@@ -1733,19 +1733,20 @@ function renderRosterGroups() {
   const activeCount = forumClassData.roster.filter(function(r) { return r.Active; }).length;
   const defaultGroups = getDefaultGroupCount();
 
+  const groupsCardBody = commentsRepliesOn
+    ? ('<div class="week-edit-grid" style="margin-bottom:14px">' +
+       '<div><label class="field-label">Number of groups</label><input class="text-input" type="number" id="numGroupsInput" value="' + defaultGroups + '" min="1" max="' + (activeCount || 1) + '"></div>' +
+       '<div><label class="field-label">Generate for</label><select id="groupWeekSelect">' + weekOptions + '</select></div></div>' +
+       '<div style="font-size:12px;color:var(--ink-mute);margin-bottom:12px">' + activeCount + ' active student' + (activeCount === 1 ? '' : 's') + '</div>' +
+       '<button class="btn" onclick="doGenerateGroups()">🎲 Generate fresh groups</button>' +
+       '<div class="sub-subhead" style="margin-top:18px">Current groups' + (latestWeek !== null ? ' (Week ' + String(latestWeek).padStart(2, '0') + ')' : '') + '</div>' +
+       (groupsHtml || '<div class="empty-note">No groups yet.</div>'))
+    : '<div class="empty-note">Groups are turned off for this class because Comments &amp; Replies are off. To turn them back on, go to the Settings tab.</div>';
+
   document.getElementById('forum-content').innerHTML =
     '<div class="card"><h3>Roster</h3><table class="data-table"><thead><tr><th>Student #</th><th>Name (JP)</th><th>Name (Eng)</th><th>Active</th></tr></thead>' +
     '<tbody>' + (rosterRows || '<tr><td colspan="4" class="empty-note">No students yet.</td></tr>') + '</tbody></table></div>' +
-    '<div class="card"><h3>Groups</h3>' +
-    '<div class="week-edit-grid" style="margin-bottom:14px">' +
-    '<div><label class="field-label">Number of groups</label><input class="text-input" type="number" id="numGroupsInput" value="' + defaultGroups + '" min="1" max="' + (activeCount || 1) + '"></div>' +
-    '<div><label class="field-label">Generate for</label><select id="groupWeekSelect">' + weekOptions + '</select></div></div>' +
-    '<div style="font-size:12px;color:var(--ink-mute);margin-bottom:12px">' + activeCount + ' active student' + (activeCount === 1 ? '' : 's') + '</div>' +
-    (commentsRepliesOn
-      ? '<button class="btn" onclick="doGenerateGroups()">🎲 Generate fresh groups</button>'
-      : '<button class="btn" disabled title="Turn on Comments & Replies in Settings first">🎲 Generate fresh groups</button><div class="total-pts-note" style="padding-top:8px">Groups are off while Comments &amp; Replies is off for this class — turn that on in Settings to generate groups.</div>') +
-    '<div class="sub-subhead" style="margin-top:18px">Current groups' + (latestWeek !== null ? ' (Week ' + String(latestWeek).padStart(2, '0') + ')' : '') + '</div>' +
-    (groupsHtml || '<div class="empty-note">No groups yet.</div>') + '</div>';
+    '<div class="card"><h3>Groups</h3>' + groupsCardBody + '</div>';
 }
 
 /* ====================== UNIT HISTORY TAB (read-only) ======================
