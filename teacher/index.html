@@ -1386,7 +1386,7 @@ function revisionCheckParaHtml(p) {
   });
 
   const punctOk = /[.!?]\s*$/.test(p.trim());
-  const punctMarkerHtml = punctOk ? '' : ' <mark class="rc-punct" title="Should end with . ! or ?">●</mark>';
+  const punctMarkerHtml = punctOk ? '' : ' <mark class="rc-punct" title="Should end with . ! or ?">&nbsp;&nbsp;</mark>';
 
   return '<div>' + indentHtml + capHtml + spacingHtml + punctMarkerHtml + '</div>';
 }
@@ -1567,7 +1567,11 @@ async function renderGrading() {
     const wc = wordCount(sub.text);
     const postTs = sub.postCreatedAt ? '<span class="ts">' + formatTs(sub.postCreatedAt) + '</span>' : '';
     const mediaHtml = sub.image ? '<div class="sub-media"><img src="' + sub.image + '"></div>' : '';
-    const groupMembersHtml = sub.groupMembers && sub.groupMembers.length
+    // Groups only exist to support commenting — when Comments & Replies are
+    // off for this class, there's nothing meaningful to show here even if
+    // old group/comment data is still sitting in the sheet from before.
+    const commentsRepliesOn = !!(forumClassData.settings.CommentsEnabled && forumClassData.settings.RepliesEnabled);
+    const groupMembersHtml = (commentsRepliesOn && sub.groupMembers && sub.groupMembers.length)
       ? '<div class="sub-subhead">Group members</div><div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px">' +
         sub.groupMembers.map(function(n) { return '<span class="group-pill">' + esc(n) + '</span>'; }).join('') + '</div>'
       : '';
@@ -1602,12 +1606,16 @@ async function renderGrading() {
       '<span><span class="swatch swatch-spacing"></span>Spacing</span>' +
       '<span>— hover any highlight for the exact reason.</span></div>' : '';
 
+    const commentsSectionsHtml = commentsRepliesOn
+      ? '<div class="sub-subhead">Comments received (on their post)</div>' + receivedHtml +
+        '<div class="sub-subhead">Comments made (on groupmates\u2019 posts)</div>' + madeHtml
+      : '';
+
     bodyHtml = '<div class="card submission-card"><div class="sub-title">' + titleHtml + '</div>' +
       '<div class="sub-meta"><div class="avatar">' + initials(author.name) + '</div><div><div class="nm">' + esc(author.name) + '</div><div class="wc">' + wc + ' words ' + postTs + '</div></div></div>' +
       revLegendHtml +
       '<div class="sub-body">' + bodyInner + '</div>' + mediaHtml + groupMembersHtml +
-      '<div class="sub-subhead">Comments received (on their post)</div>' + receivedHtml +
-      '<div class="sub-subhead">Comments made (on groupmates\u2019 posts)</div>' + madeHtml + '</div>';
+      commentsSectionsHtml + '</div>';
   }
 
   const criteriaHtml = rubric.map(function(crit) {
