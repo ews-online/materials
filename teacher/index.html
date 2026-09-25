@@ -194,8 +194,10 @@
   .sub-body p, .sub-body > div { margin: 0 0 12px; }
   .revcheck-legend { font-size: 11px; color: var(--ink-mute); margin: -4px 0 10px; }
   .revcheck-legend .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #FBF6E2; border: 1px solid #E0C948; vertical-align: -1px; margin-right: 4px; }
+  .revcheck-legend .swatch-indent { background: #DCE8FA; border: 1px solid #8FAEDE; margin-left: 10px; }
   .revcheck-para-flag { background: #FBF6E2; border: 1px solid #E9DFA8; border-radius: 6px; padding: 8px 10px; cursor: help; }
   mark.revcheck-flag { background: #F3D34A; color: inherit; border-radius: 3px; padding: 0 1px; cursor: help; }
+  mark.revcheck-indent-flag { background: #B9D0F0; color: inherit; border-radius: 3px; padding: 0 1px; cursor: help; }
   .sub-media img { width: 100%; border-radius: 10px; margin-bottom: 10px; }
   .sub-subhead { font-size: 10px; color: var(--ink-mute); text-transform: uppercase; letter-spacing: 0.06em; margin: 18px 0 8px; border-top: 1px solid var(--rule); padding-top: 14px; }
   .sub-comment { display: flex; gap: 9px; margin-bottom: 10px; }
@@ -1299,33 +1301,38 @@ function commentsQualify(commentsArr, deadline) {
 // punctuation, spacing) the entry passes, then maps that count onto tiers
 // the same way the tier text is written: 0-1 checks = tier 1, 2 checks =
 // tier 2, 3 checks = tier 3, all 4 = tier 4 (index 0 stays "No submission").
-// "Paragraph indentation" uses the same definition as the CCF PDF renderer
-// (see ccfTokenize in the student forum page): split on a blank line, and a
-// paragraph counts as indented if it starts with leading spaces/tabs before
-// its first word.
+// Indentation requires exactly 5 literal spaces at the start of each
+// paragraph — not "any" leading whitespace — and the spacing check (no
+// double spaces) is evaluated on each paragraph AFTER stripping that
+// 5-space indent, so the deliberate indent itself is never mistaken for a
+// double-space violation.
 function countRevisionChecks(title, text) {
   const paras = String(text || '').split(/\n\s*\n/).filter(function(p) { return p.trim() !== ''; });
   if (!paras.length) return 0;
   const t = String(title || '').trim();
-  const indentOk = paras.every(function(p) { return /^[ \t]+\S/.test(p); });
-  const capOk = /^[A-Z]/.test(t) && paras.every(function(p) { return /^[ \t]*[A-Z]/.test(p); });
-  const punctOk = paras.every(function(p) { return /[.!?]\s*$/.test(p.trim()); }) && !/\.\s*$/.test(t);
-  const spacingOk = !/ {2,}/.test(text || '') && !/ {2,}/.test(t);
+  const rests = paras.map(function(p) { return p.replace(/^ */, ''); });
+
+  const indentOk = paras.every(function(p) { return (p.match(/^ */) || [''])[0].length === 5; });
+  const capOk = /^[A-Z]/.test(t) && rests.every(function(r) { return /^[A-Z]/.test(r); });
+  const punctOk = paras.every(function(p) { return /[.!?]\s*$/.test(p.trim()); }) && !/[.,]\s*$/.test(t);
+  const spacingOk = rests.every(function(r) { return !/ {2,}/.test(r); }) && !/ {2,}/.test(t);
   return [indentOk, capOk, punctOk, spacingOk].filter(Boolean).length;
 }
 
-// Renders the entry's title/body with a yellow highlight over exactly what
-// countRevisionChecks() flagged — a whole paragraph if it fails indentation,
-// capitalization, or end punctuation, or just the extra space(s) themselves
-// for the spacing check — so a teacher reviewing the "X of 4 checks passed"
-// auto-suggestion can see at a glance whether it holds up, and hover a
-// highlight for the specific reason. Only called when the rubric actually
-// uses RevisionCheck (see renderGrading) — the checks aren't meaningful otherwise.
+// Renders the entry's title/body with highlights over exactly what
+// countRevisionChecks() flagged, so a teacher reviewing the "X of 4 checks
+// passed" auto-suggestion can see at a glance whether it holds up, and
+// hover a highlight for the specific reason. Two colors, matching the
+// legend shown above the entry: blue for the indentation run itself (with
+// the exact space count in the tooltip), yellow for everything else
+// (capitalization/end-punctuation as a whole-paragraph box, double-spacing
+// as an inline mark). Only called when the rubric actually uses
+// RevisionCheck (see renderGrading) — the checks aren't meaningful otherwise.
 function revisionCheckHighlight(title, text) {
   const t = String(title || '').trim();
   const titleReasons = [];
   if (!/^[A-Z]/.test(t)) titleReasons.push('Title should start with a capital letter.');
-  if (/\.\s*$/.test(t)) titleReasons.push('Title should not end with a period.');
+  if (/[.,]\s*$/.test(t)) titleReasons.push('Title should not end with a period or comma.');
   const titleHtml = titleReasons.length
     ? '<mark class="revcheck-flag" title="' + esc(titleReasons.join(' ')) + '">' + esc(title || '') + '</mark>'
     : esc(title || '');
@@ -1333,16 +1340,35 @@ function revisionCheckHighlight(title, text) {
   const paras = String(text || '').split(/\n\s*\n/);
   const bodyHtml = paras.map(function(p) {
     if (!p.trim()) return '';
+
+    // Indentation — must be exactly 5 literal spaces. Highlighted on its
+    // own (blue), reporting the exact count so a wrong indent is easy to fix.
+    const leadingSpaces = (p.match(/^ */) || [''])[0];
+    const n = leadingSpaces.length;
+    let indentHtml;
+    if (n === 5) {
+      indentHtml = esc(leadingSpaces);
+    } else {
+      const reason = n === 0 ? 'Not indented — needs exactly 5 spaces.' : 'Indented ' + n + ' space' + (n === 1 ? '' : 's') + ' — needs exactly 5.';
+      indentHtml = '<mark class="revcheck-indent-flag" title="' + esc(reason) + '">' + (n > 0 ? esc(leadingSpaces) : '␣') + '</mark>';
+    }
+    const rest = p.slice(n);
+
+    // Capitalization / end punctuation — whole-paragraph box (yellow).
     const reasons = [];
-    if (!/^[ \t]+\S/.test(p)) reasons.push('Not indented.');
-    if (!/^[ \t]*[A-Z]/.test(p)) reasons.push('Should start with a capital letter.');
+    if (!/^[A-Z]/.test(rest)) reasons.push('Should start with a capital letter.');
     if (!/[.!?]\s*$/.test(p.trim())) reasons.push('Should end with . ! or ?');
-    const spacingFlagged = esc(p).replace(/ {2,}/g, function(m) {
+
+    // Double-spacing — inline marks (yellow), checked on the text AFTER the
+    // indent so the indent itself never gets flagged as a spacing error.
+    const spacingFlagged = esc(rest).replace(/ {2,}/g, function(m) {
       return '<mark class="revcheck-flag" title="Extra space(s) between words.">' + m + '</mark>';
     });
+
+    const innerHtml = indentHtml + spacingFlagged;
     return reasons.length
-      ? '<div class="revcheck-para-flag" title="' + esc(reasons.join(' ')) + '">' + spacingFlagged + '</div>'
-      : '<div>' + spacingFlagged + '</div>';
+      ? '<div class="revcheck-para-flag" title="' + esc(reasons.join(' ')) + '">' + innerHtml + '</div>'
+      : '<div>' + innerHtml + '</div>';
   }).join('');
 
   return { titleHtml: titleHtml, bodyHtml: bodyHtml };
@@ -1539,7 +1565,7 @@ async function renderGrading() {
     const revHi = hasRevisionCheck ? revisionCheckHighlight(sub.title, sub.text) : null;
     const titleHtml = revHi ? revHi.titleHtml : esc(sub.title);
     const bodyInner = revHi ? revHi.bodyHtml : esc(sub.text);
-    const revLegendHtml = revHi ? '<div class="revcheck-legend"><span class="swatch"></span>Flagged by the Revision & Editing autograder — hover a highlight for why.</div>' : '';
+    const revLegendHtml = revHi ? '<div class="revcheck-legend"><span class="swatch"></span>Capitalization / punctuation / spacing<span class="swatch swatch-indent"></span>Indentation — hover any highlight for the exact reason.</div>' : '';
 
     bodyHtml = '<div class="card submission-card"><div class="sub-title">' + titleHtml + '</div>' +
       '<div class="sub-meta"><div class="avatar">' + initials(author.name) + '</div><div><div class="nm">' + esc(author.name) + '</div><div class="wc">' + wc + ' words ' + postTs + '</div></div></div>' +

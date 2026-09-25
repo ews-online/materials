@@ -108,8 +108,10 @@
   .member-row .mstatus.posted{color:var(--postal-blue);}
   .member-row .chev{color:var(--ink-soft);font-size:1.1rem;}
 
-  .rubric-table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;}
-  .rubric-table-wrap::-webkit-scrollbar{display:none;height:0;}
+  .rubric-table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);-webkit-overflow-scrolling:touch;scrollbar-width:auto;scrollbar-color:var(--ink-soft) var(--border);}
+  .rubric-table-wrap::-webkit-scrollbar{height:10px;}
+  .rubric-table-wrap::-webkit-scrollbar-track{background:var(--border);border-radius:0 0 var(--radius) var(--radius);}
+  .rubric-table-wrap::-webkit-scrollbar-thumb{background:var(--ink-soft);border-radius:5px;border:2px solid var(--border);}
   table.rubric-table{border-collapse:collapse;width:100%;}
   .rubric-table td{padding:12px 14px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);vertical-align:top;text-align:left;font-size:0.82rem;}
   .rubric-table tr:last-child td{border-bottom:none;}
