@@ -3596,9 +3596,12 @@ function stopTestControlPolling() {
 async function refreshTestControl() {
   if (!currentClassId) return;
   try {
+    // silent: true — this is a background poll, not a user-initiated
+    // action, so it must not flash the full-screen loading overlay every
+    // 4 seconds. The tab's own grid is the only thing that should update.
     const [ctrl, rosterResult] = await Promise.all([
-      api('quiz', { action: 'getTestControl', classId: currentClassId }),
-      api('forum', { action: 'getRoster', classId: currentClassId })
+      api('quiz', { action: 'getTestControl', classId: currentClassId }, { silent: true }),
+      api('forum', { action: 'getRoster', classId: currentClassId }, { silent: true })
     ]);
     if (!ctrl.ok) return;
     testControlCache = ctrl;
