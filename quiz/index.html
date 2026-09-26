@@ -178,6 +178,20 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--i
   </div>
 </div>
 
+<!-- SUBMISSION CONFIRMATION — shown the moment the server confirms the
+     submit, before the student ever sees their grade. They read this, then
+     tap through on their own to the waiting-for-others screen. This step
+     went missing when submission grading was moved server-side (doSubmit
+     used to jump straight from a successful submit to renderResults()). -->
+<div class="screen" id="submit-confirm">
+  <div class="already-card">
+    <div style="font-size:2.5rem;color:var(--green)">✓</div>
+    <h2 style="color:var(--green)">Answers successfully sent.</h2>
+    <p style="color:var(--ink-soft);font-size:0.9rem;margin-top:0.5rem">回答が正常に送信されました。</p>
+    <button class="btn" onclick="proceedToResults()" style="margin-top:1.5rem">次へ →</button>
+  </div>
+</div>
+
 <div class="screen" id="submit-error">
   <div class="already-card">
     <div style="font-size:2.5rem;color:var(--red)">⚠️</div>
@@ -336,14 +350,22 @@ function startPollForStart() {
 
 // ── POLL FOR RESULTS REVEAL (used both after a fresh submit, and when
 // re-visiting after already having submitted earlier) ──────────────────
-function startPollForResults(week) {
+// freshSubmit=true: we already have this student's own graded questions in
+// hand from the submitQuiz response, so on reveal we render them directly
+// — no need to re-fetch, and this is NOT a relogin (no "already submitted"
+// banner, "Done" button stays "Done", not "Save flags").
+function startPollForResults(week, freshSubmit) {
   document.getElementById('waiting-results-sub').textContent = currentName + ' · Week ' + week;
   show('waiting-results');
   function schedule() {
     pollInterval = setTimeout(async function() {
       try {
         const data = await api({ action: 'pollResults', week: week });
-        if (data.reveal) { pollInterval = null; loadAndShowResults(week, true); }
+        if (data.reveal) {
+          pollInterval = null;
+          if (freshSubmit) renderResults(timedOut);
+          else loadAndShowResults(week, true);
+        }
         else schedule();
       } catch (e) { schedule(); }
     }, pollDelay());
@@ -354,6 +376,18 @@ async function checkResultsReveal(week) {
   const poll = await api({ action: 'pollResults', week: week });
   if (poll.reveal) { loadAndShowResults(week, true); }
   else { startPollForResults(week); }
+}
+// Called from the "次へ →" button on the submit-confirm screen, right after
+// a fresh submission. gradedQuestions is already populated from the
+// submitQuiz response at this point — just checking whether it's OK to show
+// it yet, or whether other students still need to finish first.
+async function proceedToResults() {
+  const week = studentData.week;
+  try {
+    const poll = await api({ action: 'pollResults', week: week });
+    if (poll.reveal) { renderResults(timedOut); }
+    else { startPollForResults(week, true); }
+  } catch (e) { startPollForResults(week, true); }
 }
 async function loadAndShowResults(week, isRelogin) {
   const data = await api({ action: 'getMyResults', week: week });
@@ -552,7 +586,10 @@ async function doSubmit() {
     if (data.error) { showSubmitError(data.error); return; }
     submittedResult = data;
     gradedQuestions = data.questions;
-    renderResults(document.title === 'timed-out-flag' ? true : timedOut);
+    // Confirm the submission went through before showing anything about the
+    // grade — the student taps "次へ" on their own to move on, at which
+    // point proceedToResults() checks whether results are released yet.
+    show('submit-confirm');
   } catch (err) {
     showSubmitError(null);
   }
