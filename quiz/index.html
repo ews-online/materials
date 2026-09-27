@@ -70,6 +70,27 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--i
 .q-input:focus { border-color:var(--accent); }
 .q-input:disabled { background:var(--bg); color:var(--ink-soft); cursor:not-allowed; }
 
+/* ── WORD BANK (drag-and-drop matching questions) ── */
+.word-bank { background:var(--card); border:1.5px solid var(--border); border-radius:0.8rem; padding:0.75rem 1rem; margin:0.5rem 0 0.75rem 0; }
+.word-bank-label { font-size:0.72rem; font-weight:600; letter-spacing:0.07em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:0.5rem; }
+.word-bank-chips { display:flex; flex-wrap:wrap; gap:0.45rem; }
+.wb-chip { background:var(--card); border:1.5px solid var(--border); border-radius:5px; padding:0.3rem 0.7rem; font-size:0.88rem; color:var(--ink); cursor:grab; user-select:none; transition:opacity 0.12s, background 0.12s; }
+.wb-chip:active { cursor:grabbing; }
+.wb-chip.wb-dragging { opacity:0.3; }
+.wb-chip.wb-used { text-decoration:line-through; color:var(--ink-soft); background:var(--bg); border-style:dashed; cursor:default; }
+.wb-chip.wb-example { text-decoration:line-through; color:var(--ink-soft); background:var(--bg); border-style:dashed; cursor:default; font-style:italic; }
+.wb-drop { display:inline-flex; align-items:center; justify-content:center; min-width:110px; min-height:28px; height:auto; border:2px dashed var(--border); border-radius:5px; padding:0.15rem 0.5rem; margin:0 3px; vertical-align:middle; font-size:0.88rem; color:var(--ink); background:var(--bg); transition:border-color 0.12s, background 0.12s; position:relative; white-space:normal; text-align:center; line-height:1.35; }
+.wb-drop.wb-dragover { border-color:var(--accent); background:var(--accent-light); }
+.wb-drop.wb-filled { border-style:solid; border-color:var(--accent); background:var(--accent-light); color:var(--accent); font-weight:500; }
+.wb-drop .wb-clear { display:none; position:absolute; right:-7px; top:-7px; width:15px; height:15px; border-radius:50%; background:var(--ink-soft); color:white; font-size:9px; border:none; cursor:pointer; align-items:center; justify-content:center; line-height:1; }
+.wb-drop.wb-filled .wb-clear { display:flex; }
+.wb-ex-answer { display:inline-flex; align-items:center; background:var(--accent-light); border:1.5px solid var(--accent); border-radius:5px; padding:1px 7px; margin:0 2px; vertical-align:middle; color:var(--accent); font-weight:500; font-size:0.88rem; }
+.word-bank-chips.wb-stacked { flex-direction:column; flex-wrap:nowrap; }
+.wb-chip.wb-long { line-height:1.4; padding:0.42rem 0.75rem; }
+.wb-drop.wb-block { display:block; min-width:0; height:auto; min-height:32px; padding:0.4rem 1.8rem 0.4rem 0.7rem; margin:0.35rem 0 0 0; text-align:left; justify-content:flex-start; line-height:1.4; vertical-align:baseline; }
+.wb-drop.wb-block .wb-clear { right:6px; top:6px; width:17px; height:17px; font-size:10px; }
+.wb-ex-answer.wb-ex-block { display:block; margin:0.35rem 0 0 0; padding:0.4rem 0.7rem; border-radius:6px; line-height:1.4; }
+
 .submit-bar, .final-submit-bar { width:100%; background:var(--card); border-top:1.5px solid var(--border); padding:1.2rem 2rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
 .final-submit-bar { position:sticky; bottom:0; }
 .progress-info { font-size:0.88rem; color:var(--ink-soft); }
@@ -466,12 +487,122 @@ function formatQuestionDouble(q) {
   });
 }
 
+// ── WORD BANK (drag-and-drop matching questions) ────────────────────────────
+// A section is a word bank exercise when its QuestionBank rows have
+// IsWordBank checked (QuizEngine.gs sends this back per question as
+// `isWordBank`, with the shuffled option list as `wordBankOptions` on the
+// example row only). Ported from the original word-bank build with just the
+// field names updated to match: isQB -> isWordBank, qbOptions -> wordBankOptions.
+function qbBlankIsMidSentence(questionText) {
+  // True when the blank has real text after it (inline layout, 35.2-style).
+  // False when the blank is at the end, or there's no blank at all (a
+  // standalone prompt, as in matching exercises like 35.1) -> stacked layout.
+  const m = (questionText || '').match(/_{2,}/);
+  if (!m) return false;
+  const after = questionText.slice(m.index + m[0].length).replace(/[.?!、。？！\s]+$/, '').trim();
+  return after.length > 0;
+}
+
+function formatQuestionWordBank(q, dropId, qIndex) {
+  // Replace the first blank with a drop zone; any further blanks stay as underlines.
+  let replaced = false;
+  return q.replace(/_+/g, function() {
+    if (!replaced) {
+      replaced = true;
+      return '<span class="wb-drop" id="' + dropId + '" data-qindex="' + qIndex + '">' +
+        '<span class="wb-drop-text">&nbsp;</span>' +
+        '<button class="wb-clear" onclick="clearDropZone(\'' + dropId + '\',' + qIndex + ')">✕</button>' +
+        '</span>';
+    }
+    return '<span style="display:inline-block;min-width:80px;border-bottom:2px solid var(--accent);margin:0 2px;vertical-align:bottom">&nbsp;</span>';
+  });
+}
+
+function attachDropZone(dropId, qIndex) {
+  const dz = document.getElementById(dropId);
+  if (!dz) return;
+  dz.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    if (!dz.classList.contains('wb-filled')) dz.classList.add('wb-dragover');
+  });
+  dz.addEventListener('dragleave', function() { dz.classList.remove('wb-dragover'); });
+  dz.addEventListener('drop', function(e) {
+    e.preventDefault();
+    dz.classList.remove('wb-dragover');
+    const chip = window._wbDraggedChip;
+    if (!chip || dz.classList.contains('wb-filled')) return;
+    const val = chip.dataset.value;
+    dz.querySelector('.wb-drop-text').textContent = val;
+    dz.classList.add('wb-filled');
+    dz.dataset.usedChip = chip.id;
+    chip.classList.add('wb-used');
+    chip.setAttribute('draggable', 'false');
+    saveAnswer(qIndex, val);
+  });
+}
+
+function clearDropZone(dropId, qIndex) {
+  const dz = document.getElementById(dropId);
+  if (!dz) return;
+  const chipId = dz.dataset.usedChip;
+  if (chipId) {
+    const chip = document.getElementById(chipId);
+    if (chip) { chip.classList.remove('wb-used'); chip.setAttribute('draggable', 'true'); }
+    delete dz.dataset.usedChip;
+  }
+  if (dz.classList.contains('wb-block')) {
+    dz.querySelector('.wb-drop-text').innerHTML = '<span style="color:var(--ink-soft);font-style:italic;font-size:0.85rem">Drag your answer here…</span>';
+  } else {
+    dz.querySelector('.wb-drop-text').innerHTML = '&nbsp;';
+  }
+  dz.classList.remove('wb-filled');
+  saveAnswer(qIndex, '');
+}
+
+// Native drag-and-drop auto-scrolls down but is unreliable scrolling up. This
+// watches the cursor during any drag and smoothly scrolls the page both
+// directions when the cursor nears the top or bottom edge of the viewport.
+window._wbDraggedChip = null;
+let _wbScrollRAF = null;
+let _wbScrollSpeed = 0;
+function _wbAutoScrollLoop() {
+  if (_wbScrollSpeed !== 0) {
+    window.scrollBy(0, _wbScrollSpeed);
+    _wbScrollRAF = requestAnimationFrame(_wbAutoScrollLoop);
+  } else {
+    _wbScrollRAF = null;
+  }
+}
+function _wbInitAutoScroll() {
+  if (window._wbAutoScrollReady) return;
+  window._wbAutoScrollReady = true;
+  const EDGE = 90, MAX_SPEED = 14;
+  document.addEventListener('dragover', function(e) {
+    if (!window._wbDraggedChip) return;
+    const y = e.clientY, h = window.innerHeight;
+    if (y < EDGE) _wbScrollSpeed = -Math.ceil(MAX_SPEED * (EDGE - y) / EDGE);
+    else if (y > h - EDGE) _wbScrollSpeed = Math.ceil(MAX_SPEED * (y - (h - EDGE)) / EDGE);
+    else _wbScrollSpeed = 0;
+    if (_wbScrollSpeed !== 0 && _wbScrollRAF === null) _wbScrollRAF = requestAnimationFrame(_wbAutoScrollLoop);
+  });
+  document.addEventListener('drop', function() { _wbScrollSpeed = 0; });
+  document.addEventListener('dragend', function() { _wbScrollSpeed = 0; });
+}
+
 function renderQuizBody() {
   const body = document.getElementById('quiz-body');
   body.innerHTML = '';
   const qs = studentData.questions;
   let lastUnit = null, lastPart = null, unitIndex = -1, currentUnitDiv = null;
   let i = 0, displayNum = 0;
+  const wbSectionLayout = {}; // sectionKey -> true (stacked) / false (inline), set when each section's header renders
+
+  const sectionMap = {};
+  qs.forEach(function(q) {
+    const key = q.unit + '\x00' + q.part;
+    if (!sectionMap[key]) sectionMap[key] = [];
+    sectionMap[key].push(q);
+  });
 
   while (i < qs.length) {
     const q = qs[i];
@@ -487,15 +618,86 @@ function renderQuizBody() {
         unitBlock.innerHTML = '<div class="section-unit">' + q.unit + '</div>';
         currentUnitDiv.appendChild(unitBlock);
       }
+
+      const sectionKey = q.unit + '\x00' + q.part;
+      const sectionQs = sectionMap[sectionKey] || [];
+      const sectionIsWordBank = sectionQs.some(function(sq) { return !sq.isExample && sq.isWordBank; });
+
       const sec = document.createElement('div');
-      sec.innerHTML = '<div class="section-header"><div class="section-part">' + q.part + '</div><div class="section-instruction">' + q.instruction + '</div></div>';
+      const dragInstr = sectionIsWordBank ? '語句をドラッグして、正しい空所に当てはめなさい。' : '';
+      sec.innerHTML = '<div class="section-header"><div class="section-part">' + q.part + '</div><div class="section-instruction">' + q.instruction + (dragInstr ? ' ' + dragInstr : '') + '</div></div>';
       currentUnitDiv.appendChild(sec);
+
+      if (sectionIsWordBank) {
+        const exQ = sectionQs.find(function(sq) { return sq.isExample; });
+        const wbOpts = (exQ && exQ.wordBankOptions) || [];
+        const exAns = exQ ? exQ.answer : null;
+
+        // Auto-detect layout from WHERE the blank sits (not answer length):
+        // a mid-sentence blank -> inline (35.2-style); a blank at the end, or
+        // no blank at all -> stacked block layout, answer below (35.1-style).
+        // A section is stacked only if none of its questions have a
+        // mid-sentence blank, so the whole section's layout stays consistent.
+        const sectionHasMidBlank = sectionQs.some(function(sq) { return !sq.isExample && qbBlankIsMidSentence(sq.question); });
+        const isLongLayout = !sectionHasMidBlank;
+        wbSectionLayout[sectionKey] = isLongLayout;
+
+        const wb = document.createElement('div');
+        wb.className = 'word-bank';
+        const idSafe = sectionKey.replace(/[^a-zA-Z0-9]/g, '_');
+        wb.id = 'wb-' + idSafe;
+        const chipCls = isLongLayout ? 'wb-chip wb-long' : 'wb-chip';
+        let chipsHtml = '<div class="word-bank-label">Word bank</div><div class="word-bank-chips' + (isLongLayout ? ' wb-stacked' : '') + '">';
+        if (exAns) {
+          chipsHtml += '<div class="' + chipCls + ' wb-example">（例）' + exAns + '</div>';
+        }
+        wbOpts.forEach(function(opt, idx) {
+          chipsHtml += '<div class="' + chipCls + '" id="wbc-' + idSafe + '-' + idx + '" draggable="true" data-value="' + opt.replace(/"/g, '&quot;') + '">' + opt + '</div>';
+        });
+        chipsHtml += '</div>';
+        wb.innerHTML = chipsHtml;
+        currentUnitDiv.appendChild(wb);
+
+        (function(wbEl) {
+          setTimeout(function() {
+            _wbInitAutoScroll();
+            wbEl.querySelectorAll('.wb-chip[draggable="true"]').forEach(function(chip) {
+              chip.addEventListener('dragstart', function() {
+                window._wbDraggedChip = chip;
+                setTimeout(function() { chip.classList.add('wb-dragging'); }, 0);
+              });
+              chip.addEventListener('dragend', function() {
+                chip.classList.remove('wb-dragging');
+                window._wbDraggedChip = null;
+              });
+            });
+          }, 0);
+        })(wb);
+      }
+
       lastUnit = q.unit; lastPart = q.part;
     }
 
     if (q.isExample) {
       const ex = document.createElement('div');
       ex.className = 'example-block';
+      if (q.isWordBank) {
+        const secKey = q.unit + '\x00' + q.part;
+        const isLong = wbSectionLayout[secKey];
+        const exAnsText = (q.answer || '').replace(/</g, '&lt;');
+        if (isLong) {
+          const qClean = q.question.replace(/_+/g, '').replace(/\s+([.?!])/g, '$1').trim();
+          ex.innerHTML = '<div class="example-label">📝 Example（例）</div>' +
+            '<div class="example-question">' + qClean + '</div>' +
+            '<span class="wb-ex-answer wb-ex-block">' + exAnsText + '</span>';
+        } else {
+          const fmt = q.question.replace(/_+/g, '<span class="wb-ex-answer">' + exAnsText + '</span>');
+          ex.innerHTML = '<div class="example-label">📝 Example（例）</div>' +
+            '<div class="example-question" style="margin-bottom:0.5rem">' + fmt + '</div>';
+        }
+        currentUnitDiv.appendChild(ex);
+        i++; continue;
+      }
       const exBlankCount = (q.question.match(/_{3,}/g) || []).length;
       const isDoublEx = exBlankCount >= 2;
       const exMarkers = ['①', '②'];
@@ -543,6 +745,29 @@ function renderQuizBody() {
         '</div></div>';
       currentUnitDiv.appendChild(row);
       i += 2;
+    } else if (q.isWordBank) {
+      const row = document.createElement('div');
+      row.className = 'question-row';
+      const dropId = 'wbdrop-' + i;
+      const secKey = q.unit + '\x00' + q.part;
+      const isLong = wbSectionLayout[secKey];
+      let sentenceHtml;
+      if (isLong) {
+        const qClean = q.question.replace(/_+/g, '').replace(/\s+([.?!])/g, '$1').trim();
+        sentenceHtml = qClean +
+          '<span class="wb-drop wb-block" id="' + dropId + '" data-qindex="' + i + '">' +
+          '<span class="wb-drop-text" style="color:var(--ink-soft);font-style:italic;font-size:0.85rem">Drag your answer here…</span>' +
+          '<button class="wb-clear" onclick="clearDropZone(\'' + dropId + '\',' + i + ')">✕</button>' +
+          '</span>';
+      } else {
+        sentenceHtml = formatQuestionWordBank(q.question, dropId, i);
+      }
+      row.innerHTML = '<div class="q-num">' + displayNum + '.</div><div class="q-content">' +
+        '<div class="q-sentence">' + sentenceHtml + '</div></div>';
+      currentUnitDiv.appendChild(row);
+      const fixedIndex = i;
+      setTimeout(function() { attachDropZone(dropId, fixedIndex); }, 0);
+      i++;
     } else {
       const row = document.createElement('div');
       row.className = 'question-row';
