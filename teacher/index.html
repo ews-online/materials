@@ -597,6 +597,7 @@
       <div class="card">
         <div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap">
           <div><label class="field-label" style="margin-bottom:6px">Week</label><input class="text-input" type="number" id="quiz-grades-week" value="1" style="width:90px" onchange="loadGrades()"></div>
+          <button class="btn btn-ghost btn-sm" onclick="markAllHomeworkDone()">✓ Mark all Practice Q + Flashcard done</button>
           <button class="btn btn-ghost btn-sm" onclick="downloadQuizMoodleCsv()">⬇ Download Moodle CSV</button>
         </div>
         <div id="grades-table" style="margin-top:14px"><div class="empty-note">Loading…</div></div>
@@ -3884,6 +3885,9 @@ async function saveGradeWeights() {
   loadGrades();
 }
 let quizGradesCache = null;
+let quizGradeWeightsCache = null; // {practiceQ, flashcard, quizNew, quizReview} — from getGrades'
+                                   // own response, used to recompute Total locally after a checkbox
+                                   // click instead of re-fetching the whole table for it.
 async function loadGrades() {
   const week = document.getElementById('quiz-grades-week').value;
   const tableEl = document.getElementById('grades-table');
@@ -3891,26 +3895,98 @@ async function loadGrades() {
   const result = await api('quiz', { action: 'getGrades', classId: currentClassId, week: week });
   if (!result.ok) { tableEl.innerHTML = '<div class="empty-note">' + esc(result.error) + '</div>'; return; }
   quizGradesCache = result.rows || [];
-  const tri = function(v) { return v === true ? '✓' : v === false ? '✗' : '\u2014'; };
+  quizGradeWeightsCache = result.weights || quizGradeWeightsCache;
+  const tri = function(v) { return v === true ? '✓' : v === false ? '✗' : '—'; };
   tableEl.innerHTML = quizGradesCache.length ? (
     '<table class="data-table"><thead><tr><th>Student</th><th>Practice Q</th><th>Flashcard</th><th>New</th><th>Review</th><th>Bonus</th><th>Total</th><th>Flags</th></tr></thead><tbody>' +
     quizGradesCache.map(function(r) {
-      return '<tr><td>' + esc(r.nameEng) + '</td>' +
-        '<td><input type="checkbox" ' + (r.practiceQ ? 'checked' : '') + ' onchange="saveHomework(\'' + r.studentNumber + '\',\'practiceQ\',this.checked)"></td>' +
-        '<td><input type="checkbox" ' + (r.flashcard ? 'checked' : '') + ' onchange="saveHomework(\'' + r.studentNumber + '\',\'flashcard\',this.checked)"></td>' +
-        '<td>' + tri(r.quizNewPassed) + '</td><td>' + tri(r.quizReviewPassed) + '</td><td>' + (r.bonus ? '✓' : '\u2014') + '</td>' +
-        '<td><b>' + r.total + '</b></td>' +
-        '<td>' + (r.flagsPending ? '<span class="chip chip-gold">' + r.flagsPending + ' pending</span>' : (r.flagsResolved ? r.flagsResolved + ' resolved' : '\u2014')) + '</td></tr>';
+      return '<tr class="grades-row" data-student="' + esc(r.studentNumber) + '"><td>' + esc(r.nameEng) + '</td>' +
+        '<td><input class="pq-checkbox" type="checkbox" ' + (r.practiceQ ? 'checked' : '') + ' onchange="saveHomework(\'' + r.studentNumber + '\',\'practiceQ\',this.checked)"></td>' +
+        '<td><input class="fc-checkbox" type="checkbox" ' + (r.flashcard ? 'checked' : '') + ' onchange="saveHomework(\'' + r.studentNumber + '\',\'flashcard\',this.checked)"></td>' +
+        '<td>' + tri(r.quizNewPassed) + '</td><td>' + tri(r.quizReviewPassed) + '</td><td>' + (r.bonus ? '✓' : '—') + '</td>' +
+        '<td class="total-cell"><b>' + r.total + '</b></td>' +
+        '<td>' + (r.flagsPending ? '<span class="chip chip-gold">' + r.flagsPending + ' pending</span>' : (r.flagsResolved ? r.flagsResolved + ' resolved' : '—')) + '</td></tr>';
     }).join('') + '</tbody></table>'
   ) : '<div class="empty-note">No active students.</div>';
 }
-async function saveHomework(studentNumber, field, value) {
+
+// Recomputes one row's Total the same way the backend does (weights ×
+// practiceQ/flashcard/new/review), so an optimistic checkbox update can
+// show the right Total immediately instead of waiting on a reload.
+function recomputeGradeRowTotal(row) {
+  const w = quizGradeWeightsCache || { practiceQ: 30, flashcard: 30, quizNew: 20, quizReview: 20 };
+  row.total = (row.practiceQ ? w.practiceQ : 0) + (row.flashcard ? w.flashcard : 0) +
+    (row.quizNewPassed === true ? w.quizNew : 0) + (row.quizReviewPassed === true ? w.quizReview : 0);
+}
+// Repaints one student's row from quizGradesCache — checkboxes and Total —
+// without touching any other row.
+function applyGradeRowToDom(row) {
+  const tr = document.querySelector('.grades-row[data-student="' + CSS.escape(row.studentNumber) + '"]');
+  if (!tr) { loadGrades(); return; }
+  const pq = tr.querySelector('.pq-checkbox'); if (pq) pq.checked = !!row.practiceQ;
+  const fc = tr.querySelector('.fc-checkbox'); if (fc) fc.checked = !!row.flashcard;
+  const totalCell = tr.querySelector('.total-cell'); if (totalCell) totalCell.innerHTML = '<b>' + row.total + '</b>';
+}
+
+// Shared by a single checkbox click and "Mark all done": saves one or both
+// homework fields for one student in a single request (the backend accepts
+// either or both together), optimistic + silent + scoped to that one row —
+// same pattern as toggleAbsent on the Test Control tab, for the same
+// reason: this needs to feel instant when checking a whole row of students.
+async function saveHomeworkFields(studentNumber, fields) {
   const week = document.getElementById('quiz-grades-week').value;
-  const payload = { action: 'saveHomework', classId: currentClassId, studentNumber: studentNumber, week: week };
-  payload[field] = value;
-  const result = await api('quiz', payload);
-  if (!result.ok) { alert(result.error || "Couldn't save."); return; }
-  loadGrades();
+  const row = (quizGradesCache || []).find(function(r) { return r.studentNumber === studentNumber; });
+  const prev = {};
+  if (row) {
+    Object.keys(fields).forEach(function(k) { prev[k] = row[k]; row[k] = fields[k]; });
+    recomputeGradeRowTotal(row);
+    applyGradeRowToDom(row);
+  }
+  const payload = Object.assign({ action: 'saveHomework', classId: currentClassId, studentNumber: studentNumber, week: week }, fields);
+  try {
+    const result = await api('quiz', payload, { silent: true });
+    if (!result.ok) throw new Error(result.error || "Couldn't save.");
+    return true;
+  } catch (e) {
+    if (row) {
+      Object.keys(prev).forEach(function(k) { row[k] = prev[k]; });
+      recomputeGradeRowTotal(row);
+      applyGradeRowToDom(row);
+    }
+    alert(e.message || "Couldn't save.");
+    return false;
+  }
+}
+function saveHomework(studentNumber, field, value) {
+  const fields = {};
+  fields[field] = value;
+  saveHomeworkFields(studentNumber, fields);
+}
+
+// "Mark all done": most students do the homework most weeks, so this
+// front-loads every row to checked and lets the teacher uncheck the few
+// who didn't — instant on screen (all rows update immediately), with the
+// actual saves going out in the background; any that fail are named so
+// they can be retried individually instead of silently losing that student.
+async function markAllHomeworkDone() {
+  if (!quizGradesCache || !quizGradesCache.length) { alert('Load a week first.'); return; }
+  if (!confirm('Mark Practice Q and Flashcard as done for all ' + quizGradesCache.length + ' students? You can uncheck individual students afterward.')) return;
+  const students = quizGradesCache.slice();
+  const week = document.getElementById('quiz-grades-week').value;
+  students.forEach(function(row) {
+    row.practiceQ = true; row.flashcard = true;
+    recomputeGradeRowTotal(row);
+    applyGradeRowToDom(row);
+  });
+  const failed = [];
+  await Promise.all(students.map(async function(row) {
+    try {
+      const result = await api('quiz', { action: 'saveHomework', classId: currentClassId, studentNumber: row.studentNumber, week: week, practiceQ: true, flashcard: true }, { silent: true });
+      if (!result.ok) failed.push(row.nameEng);
+    } catch (e) { failed.push(row.nameEng); }
+  }));
+  if (failed.length) alert("Couldn't save for: " + failed.join(', ') + ' — please check those individually.');
+  else showToast('✓ Marked all as done.');
 }
 function downloadQuizMoodleCsv() {
   if (!quizGradesCache) { alert('Load a week\'s grades first.'); return; }
