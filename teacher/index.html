@@ -3654,12 +3654,33 @@ function renderTestControl() {
 }
 
 async function toggleAbsent(studentNumber, absent) {
-  const result = await api('quiz', { action: 'setAbsent', classId: currentClassId, studentNumber: studentNumber, absent: absent });
-  if (!result.ok) { alert(result.error || "Couldn't update."); return; }
-  const set = new Set(testControlCache.absentStudentNumbers || []);
-  if (absent) set.add(studentNumber); else set.delete(studentNumber);
-  testControlCache.absentStudentNumbers = Array.from(set);
+  // Optimistic + silent, with polling paused for the round trip: marking
+  // several students absent is a quick burst of clicks, so this updates the
+  // checkbox immediately instead of waiting on the network, never shows the
+  // full-screen spinner, and pauses the 4-second background poll so a poll
+  // tick can't land mid-write and read stale data back over this change
+  // (which is what was reverting the checkbox after a click). Rolls back
+  // and alerts if the server call actually fails.
+  stopTestControlPolling();
+  const prevAbsent = new Set(testControlCache.absentStudentNumbers || []);
+  const nextAbsent = new Set(prevAbsent);
+  if (absent) nextAbsent.add(studentNumber); else nextAbsent.delete(studentNumber);
+  testControlCache.absentStudentNumbers = Array.from(nextAbsent);
   renderTestControl();
+  try {
+    const result = await api('quiz', { action: 'setAbsent', classId: currentClassId, studentNumber: studentNumber, absent: absent }, { silent: true });
+    if (!result.ok) {
+      testControlCache.absentStudentNumbers = Array.from(prevAbsent);
+      renderTestControl();
+      alert(result.error || "Couldn't update.");
+    }
+  } catch (e) {
+    testControlCache.absentStudentNumbers = Array.from(prevAbsent);
+    renderTestControl();
+    alert("Couldn't update.");
+  } finally {
+    startTestControlPolling();
+  }
 }
 async function doStartQuiz() {
   if (!confirm('Start the quiz? Students will be able to begin.')) return;
