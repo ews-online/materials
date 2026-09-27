@@ -438,6 +438,11 @@ function startQuiz() {
   renderQuizBody();
   startTimer();
   startQuizStopPoll();
+  // Best-effort: lets Test Control show "Taking test" instead of just
+  // "Logged in" once a student actually reaches the quiz screen. Not
+  // awaited and not retried — if it drops, the teacher's status is one
+  // notch behind for this student, nothing about the quiz itself depends on it.
+  api({ action: 'markTakingTest', week: studentData.week }).catch(function() {});
   show('quiz');
 }
 

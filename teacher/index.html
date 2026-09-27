@@ -3661,6 +3661,7 @@ function renderTestControl() {
     let chip;
     if (absent) chip = '<span class="chip chip-red">Absent</span>';
     else if (status.submitted) chip = '<span class="chip chip-green">Submitted</span>';
+    else if (status.testing) chip = '<span class="chip chip-gold">Taking test</span>';
     else if (status.loggedIn) chip = '<span class="chip" style="background:#e0eefc;color:#1a5a9a">Logged in</span>';
     else chip = '<span class="chip">Waiting</span>';
     return '<div class="card test-roster-row" data-student="' + esc(s.StudentNumber) + '" style="padding:10px 14px;display:flex;align-items:center;gap:10px;' + (absent ? 'opacity:0.5' : '') + '">' +
@@ -3687,6 +3688,7 @@ function applyAbsentToRow(studentNumber, absent) {
     else {
       const status = (testControlCache.studentStatus || {})[studentNumber] || {};
       if (status.submitted) chip = '<span class="chip chip-green">Submitted</span>';
+      else if (status.testing) chip = '<span class="chip chip-gold">Taking test</span>';
       else if (status.loggedIn) chip = '<span class="chip" style="background:#e0eefc;color:#1a5a9a">Logged in</span>';
       else chip = '<span class="chip">Waiting</span>';
     }
