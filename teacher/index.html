@@ -4115,16 +4115,25 @@ async function loadQBUnit() {
 
   sectionKeys.forEach(function(section) {
     const qs = sections[section].sort(function(a, b) { return a.questionOrder - b.questionOrder; });
-    html += '<div class="card"><h3>Section ' + esc(section) + '</h3>' +
+    const secSafe = section.replace('.', '_');
+    // Word bank is a whole-section exercise (every question, including the
+    // example, pulls from one shared drag-and-drop word bank) — one toggle
+    // for the section, not a per-question checkbox. Defaults checked if any
+    // question here is already marked, so existing word-bank sections show
+    // correctly the first time this loads.
+    const sectionIsWordBank = qs.some(function(q) { return q.isWordBank; });
+    html += '<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:2px">' +
+      '<h3 style="margin:0">Section ' + esc(section) + '</h3>' +
+      '<label style="font-size:12px;display:flex;align-items:center;gap:6px;white-space:nowrap" title="Turns this whole section into a drag-and-drop word-bank exercise: students drag the answer into the blank instead of typing it. Check this once for the section — not per question.">' +
+      '<input type="checkbox" id="qb-sectionwb-' + secSafe + '" ' + (sectionIsWordBank ? 'checked' : '') + '> Word bank section (drag-and-drop)</label></div>' +
       '<label class="field-label">Instruction (Japanese)</label>' +
-      '<input class="text-input" id="qb-ins-' + section.replace('.', '_') + '" value="' + esc(result.instructions[section] || '') + '" style="margin-bottom:12px">' +
+      '<input class="text-input" id="qb-ins-' + secSafe + '" value="' + esc(result.instructions[section] || '') + '" style="margin-bottom:12px">' +
       qs.map(function(q) {
         const key = section + '_' + q.questionOrder;
         qbCurrentQuestionKeys.push({ section: section, questionOrder: q.questionOrder, key: key });
-        return '<div class="editor-tier-row" style="grid-template-columns:2fr 2fr auto auto auto;">' +
+        return '<div class="editor-tier-row" style="grid-template-columns:2fr 2fr auto auto;">' +
           '<input class="text-input" id="qb-q-' + key + '" value="' + esc(q.question) + '" placeholder="Question">' +
           '<input class="text-input" id="qb-a-' + key + '" value="' + esc(q.answer) + '" placeholder="Answer">' +
-          '<label style="font-size:11px;white-space:nowrap"><input type="checkbox" id="qb-wb-' + key + '" ' + (q.isWordBank ? 'checked' : '') + '> Word bank</label>' +
           (q.isExample ? '<span class="chip chip-gold">Example</span>' : '<span></span>') +
           '<div style="display:flex;gap:4px"><button class="icon-btn" onclick="deleteQBQuestion(\'' + section + '\',' + q.questionOrder + ')">✕</button></div></div>';
       }).join('') +
@@ -4185,13 +4194,16 @@ async function saveAllQBChanges() {
   qbCurrentQuestionKeys.forEach(function(item) {
     const qEl = document.getElementById('qb-q-' + item.key);
     const aEl = document.getElementById('qb-a-' + item.key);
-    const wbEl = document.getElementById('qb-wb-' + item.key);
+    // Word bank is set once per section (see loadQBUnit) — every question in
+    // the section, including the example, is saved with that same value so
+    // the sheet never ends up with a section only partly marked.
+    const sectionWbEl = document.getElementById('qb-sectionwb-' + item.section.replace('.', '_'));
     if (!qEl || !aEl) return;
     calls.push({
       label: 'Question ' + item.section + ' #' + item.questionOrder,
       promise: api('quiz', {
         action: 'updateQBQuestion', tier: tier, unit: unit, section: item.section, questionOrder: item.questionOrder,
-        question: qEl.value, answer: aEl.value, isWordBank: wbEl ? wbEl.checked : false
+        question: qEl.value, answer: aEl.value, isWordBank: sectionWbEl ? sectionWbEl.checked : false
       }, { silent: true })
     });
   });
