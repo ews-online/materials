@@ -60,12 +60,12 @@
     background: var(--accent); color: #fff; border: none; border-radius: 9px;
     font-size: 13px; font-weight: 600; cursor: pointer;
   }
-  .btn:hover { background: #1f4690; }
+  .btn:hover:not(:disabled) { background: #1f4690; }
   .btn:disabled { background: var(--paper-3); color: var(--ink-mute); cursor: default; }
   .btn-ghost { background: none; border: 1.5px solid var(--paper-3); color: var(--ink-soft); }
-  .btn-ghost:hover { border-color: var(--ink-soft); color: var(--ink); background: none; }
+  .btn-ghost:hover:not(:disabled) { border-color: var(--ink-soft); color: var(--ink); background: none; }
   .btn-danger { background: var(--red); }
-  .btn-danger:hover { background: #8a2020; }
+  .btn-danger:hover:not(:disabled) { background: #8a2020; }
   .btn-sm { height: 34px; padding: 0 12px; font-size: 12px; }
   .msg { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-top: 12px; display: none; }
   .msg.error { background: var(--red-lt); color: var(--red); display: block; }
@@ -3565,6 +3565,10 @@ let testControlCache = null;
 let testControlRosterCache = null;
 let testControlPollInterval = null;
 const TEST_CONTROL_POLL_MS = 4000;
+// Counts in-flight writes (marking absent, start/stop/reset quiz, etc.).
+// While it's above zero, refreshTestControl() refuses to apply what it
+// fetches — see the comment on refreshTestControl for why this exists.
+let testControlMutating = 0;
 
 async function loadTestControl() {
   const grid = document.getElementById('test-roster-grid');
@@ -3595,6 +3599,18 @@ function stopTestControlPolling() {
 }
 async function refreshTestControl() {
   if (!currentClassId) return;
+  // A poll tick can still be sitting in Google Apps Script (a few seconds
+  // is normal) when a checkbox click or a Start/Stop/Reset button starts
+  // its own write. If that write finishes first and updates the screen,
+  // this older poll landing afterwards would stomp it right back to the
+  // pre-write state — which is what made an absence checkbox appear to
+  // revert, or take several seconds to "stick" once the next poll finally
+  // caught up. testControlMutating tracks any such write in flight: skip
+  // starting a fetch while one is running, and — since a fetch already in
+  // flight when a write starts can't be cancelled — check again once it
+  // resolves and drop the result if a write has since begun, rather than
+  // let stale data overwrite what the write just set.
+  if (testControlMutating > 0) return;
   try {
     // silent: true — this is a background poll, not a user-initiated
     // action, so it must not flash the full-screen loading overlay every
@@ -3603,6 +3619,7 @@ async function refreshTestControl() {
       api('quiz', { action: 'getTestControl', classId: currentClassId }, { silent: true }),
       api('forum', { action: 'getRoster', classId: currentClassId }, { silent: true })
     ]);
+    if (testControlMutating > 0) return;
     if (!ctrl.ok) return;
     testControlCache = ctrl;
     testControlRosterCache = rosterResult.roster || [];
@@ -3654,14 +3671,13 @@ function renderTestControl() {
 }
 
 async function toggleAbsent(studentNumber, absent) {
-  // Optimistic + silent, with polling paused for the round trip: marking
-  // several students absent is a quick burst of clicks, so this updates the
-  // checkbox immediately instead of waiting on the network, never shows the
-  // full-screen spinner, and pauses the 4-second background poll so a poll
-  // tick can't land mid-write and read stale data back over this change
-  // (which is what was reverting the checkbox after a click). Rolls back
-  // and alerts if the server call actually fails.
-  stopTestControlPolling();
+  // Optimistic + silent: marking several students absent is a quick burst
+  // of clicks, so this updates the checkbox immediately instead of waiting
+  // on the network, and never shows the full-screen spinner. testControlMutating
+  // (see refreshTestControl) keeps the background poll from overwriting this
+  // with stale data while the write is still in flight. Rolls back and
+  // alerts only if the server call actually fails.
+  testControlMutating++;
   const prevAbsent = new Set(testControlCache.absentStudentNumbers || []);
   const nextAbsent = new Set(prevAbsent);
   if (absent) nextAbsent.add(studentNumber); else nextAbsent.delete(studentNumber);
@@ -3679,35 +3695,47 @@ async function toggleAbsent(studentNumber, absent) {
     renderTestControl();
     alert("Couldn't update.");
   } finally {
-    startTestControlPolling();
+    testControlMutating--;
   }
 }
 async function doStartQuiz() {
   if (!confirm('Start the quiz? Students will be able to begin.')) return;
-  const result = await api('quiz', { action: 'startQuiz', classId: currentClassId });
-  if (!result.ok) { alert(result.error || "Couldn't start."); return; }
-  showToast('✓ Quiz started.');
+  testControlMutating++;
+  try {
+    const result = await api('quiz', { action: 'startQuiz', classId: currentClassId });
+    if (!result.ok) { alert(result.error || "Couldn't start."); return; }
+    showToast('✓ Quiz started.');
+  } finally { testControlMutating--; }
   loadTestControl();
 }
 async function doStopQuiz() {
   if (!confirm('Force end the quiz? All waiting (non-absent) students will see their results immediately.')) return;
-  const result = await api('quiz', { action: 'stopQuiz', classId: currentClassId });
-  if (!result.ok) { alert(result.error || "Couldn't stop."); return; }
-  showToast('✓ Quiz ended.');
+  testControlMutating++;
+  try {
+    const result = await api('quiz', { action: 'stopQuiz', classId: currentClassId });
+    if (!result.ok) { alert(result.error || "Couldn't stop."); return; }
+    showToast('✓ Quiz ended.');
+  } finally { testControlMutating--; }
   loadTestControl();
 }
 async function doResetTestControl() {
   if (!confirm('Reset Test Control? This clears all login/submission tracking for a new week.')) return;
-  const result = await api('quiz', { action: 'resetTestControl', classId: currentClassId });
-  if (!result.ok) { alert(result.error || "Couldn't reset."); return; }
-  showToast('✓ Test Control reset.');
+  testControlMutating++;
+  try {
+    const result = await api('quiz', { action: 'resetTestControl', classId: currentClassId });
+    if (!result.ok) { alert(result.error || "Couldn't reset."); return; }
+    showToast('✓ Test Control reset.');
+  } finally { testControlMutating--; }
   loadTestControl();
 }
 async function doClearSubmitted() {
   if (!confirm('Clear submitted results? This allows ALL students to retake the quiz. Only do this before starting a new week.')) return;
-  const result = await api('quiz', { action: 'clearSubmitted', classId: currentClassId });
-  if (!result.ok) { alert(result.error || "Couldn't clear."); return; }
-  showToast('✓ Submitted results cleared.');
+  testControlMutating++;
+  try {
+    const result = await api('quiz', { action: 'clearSubmitted', classId: currentClassId });
+    if (!result.ok) { alert(result.error || "Couldn't clear."); return; }
+    showToast('✓ Submitted results cleared.');
+  } finally { testControlMutating--; }
   loadTestControl();
 }
 
