@@ -3837,33 +3837,57 @@ function downloadGradingSheetPdf() {
 }
 
 /* ====================== FLAGS TAB ====================== */
+let quizFlagsCache = null;
 async function loadFlags() {
   const week = document.getElementById('quiz-flags-week').value;
   const tableEl = document.getElementById('flags-table');
   tableEl.innerHTML = '<div class="empty-note">Loading…</div>';
   const result = await api('quiz', { action: 'getFlags', classId: currentClassId, week: week });
   if (!result.ok) { tableEl.innerHTML = '<div class="empty-note">' + esc(result.error) + '</div>'; return; }
-  const flags = result.flags || [];
-  tableEl.innerHTML = flags.length ? (
-    '<table class="data-table"><thead><tr><th>Student</th><th>Unit</th><th>Question</th><th>Their answer</th><th>Correct answer</th><th>Reason</th><th>Status</th><th>Corrected score</th><th></th></tr></thead><tbody>' +
-    flags.map(function(f) {
-      return '<tr><td>' + esc(f.studentName) + '</td><td>' + esc(f.unit) + '</td><td style="max-width:200px">' + esc(f.question) + '</td>' +
+  quizFlagsCache = result.flags || [];
+  tableEl.innerHTML = quizFlagsCache.length ? (
+    '<table class="data-table"><thead><tr><th>Student</th><th>Question</th><th>Their answer</th><th>Correct answer</th><th>Reason</th><th>Status</th><th>Corrected score</th><th></th></tr></thead><tbody>' +
+    quizFlagsCache.map(function(f) {
+      return '<tr class="flag-row" data-flag-key="' + esc(f.studentNumber) + '|' + esc(f.qNum) + '"><td>' + esc(f.studentName) + '</td>' +
+        '<td style="max-width:220px">' +
+          '<div style="font-size:10px;font-weight:700;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:2px">' + esc(f.unit) + '</div>' +
+          '<div>' + esc(f.question) + '</div>' +
+          (f.instruction ? '<div style="font-size:11px;color:var(--ink-mute);font-style:italic;margin-top:3px">' + esc(f.instruction) + '</div>' : '') +
+        '</td>' +
         '<td>' + esc(f.studentAnswer) + '</td><td>' + esc(f.correctAnswer) + '</td><td style="max-width:150px">' + esc(f.flagReason) + '</td>' +
-        '<td><span class="chip ' + (f.status === 'Approved' ? 'chip-green' : f.status === 'Rejected' ? 'chip-red' : 'chip-gold') + '">' + esc(f.status) + '</span></td>' +
+        '<td class="flag-status-cell"><span class="chip ' + (f.status === 'Approved' ? 'chip-green' : f.status === 'Rejected' ? 'chip-red' : 'chip-gold') + '">' + esc(f.status) + '</span></td>' +
         '<td><input class="text-input" style="width:60px" type="number" step="0.5" id="fl-score-' + f.studentNumber + '-' + f.qNum + '" value="' + esc(f.correctedScore) + '"></td>' +
         '<td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="doUpdateFlag(\'' + f.studentNumber + '\',' + f.qNum + ',\'Approved\')">Approve</button> ' +
         '<button class="btn btn-ghost btn-sm" onclick="doUpdateFlag(\'' + f.studentNumber + '\',' + f.qNum + ',\'Rejected\')">Reject</button></td></tr>';
     }).join('') + '</tbody></table>'
   ) : '<div class="empty-note">No flagged questions this week.</div>';
 }
+function flagChipHtml(status) {
+  return '<span class="chip ' + (status === 'Approved' ? 'chip-green' : status === 'Rejected' ? 'chip-red' : 'chip-gold') + '">' + esc(status) + '</span>';
+}
 async function doUpdateFlag(studentNumber, qNum, status) {
   const scoreInput = document.getElementById('fl-score-' + studentNumber + '-' + qNum);
   const correctedScore = scoreInput ? scoreInput.value : '';
   const week = document.getElementById('quiz-flags-week').value;
-  const result = await api('quiz', { action: 'updateFlag', classId: currentClassId, week: week, studentNumber: studentNumber, qNum: qNum, status: status, correctedScore: correctedScore });
-  if (!result.ok) { alert(result.error || "Couldn't update."); return; }
-  showToast('✓ Flag updated.');
-  loadFlags();
+  // Optimistic + silent + scoped to this one row's status chip: reviewing
+  // flags is usually several in a row, so Approve/Reject can't wait on the
+  // network or flash the full-screen spinner each time — same pattern as
+  // Test Control's checkboxes and the Grades tab's homework checkboxes.
+  const row = (quizFlagsCache || []).find(function(r) { return String(r.studentNumber) === String(studentNumber) && String(r.qNum) === String(qNum); });
+  const prevStatus = row ? row.status : null;
+  const tr = document.querySelector('.flag-row[data-flag-key="' + CSS.escape(String(studentNumber)) + '|' + CSS.escape(String(qNum)) + '"]');
+  const statusCell = tr ? tr.querySelector('.flag-status-cell') : null;
+  if (row) row.status = status;
+  if (statusCell) statusCell.innerHTML = flagChipHtml(status);
+  try {
+    const result = await api('quiz', { action: 'updateFlag', classId: currentClassId, week: week, studentNumber: studentNumber, qNum: qNum, status: status, correctedScore: correctedScore }, { silent: true });
+    if (!result.ok) throw new Error(result.error || "Couldn't update.");
+    showToast('✓ Flag updated.');
+  } catch (e) {
+    if (row) row.status = prevStatus;
+    if (statusCell && prevStatus) statusCell.innerHTML = flagChipHtml(prevStatus);
+    alert(e.message || "Couldn't update.");
+  }
 }
 
 /* ====================== GRADES TAB ====================== */
@@ -4023,7 +4047,7 @@ async function loadQBUnit() {
   if (!unit) { alert('Enter a unit number.'); return; }
   const editorEl = document.getElementById('qb-editor');
   editorEl.innerHTML = '<div class="card empty-note">Loading…</div>';
-  const result = await api('quiz', { action: 'getQBUnit', tier: tier, unit: unit });
+  const result = await api('quiz', { action: 'getQBUnit', tier: tier, unit: unit }, { silent: true });
   if (!result.ok) { editorEl.innerHTML = '<div class="card empty-note">' + esc(result.error) + '</div>'; return; }
 
   const sections = {};
@@ -4063,12 +4087,12 @@ async function loadQBUnit() {
   editorEl.innerHTML = html;
 }
 async function saveQBTitle() {
-  const result = await api('quiz', { action: 'updateQBTitle', tier: document.getElementById('qb-tier').value, unit: document.getElementById('qb-unit').value, title: document.getElementById('qb-title-input').value });
+  const result = await api('quiz', { action: 'updateQBTitle', tier: document.getElementById('qb-tier').value, unit: document.getElementById('qb-unit').value, title: document.getElementById('qb-title-input').value }, { silent: true });
   if (!result.ok) { alert(result.error); return; }
   showToast('✓ Title saved.');
 }
 async function saveQBInstruction(section) {
-  const result = await api('quiz', { action: 'updateQBInstruction', tier: document.getElementById('qb-tier').value, unit: document.getElementById('qb-unit').value, section: section, instruction: document.getElementById('qb-ins-' + section.replace('.', '_')).value });
+  const result = await api('quiz', { action: 'updateQBInstruction', tier: document.getElementById('qb-tier').value, unit: document.getElementById('qb-unit').value, section: section, instruction: document.getElementById('qb-ins-' + section.replace('.', '_')).value }, { silent: true });
   if (!result.ok) { alert(result.error); return; }
   showToast('✓ Instruction saved.');
 }
@@ -4078,19 +4102,19 @@ async function saveQBQuestion(section, questionOrder) {
     action: 'updateQBQuestion', tier: document.getElementById('qb-tier').value, unit: document.getElementById('qb-unit').value, section: section, questionOrder: questionOrder,
     question: document.getElementById('qb-q-' + key).value, answer: document.getElementById('qb-a-' + key).value,
     isWordBank: document.getElementById('qb-wb-' + key).checked
-  });
+  }, { silent: true });
   if (!result.ok) { alert(result.error); return; }
   showToast('✓ Saved.');
 }
 async function addQBQuestion(section) {
   if (!section) { alert('Enter a section, e.g. ' + document.getElementById('qb-unit').value + '.1'); return; }
-  const result = await api('quiz', { action: 'addQBQuestion', tier: document.getElementById('qb-tier').value, unit: document.getElementById('qb-unit').value, section: section, question: '', answer: '' });
+  const result = await api('quiz', { action: 'addQBQuestion', tier: document.getElementById('qb-tier').value, unit: document.getElementById('qb-unit').value, section: section, question: '', answer: '' }, { silent: true });
   if (!result.ok) { alert(result.error); return; }
   loadQBUnit();
 }
 async function deleteQBQuestion(section, questionOrder) {
   if (!confirm('Delete this question permanently?')) return;
-  const result = await api('quiz', { action: 'deleteQBQuestion', tier: document.getElementById('qb-tier').value, unit: document.getElementById('qb-unit').value, section: section, questionOrder: questionOrder });
+  const result = await api('quiz', { action: 'deleteQBQuestion', tier: document.getElementById('qb-tier').value, unit: document.getElementById('qb-unit').value, section: section, questionOrder: questionOrder }, { silent: true });
   if (!result.ok) { alert(result.error); return; }
   loadQBUnit();
 }
