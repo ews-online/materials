@@ -3663,36 +3663,62 @@ function renderTestControl() {
     else if (status.submitted) chip = '<span class="chip chip-green">Submitted</span>';
     else if (status.loggedIn) chip = '<span class="chip" style="background:#e0eefc;color:#1a5a9a">Logged in</span>';
     else chip = '<span class="chip">Waiting</span>';
-    return '<div class="card" style="padding:10px 14px;display:flex;align-items:center;gap:10px;' + (absent ? 'opacity:0.5' : '') + '">' +
+    return '<div class="card test-roster-row" data-student="' + esc(s.StudentNumber) + '" style="padding:10px 14px;display:flex;align-items:center;gap:10px;' + (absent ? 'opacity:0.5' : '') + '">' +
       '<label style="cursor:pointer"><input type="checkbox" ' + (absent ? 'checked' : '') + ' title="Mark absent" onchange="toggleAbsent(\'' + s.StudentNumber + '\',this.checked)"></label>' +
       '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + esc(s.NameEng) + '</div>' +
       '<div style="font-size:11px;color:var(--ink-mute);font-family:monospace">' + esc(s.StudentNumber) + '</div></div>' + chip + '</div>';
   }).join('') : '<div class="empty-note">No students.</div>';
 }
 
+// Updates one student's row in place — checkbox, dimming, and status chip —
+// without touching any other row. Used instead of a full renderTestControl()
+// rebuild so a single checkbox click can never depend on (or be slowed or
+// broken by) anything involving the other 20-40 rows in the grid.
+function applyAbsentToRow(studentNumber, absent) {
+  const row = document.querySelector('.test-roster-row[data-student="' + CSS.escape(studentNumber) + '"]');
+  if (!row) { renderTestControl(); return; }
+  row.style.opacity = absent ? '0.5' : '';
+  const checkbox = row.querySelector('input[type="checkbox"]');
+  if (checkbox) checkbox.checked = absent;
+  const chipEl = row.querySelector('.chip');
+  if (chipEl) {
+    let chip;
+    if (absent) chip = '<span class="chip chip-red">Absent</span>';
+    else {
+      const status = (testControlCache.studentStatus || {})[studentNumber] || {};
+      if (status.submitted) chip = '<span class="chip chip-green">Submitted</span>';
+      else if (status.loggedIn) chip = '<span class="chip" style="background:#e0eefc;color:#1a5a9a">Logged in</span>';
+      else chip = '<span class="chip">Waiting</span>';
+    }
+    chipEl.outerHTML = chip;
+  }
+}
+
 async function toggleAbsent(studentNumber, absent) {
-  // Optimistic + silent: marking several students absent is a quick burst
-  // of clicks, so this updates the checkbox immediately instead of waiting
-  // on the network, and never shows the full-screen spinner. testControlMutating
-  // (see refreshTestControl) keeps the background poll from overwriting this
-  // with stale data while the write is still in flight. Rolls back and
+  // Optimistic + silent, and scoped to this one row (applyAbsentToRow, not
+  // renderTestControl): marking several students absent is a quick burst of
+  // clicks, so this updates the checkbox the instant it's clicked instead of
+  // waiting on the network, never shows the full-screen spinner, and never
+  // waits on or risks being derailed by a full-grid rebuild. testControlMutating
+  // (see refreshTestControl) also keeps the background poll from overwriting
+  // this with stale data while the write is still in flight. Rolls back and
   // alerts only if the server call actually fails.
   testControlMutating++;
   const prevAbsent = new Set(testControlCache.absentStudentNumbers || []);
   const nextAbsent = new Set(prevAbsent);
   if (absent) nextAbsent.add(studentNumber); else nextAbsent.delete(studentNumber);
   testControlCache.absentStudentNumbers = Array.from(nextAbsent);
-  renderTestControl();
+  applyAbsentToRow(studentNumber, absent);
   try {
     const result = await api('quiz', { action: 'setAbsent', classId: currentClassId, studentNumber: studentNumber, absent: absent }, { silent: true });
     if (!result.ok) {
       testControlCache.absentStudentNumbers = Array.from(prevAbsent);
-      renderTestControl();
+      applyAbsentToRow(studentNumber, !absent);
       alert(result.error || "Couldn't update.");
     }
   } catch (e) {
     testControlCache.absentStudentNumbers = Array.from(prevAbsent);
-    renderTestControl();
+    applyAbsentToRow(studentNumber, !absent);
     alert("Couldn't update.");
   } finally {
     testControlMutating--;
