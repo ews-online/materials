@@ -3921,7 +3921,7 @@ function recomputeGradeRowTotal(row) {
 // Repaints one student's row from quizGradesCache — checkboxes and Total —
 // without touching any other row.
 function applyGradeRowToDom(row) {
-  const tr = document.querySelector('.grades-row[data-student="' + CSS.escape(row.studentNumber) + '"]');
+  const tr = document.querySelector('.grades-row[data-student="' + CSS.escape(String(row.studentNumber)) + '"]');
   if (!tr) { loadGrades(); return; }
   const pq = tr.querySelector('.pq-checkbox'); if (pq) pq.checked = !!row.practiceQ;
   const fc = tr.querySelector('.fc-checkbox'); if (fc) fc.checked = !!row.flashcard;
@@ -3935,7 +3935,13 @@ function applyGradeRowToDom(row) {
 // reason: this needs to feel instant when checking a whole row of students.
 async function saveHomeworkFields(studentNumber, fields) {
   const week = document.getElementById('quiz-grades-week').value;
-  const row = (quizGradesCache || []).find(function(r) { return r.studentNumber === studentNumber; });
+  // String(): the checkbox's onchange hands this in as a string (built into
+  // an HTML attribute), but the sheet likely stores student numbers as
+  // actual numbers, so quizGradesCache holds them typed that way — a strict
+  // === here silently failed to find the row, which is why the checkbox
+  // itself still flipped (that's just native browser behavior) but nothing
+  // ever recomputed Total until the next full reload from the server.
+  const row = (quizGradesCache || []).find(function(r) { return String(r.studentNumber) === String(studentNumber); });
   const prev = {};
   if (row) {
     Object.keys(fields).forEach(function(k) { prev[k] = row[k]; row[k] = fields[k]; });
