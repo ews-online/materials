@@ -51,6 +51,7 @@
     background: var(--paper); outline: none;
   }
   .text-input:focus, textarea:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-lt); }
+  .text-input:disabled { background: var(--paper-2); color: var(--ink-mute); cursor: not-allowed; }
   textarea { min-height: 90px; resize: vertical; font-family: 'DM Sans', monospace; font-size: 13px; }
   /* Auto-growing single-field textareas (rubric tier descriptions etc.) —
      starts at input height, grows to fit content via JS, no scrollbar. */
@@ -177,6 +178,15 @@
     z-index: 10000; max-width: 90vw; text-align: center;
   }
   .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* Question Bank tab: one frozen save-all bar instead of a save button per field */
+  .qb-save-bar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 500;
+    background: var(--paper); border-top: 1.5px solid var(--rule);
+    padding: 12px 24px; box-shadow: 0 -4px 16px rgba(0,0,0,0.10);
+    display: flex; justify-content: flex-end; align-items: center; gap: 14px;
+  }
+  .qb-save-bar-status { font-size: 12px; color: var(--ink-mute); margin-right: auto; }
 
   /* Grading layout */
   .grading-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
@@ -627,6 +637,10 @@
         </div>
       </div>
       <div id="qb-editor"><div class="empty-note">Choose a tier and unit, then Load.</div></div>
+      <div class="qb-save-bar" id="qb-save-bar" style="display:none">
+        <span class="qb-save-bar-status" id="qb-save-bar-status"></span>
+        <button class="btn" id="qb-save-all-btn" onclick="saveAllQBChanges()">💾 Save All Changes</button>
+      </div>
     </div>
   </div>
 
@@ -3873,7 +3887,10 @@ async function loadFlags() {
         '</td>' +
         '<td>' + esc(f.studentAnswer) + '</td><td>' + esc(f.correctAnswer) + '</td><td style="max-width:150px">' + esc(f.flagReason) + '</td>' +
         '<td class="flag-status-cell"><span class="chip ' + (f.status === 'Approved' ? 'chip-green' : f.status === 'Rejected' ? 'chip-red' : 'chip-gold') + '">' + esc(f.status) + '</span></td>' +
-        '<td><input class="text-input" style="width:60px" type="number" step="0.5" id="fl-score-' + f.studentNumber + '-' + f.qNum + '" value="' + esc(f.correctedScore) + '"></td>' +
+        // A rejected flag means the auto-score stands, so a corrected-score
+        // override is meaningless — lock the field at 0 rather than let it
+        // keep showing a leftover value typed in before Reject was clicked.
+        '<td><input class="text-input" style="width:60px" type="number" step="0.5" id="fl-score-' + f.studentNumber + '-' + f.qNum + '" value="' + esc(f.status === 'Rejected' ? 0 : f.correctedScore) + '"' + (f.status === 'Rejected' ? ' disabled' : '') + '></td>' +
         '<td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="doUpdateFlag(\'' + f.studentNumber + '\',' + f.qNum + ',\'Approved\')">Approve</button> ' +
         '<button class="btn btn-ghost btn-sm" onclick="doUpdateFlag(\'' + f.studentNumber + '\',' + f.qNum + ',\'Rejected\')">Reject</button></td></tr>';
     }).join('') + '</tbody></table>'
@@ -3884,7 +3901,6 @@ function flagChipHtml(status) {
 }
 async function doUpdateFlag(studentNumber, qNum, status) {
   const scoreInput = document.getElementById('fl-score-' + studentNumber + '-' + qNum);
-  const correctedScore = scoreInput ? scoreInput.value : '';
   const week = document.getElementById('quiz-flags-week').value;
   // Optimistic + silent + scoped to this one row's status chip: reviewing
   // flags is usually several in a row, so Approve/Reject can't wait on the
@@ -3892,17 +3908,28 @@ async function doUpdateFlag(studentNumber, qNum, status) {
   // Test Control's checkboxes and the Grades tab's homework checkboxes.
   const row = (quizFlagsCache || []).find(function(r) { return String(r.studentNumber) === String(studentNumber) && String(r.qNum) === String(qNum); });
   const prevStatus = row ? row.status : null;
+  const prevScore = scoreInput ? scoreInput.value : '';
+  const prevDisabled = scoreInput ? scoreInput.disabled : false;
   const tr = document.querySelector('.flag-row[data-flag-key="' + CSS.escape(String(studentNumber)) + '|' + CSS.escape(String(qNum)) + '"]');
   const statusCell = tr ? tr.querySelector('.flag-status-cell') : null;
-  if (row) row.status = status;
+  // Rejecting always forces the corrected score to 0 and locks the field —
+  // there's no override to enter once the flag itself is rejected. Any other
+  // status (Approved, or back to Pending) unlocks it again at its current value.
+  const correctedScore = status === 'Rejected' ? '0' : prevScore;
+  if (row) { row.status = status; row.correctedScore = correctedScore; }
   if (statusCell) statusCell.innerHTML = flagChipHtml(status);
+  if (scoreInput) {
+    scoreInput.disabled = status === 'Rejected';
+    if (status === 'Rejected') scoreInput.value = '0';
+  }
   try {
     const result = await api('quiz', { action: 'updateFlag', classId: currentClassId, week: week, studentNumber: studentNumber, qNum: qNum, status: status, correctedScore: correctedScore }, { silent: true });
     if (!result.ok) throw new Error(result.error || "Couldn't update.");
     showToast('✓ Flag updated.');
   } catch (e) {
-    if (row) row.status = prevStatus;
+    if (row) { row.status = prevStatus; row.correctedScore = prevScore; }
     if (statusCell && prevStatus) statusCell.innerHTML = flagChipHtml(prevStatus);
+    if (scoreInput) { scoreInput.disabled = prevDisabled; scoreInput.value = prevScore; }
     alert(e.message || "Couldn't update.");
   }
 }
@@ -4058,79 +4085,149 @@ function downloadQuizMoodleCsv() {
 }
 
 /* ====================== QUESTION BANK EDITOR TAB ====================== */
+// Per-field save buttons were replaced with one frozen "Save All Changes" bar
+// (below) — editing several questions used to mean clicking Save on each one
+// individually. qbCurrentSections/qbCurrentQuestionKeys track what's on screen
+// right now so the batch save knows every field to collect and send.
+let qbCurrentSections = [];
+let qbCurrentQuestionKeys = [];
+let qbDirty = false;
+
 async function loadQBUnit() {
   const tier = document.getElementById('qb-tier').value;
   const unit = document.getElementById('qb-unit').value;
   if (!unit) { alert('Enter a unit number.'); return; }
   const editorEl = document.getElementById('qb-editor');
   editorEl.innerHTML = '<div class="card empty-note">Loading…</div>';
+  hideQBSaveBar();
   const result = await api('quiz', { action: 'getQBUnit', tier: tier, unit: unit }, { silent: true });
   if (!result.ok) { editorEl.innerHTML = '<div class="card empty-note">' + esc(result.error) + '</div>'; return; }
 
   const sections = {};
   (result.questions || []).forEach(function(q) { (sections[q.section] = sections[q.section] || []).push(q); });
   const sectionKeys = Object.keys(sections).sort();
+  qbCurrentSections = sectionKeys;
+  qbCurrentQuestionKeys = [];
 
   let html = '<div class="card"><label class="field-label">Unit title</label>' +
-    '<div style="display:flex;gap:8px"><input class="text-input" id="qb-title-input" value="' + esc(result.title) + '">' +
-    '<button class="btn btn-ghost btn-sm" onclick="saveQBTitle()">Save</button></div>' +
+    '<input class="text-input" id="qb-title-input" value="' + esc(result.title) + '">' +
     (result.hasContent ? '' : '<div class="total-pts-note" style="margin-top:8px">No questions written for this unit yet.</div>') + '</div>';
 
   sectionKeys.forEach(function(section) {
     const qs = sections[section].sort(function(a, b) { return a.questionOrder - b.questionOrder; });
     html += '<div class="card"><h3>Section ' + esc(section) + '</h3>' +
       '<label class="field-label">Instruction (Japanese)</label>' +
-      '<div style="display:flex;gap:8px;margin-bottom:12px"><input class="text-input" id="qb-ins-' + section.replace('.', '_') + '" value="' + esc(result.instructions[section] || '') + '">' +
-      '<button class="btn btn-ghost btn-sm" onclick="saveQBInstruction(\'' + section + '\')">Save</button></div>' +
+      '<input class="text-input" id="qb-ins-' + section.replace('.', '_') + '" value="' + esc(result.instructions[section] || '') + '" style="margin-bottom:12px">' +
       qs.map(function(q) {
         const key = section + '_' + q.questionOrder;
+        qbCurrentQuestionKeys.push({ section: section, questionOrder: q.questionOrder, key: key });
         return '<div class="editor-tier-row" style="grid-template-columns:2fr 2fr auto auto auto;">' +
           '<input class="text-input" id="qb-q-' + key + '" value="' + esc(q.question) + '" placeholder="Question">' +
           '<input class="text-input" id="qb-a-' + key + '" value="' + esc(q.answer) + '" placeholder="Answer">' +
           '<label style="font-size:11px;white-space:nowrap"><input type="checkbox" id="qb-wb-' + key + '" ' + (q.isWordBank ? 'checked' : '') + '> Word bank</label>' +
           (q.isExample ? '<span class="chip chip-gold">Example</span>' : '<span></span>') +
-          '<div style="display:flex;gap:4px"><button class="icon-btn" onclick="saveQBQuestion(\'' + section + '\',' + q.questionOrder + ')">💾</button>' +
-          '<button class="icon-btn" onclick="deleteQBQuestion(\'' + section + '\',' + q.questionOrder + ')">✕</button></div></div>';
+          '<div style="display:flex;gap:4px"><button class="icon-btn" onclick="deleteQBQuestion(\'' + section + '\',' + q.questionOrder + ')">✕</button></div></div>';
       }).join('') +
       '<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="addQBQuestion(\'' + section + '\')">+ Add question to ' + esc(section) + '</button></div>';
   });
 
   if (!sectionKeys.length) {
-    html += '<div class="card"><p style="font-size:12px;color:var(--ink-mute);margin-bottom:10px">No sections exist yet for this unit \u2014 add the first question to section ' + esc(unit) + '.1 to start one.</p>' +
+    html += '<div class="card"><p style="font-size:12px;color:var(--ink-mute);margin-bottom:10px">No sections exist yet for this unit — add the first question to section ' + esc(unit) + '.1 to start one.</p>' +
       '<div style="display:flex;gap:8px"><input class="text-input" id="qb-new-section" placeholder="' + esc(unit) + '.1" style="width:100px">' +
       '<button class="btn btn-ghost btn-sm" onclick="addQBQuestion(document.getElementById(\'qb-new-section\').value)">+ Add first question</button></div></div>';
   }
 
   editorEl.innerHTML = html;
+  qbDirty = false;
+  // One delegated listener on the container catches typing in any field,
+  // present now or added by a later loadQBUnit() rebuild — no per-field
+  // listeners to wire up or clean up.
+  if (!editorEl.dataset.dirtyBound) {
+    editorEl.addEventListener('input', function() { qbDirty = true; updateQBSaveBarStatus(); });
+    editorEl.dataset.dirtyBound = '1';
+  }
+  showQBSaveBar();
 }
-async function saveQBTitle() {
-  const result = await api('quiz', { action: 'updateQBTitle', tier: document.getElementById('qb-tier').value, unit: document.getElementById('qb-unit').value, title: document.getElementById('qb-title-input').value }, { silent: true });
-  if (!result.ok) { alert(result.error); return; }
-  showToast('✓ Title saved.');
+
+function showQBSaveBar() {
+  document.getElementById('qb-save-bar').style.display = 'flex';
+  updateQBSaveBarStatus();
 }
-async function saveQBInstruction(section) {
-  const result = await api('quiz', { action: 'updateQBInstruction', tier: document.getElementById('qb-tier').value, unit: document.getElementById('qb-unit').value, section: section, instruction: document.getElementById('qb-ins-' + section.replace('.', '_')).value }, { silent: true });
-  if (!result.ok) { alert(result.error); return; }
-  showToast('✓ Instruction saved.');
+function hideQBSaveBar() {
+  document.getElementById('qb-save-bar').style.display = 'none';
 }
-async function saveQBQuestion(section, questionOrder) {
-  const key = section + '_' + questionOrder;
-  const result = await api('quiz', {
-    action: 'updateQBQuestion', tier: document.getElementById('qb-tier').value, unit: document.getElementById('qb-unit').value, section: section, questionOrder: questionOrder,
-    question: document.getElementById('qb-q-' + key).value, answer: document.getElementById('qb-a-' + key).value,
-    isWordBank: document.getElementById('qb-wb-' + key).checked
-  }, { silent: true });
-  if (!result.ok) { alert(result.error); return; }
-  showToast('✓ Saved.');
+function updateQBSaveBarStatus() {
+  const el = document.getElementById('qb-save-bar-status');
+  if (el) el.textContent = qbDirty ? 'Unsaved changes' : '';
 }
+
+// Collects the title, every section's instruction, and every question's
+// fields currently on screen, and saves them all in one click. The backend
+// has no single batch endpoint, so this fires the same per-field calls the
+// old Save buttons used, just all at once instead of one click each.
+async function saveAllQBChanges() {
+  const tier = document.getElementById('qb-tier').value;
+  const unit = document.getElementById('qb-unit').value;
+  const btn = document.getElementById('qb-save-all-btn');
+  const titleInput = document.getElementById('qb-title-input');
+  const origLabel = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  const calls = [];
+  if (titleInput) {
+    calls.push({ label: 'Unit title', promise: api('quiz', { action: 'updateQBTitle', tier: tier, unit: unit, title: titleInput.value }, { silent: true }) });
+  }
+  qbCurrentSections.forEach(function(section) {
+    const insEl = document.getElementById('qb-ins-' + section.replace('.', '_'));
+    if (insEl) calls.push({ label: 'Instruction ' + section, promise: api('quiz', { action: 'updateQBInstruction', tier: tier, unit: unit, section: section, instruction: insEl.value }, { silent: true }) });
+  });
+  qbCurrentQuestionKeys.forEach(function(item) {
+    const qEl = document.getElementById('qb-q-' + item.key);
+    const aEl = document.getElementById('qb-a-' + item.key);
+    const wbEl = document.getElementById('qb-wb-' + item.key);
+    if (!qEl || !aEl) return;
+    calls.push({
+      label: 'Question ' + item.section + ' #' + item.questionOrder,
+      promise: api('quiz', {
+        action: 'updateQBQuestion', tier: tier, unit: unit, section: item.section, questionOrder: item.questionOrder,
+        question: qEl.value, answer: aEl.value, isWordBank: wbEl ? wbEl.checked : false
+      }, { silent: true })
+    });
+  });
+
+  const results = await Promise.all(calls.map(function(c) {
+    return c.promise.then(function(r) { return { label: c.label, result: r }; })
+      .catch(function(e) { return { label: c.label, result: { ok: false, error: (e && e.message) || 'Network error' } }; });
+  }));
+  const failed = results.filter(function(r) { return !r.result.ok; });
+
+  btn.disabled = false;
+  btn.textContent = origLabel;
+  if (failed.length) {
+    qbDirty = true; // keep the "unsaved changes" flag up so a retry is obvious
+    updateQBSaveBarStatus();
+    alert("Couldn't save: " + failed.map(function(f) { return f.label; }).join(', ') + '. Everything else saved — fix and try again.');
+  } else {
+    qbDirty = false;
+    updateQBSaveBarStatus();
+    showToast('✓ Saved ' + calls.length + ' change' + (calls.length === 1 ? '' : 's') + '.');
+  }
+}
+
+// Adding or deleting a question reloads the whole section list from the
+// server, which would silently wipe any edits typed into other fields that
+// haven't been saved yet — warn first so nothing gets lost.
 async function addQBQuestion(section) {
   if (!section) { alert('Enter a section, e.g. ' + document.getElementById('qb-unit').value + '.1'); return; }
+  if (qbDirty && !confirm('You have unsaved edits on this screen — adding a question reloads the list and would lose them.\n\nClick Cancel to go back and save first, or OK to continue and lose the unsaved edits.')) return;
   const result = await api('quiz', { action: 'addQBQuestion', tier: document.getElementById('qb-tier').value, unit: document.getElementById('qb-unit').value, section: section, question: '', answer: '' }, { silent: true });
   if (!result.ok) { alert(result.error); return; }
   loadQBUnit();
 }
 async function deleteQBQuestion(section, questionOrder) {
   if (!confirm('Delete this question permanently?')) return;
+  if (qbDirty && !confirm('You also have unsaved edits on this screen — deleting reloads the list and would lose them.\n\nClick Cancel to go back and save first, or OK to continue and lose the unsaved edits.')) return;
   const result = await api('quiz', { action: 'deleteQBQuestion', tier: document.getElementById('qb-tier').value, unit: document.getElementById('qb-unit').value, section: section, questionOrder: questionOrder }, { silent: true });
   if (!result.ok) { alert(result.error); return; }
   loadQBUnit();
