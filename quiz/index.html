@@ -348,6 +348,31 @@ function startPollForStart() {
   schedule();
 }
 
+// ── POLL FOR FORCE-STOP (runs only while a student is actively on the quiz
+// screen) ────────────────────────────────────────────────────────────────
+// Before this, "Force End" in the teacher's Test Control only updated that
+// teacher's own screen — a student already mid-quiz had no way to find out
+// the test was over and just kept answering. This reuses the same pollStart
+// action (now also returning `stopped`) on the same cadence as the
+// pre-start poll, and treats a stop exactly like the countdown timer
+// hitting zero: auto-submit whatever's been answered so far.
+let quizStopPollTimer = null;
+function startQuizStopPoll() {
+  function schedule() {
+    quizStopPollTimer = setTimeout(async function() {
+      try {
+        const data = await api({ action: 'pollStart', week: studentData.week });
+        if (data.stopped) { quizStopPollTimer = null; timedOut = true; submitQuiz(true); }
+        else schedule();
+      } catch (e) { schedule(); }
+    }, pollDelay());
+  }
+  schedule();
+}
+function stopQuizStopPoll() {
+  if (quizStopPollTimer) { clearTimeout(quizStopPollTimer); quizStopPollTimer = null; }
+}
+
 // ── POLL FOR RESULTS REVEAL (used both after a fresh submit, and when
 // re-visiting after already having submitted earlier) ──────────────────
 // freshSubmit=true: we already have this student's own graded questions in
@@ -412,6 +437,7 @@ function startQuiz() {
   document.getElementById('quiz-student').textContent = currentName;
   renderQuizBody();
   startTimer();
+  startQuizStopPoll();
   show('quiz');
 }
 
@@ -566,7 +592,12 @@ function confirmSubmit() {
 }
 
 let lastSubmitPayload = null;
+let submitStarted = false; // guards against the force-stop poll and a manual/timeout
+                            // submit landing at the same moment and firing twice
 async function submitQuiz(fromTimer) {
+  if (submitStarted) return;
+  submitStarted = true;
+  stopQuizStopPoll();
   clearInterval(timerInterval);
   const submitBtn = document.getElementById('submit-btn');
   if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Submitting…'; }
