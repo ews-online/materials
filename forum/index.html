@@ -40,8 +40,6 @@
   .home-btn{font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:0.86rem;color:#fff;background:var(--stamp-red);border:none;border-radius:10px;padding:9px 16px;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(178,58,46,0.3);}
   .home-btn:hover{opacity:0.92;}
   .home-btn:active{transform:scale(0.97);}
-  .hub-link{font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:0.86rem;color:var(--ink);background:none;border:1px solid var(--border);border-radius:10px;padding:9px 16px;cursor:pointer;display:flex;align-items:center;gap:6px;text-decoration:none;}
-  .hub-link:hover{background:#F7F8F4;}
 
   .dash-intro{font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.07em;margin:6px 4px 14px;}
   .dash-grid{display:flex;flex-direction:column;gap:14px;}
@@ -108,10 +106,8 @@
   .member-row .mstatus.posted{color:var(--postal-blue);}
   .member-row .chev{color:var(--ink-soft);font-size:1.1rem;}
 
-  .rubric-table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);-webkit-overflow-scrolling:touch;scrollbar-width:auto;scrollbar-color:var(--ink-soft) var(--border);}
-  .rubric-table-wrap::-webkit-scrollbar{height:10px;}
-  .rubric-table-wrap::-webkit-scrollbar-track{background:var(--border);border-radius:0 0 var(--radius) var(--radius);}
-  .rubric-table-wrap::-webkit-scrollbar-thumb{background:var(--ink-soft);border-radius:5px;border:2px solid var(--border);}
+  .rubric-table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--card);-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;}
+  .rubric-table-wrap::-webkit-scrollbar{display:none;height:0;}
   table.rubric-table{border-collapse:collapse;width:100%;}
   .rubric-table td{padding:12px 14px;border-bottom:1px solid var(--border);border-right:1px solid var(--border);vertical-align:top;text-align:left;font-size:0.82rem;}
   .rubric-table tr:last-child td{border-bottom:none;}
@@ -141,15 +137,6 @@
   .feedback-card .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--postal-blue);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;}
   .feedback-card .feedback-text{font-size:0.92rem;line-height:1.55;}
   .rubric-scroll-hint{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--ink-soft);text-align:right;margin:6px 4px 0;}
-  .rubric-toggle{font-family:'IBM Plex Sans',sans-serif;font-size:0.86rem;font-weight:600;color:var(--ink);
-    background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
-    margin:18px 0 0;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;
-    cursor:pointer;user-select:none;transition:background 0.15s,border-color 0.15s;}
-  .rubric-toggle:hover{background:#F7F8F4;border-color:var(--ink-soft);}
-  .rubric-toggle .rt-hint{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;font-weight:400;color:var(--ink-soft);text-transform:none;letter-spacing:0;margin-left:8px;}
-  .rubric-toggle .rt-chev{font-size:1rem;color:var(--ink-soft);transition:transform 0.15s;display:inline-block;}
-  .rubric-toggle.open .rt-chev{transform:rotate(180deg);}
-  .rubric-toggle .rt-left{display:flex;align-items:baseline;}
 
   .floating-scrollbar{
     position:fixed;left:50%;bottom:16px;transform:translateX(-50%);
@@ -277,7 +264,6 @@
   .ccf-purple{background:#E6DEF7;color:#4A2A80;}
   .ccf-grey{background:#E6E6E4;color:#5A5A56;}
   .ccf-border{box-shadow:0 0 0 1.5px #2A7A4E;}
-  .ccf-indent{display:inline-block;width:1.4em;}
   .err-tt{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:10px;padding:11px 14px;min-width:220px;max-width:280px;font-size:0.72rem;line-height:1.5;z-index:100;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,0.25);white-space:normal;text-align:left;font-family:'IBM Plex Sans',sans-serif;}
   .err-tt::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--ink);}
   .ccf-tag:hover .err-tt{display:block;}
@@ -339,7 +325,7 @@
       <button class="btn btn-primary btn-block" style="margin-top:14px;" onclick="login()">Enter</button>
       <div class="error-msg" id="loginError">Student number not found. Check and try again.</div>
     </div>
-    <div class="version-tag">v2.8 — 2026-07-28</div>
+    <div class="version-tag">v2.6 — 2026-09-29</div>
   </div>
 
   <!-- ===================== MAIN APP ===================== -->
@@ -347,7 +333,6 @@
     <header class="topbar">
       <div class="brand">Weekly Forum<small>EFL BLOG &amp; DISCUSSION</small></div>
       <div class="who">
-        <a class="hub-link" id="hubLink" href="../student/">← Hub</a>
         <button class="home-btn hidden" id="homeBtn" onclick="renderDashboard()">🏠 Dashboard</button>
         <button class="who-self" onclick="renderProfilePage()">
           <span id="whoName">—</span>
@@ -374,7 +359,7 @@
    backend endpoints exist.
    ==================================================================== */
 
-const API_URL = "https://script.google.com/macros/s/AKfycbw5J9WRH-wsUVkFLaTI18MBMnjv3K8WHdF3l7_GwtXTADyHPheHDxHt8E4sqbGxXz8M/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbyMbuD6_z3PTOt8P_dS8TPTImZB-r1cnraENT82KGxD6eL2EGK0IxSC5spUu38SfFnX/exec";
 
 // The week shown in the Current Post tab is resolved dynamically via getCurrentWeekInfo
 // (the earliest week whose ReplyDeadline hasn't passed yet) — set once renderNewPostTab
@@ -386,7 +371,7 @@ async function callApi(action, payload) {
     const res = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "text/plain;charset=utf-8" }, // avoids a CORS preflight
-      body: JSON.stringify(Object.assign({ action, token: currentToken }, payload || {})),
+      body: JSON.stringify(Object.assign({ action }, payload || {})),
     });
     const json = await res.json();
     if(typeof json.success === 'undefined'){
@@ -402,10 +387,8 @@ async function callApi(action, payload) {
 
 let currentStudent = null;
 let currentStudentName = null; // full name string e.g. "Rei YAMAGUCHI", set at login
-let currentToken = null; // session token from login — the new engine requires this on every call after login
 let gotoDestination = null;    // set from ?goto= URL param, consumed once after login
 let currentClassId = null;
-let currentClassLabel = null; // human-readable class name (e.g. "EWS II"), set at login — currentClassId is the internal cls_xxxxx key and isn't meant for display
 let currentName = null;
 let activeTab = 'dashboard';
 let currentPostData = null; // cached response from getNewPostData, so we don't refetch on every small render
@@ -437,26 +420,18 @@ async function login(){
   if(!val) return;
   document.getElementById('loginError').style.display = 'none';
   showLoading('Logging in…');
-  const result = await callApi('login', { studentNumber: val });
+  const result = await callApi('studentLogin', { studentNumber: val });
   hideLoading();
   if(result.success){
-    currentToken = result.token;
-    currentStudent = result.studentNumber || val;
+    currentStudent = val;
     currentClassId = result.classId;
-    currentClassLabel = result.classLabel || result.classId;
-    currentName = result.nameEng || result.nameJP || currentStudent;
-    currentStudentName = result.nameEng || result.nameJP || currentStudent;
+    currentName = result.name;
+    currentStudentName = result.name;
     currentProfilePicURL = result.profilePicURL || '';
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('mainApp').classList.remove('hidden');
     document.getElementById('whoName').textContent = currentName;
     document.getElementById('whoAvatar').innerHTML = avatarInner(currentName, currentProfilePicURL);
-    // Pass the student number through so the Hub link works whether or not
-    // this session actually started at the Hub (e.g. a bookmarked forum URL,
-    // or a hub session that didn't survive to this tab) — the Hub reads this
-    // param and logs the student straight back into the tile screen instead
-    // of falling through to its own sign-in screen.
-    document.getElementById('hubLink').href = '../student/?studentNumber=' + encodeURIComponent(currentStudent);
     renderDashboard();
   } else {
     document.getElementById('loginError').textContent = result.error || 'Student number not found.';
@@ -534,7 +509,7 @@ function renderProfilePage(){
     <div class="card" style="text-align:center;">
       <div class="profile-avatar-big" id="profileAvatarBig">${avatarInner(currentName, currentProfilePicURL)}</div>
       <div class="profile-name">${currentName}</div>
-      <div class="profile-sn">${currentStudent} · ${currentClassLabel||currentClassId}</div>
+      <div class="profile-sn">${currentStudent} · ${currentClassId}</div>
       <div style="display:flex;gap:10px;justify-content:center;margin-top:16px;flex-wrap:wrap;">
         <button class="btn btn-primary" onclick="triggerImageUpload('profile', null, 'profileAvatarBig')">Change profile picture</button>
         ${currentProfilePicURL ? `<button class="btn btn-ghost" onclick="removeProfilePic()">Remove picture</button>` : ''}
@@ -597,7 +572,6 @@ async function renderPreviousWeekDetail(week){
         <div class="card empty-note">${data.error || "Something went wrong loading this week."}</div>`;
       return;
     }
-    currentPostData = data; // so openPostDetail (reached from here) knows the feature toggles
     const sched = data.schedule;
 
     let entryBlockHtml;
@@ -734,27 +708,31 @@ async function renderGrammarFeedback(week){
   ]);
 
   const annotationData = (annotationResult.status==='fulfilled' && annotationResult.value && annotationResult.value.success) ? annotationResult.value : null;
+  const colourData = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value : null;
+
+  // Open-time gate — controlled by the Schedule tab's "Grammar feedback opens"
+  // field. The server withholds both the annotation and the colour/submission
+  // state until that time, returning { notYetOpen: true, opensAt } from
+  // either endpoint instead. No field set = always open (unchanged behaviour).
+  const notYetOpen = (annotationData && annotationData.notYetOpen) || (colourData && colourData.notYetOpen);
+  if(notYetOpen){
+    const opensAt = (annotationData && annotationData.opensAt) || (colourData && colourData.opensAt);
+    renderGrammarNotYetOpen(week, opensAt);
+    return;
+  }
+
   const annotation = (annotationData && annotationData.found) ? annotationData : null;
-  const colourMap = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.colours : {};
-  const ccfSettings = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.settings : { showUntreatableErrors: true };
-  const grammarSubmitDeadline = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.grammarSubmitDeadline : null;
-  const existingSubmission = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value.existingSubmission : { found: false, unit: '', reason: '', submittedAt: '' };
-  // Units highlighted green in THIS week's own feedback (prefixed, e.g. "B64") —
-  // the same set actionSubmitGrammarUnit itself validates against when the class
-  // requires green-coded selection, so the picker below can never offer something
-  // the server would then reject.
-  const greenUnits = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? (colourResult.value.greenUnits || []) : [];
-  const forceGreen = !!ccfSettings.forceGreenUnitSelection;
-  const hasGreenUnits = greenUnits.length > 0;
+  const colourMap = colourData ? colourData.colours : {};
+  const ccfSettings = colourData ? colourData.settings : { showUntreatableErrors: true };
+  const grammarSubmitDeadline = colourData ? colourData.grammarSubmitDeadline : null;
+  const existingSubmission = colourData ? colourData.existingSubmission : { found: false, unit: '', reason: '', submittedAt: '' };
 
   const hasAnnotation = annotation && annotation.annotatedText;
 
   // Submission window — controlled entirely by the Schedule tab's own
-  // "Grammar unit submission" deadline now, not the old MasterLogin.gs
-  // window. No start time: the section is reachable the moment this week's
-  // grammar-feedback page is (already gated behind past-posts visibility),
-  // and only ever closes at the deadline — no start/reopen concept at all.
-  // No deadline set = always open.
+  // "Grammar unit submission" deadline (close) and "Grammar feedback opens"
+  // field (open, gated above before we ever get here). No deadline set =
+  // always open once the page itself is reachable.
   const deadlineDate = grammarSubmitDeadline ? new Date(grammarSubmitDeadline) : null;
   const windowOpen = !deadlineDate || new Date() < deadlineDate;
   const alreadySubmitted = existingSubmission.found;
@@ -771,27 +749,10 @@ async function renderGrammarFeedback(week){
          <span style="font-size:0.8rem;">No blog entry was submitted, so there is no grammar feedback.</span>
        </div>`;
 
-  // Whether each reason radio is usable, and what to say next to it, depends on
-  // three things: no entry at all (mistake never usable), the class requiring
-  // green-coded selection AND this week having no green units (mistake not
-  // usable — nothing new to flag), or the reverse (other reason not usable —
-  // teacher requires picking one of the highlighted errors instead).
-  const mistakeUnusable = !hasAnnotation || (forceGreen && !hasGreenUnits);
-  const otherUnusable = forceGreen && hasGreenUnits;
-  const mistakeOptDisabled = mistakeUnusable ? 'disabled-opt' : '';
-  const otherOptDisabled = otherUnusable ? 'disabled-opt' : '';
+  const mistakeOptDisabled = !hasAnnotation ? 'disabled-opt' : '';
   const mistakeOptHint = !hasAnnotation
     ? 'Not available — no entry was submitted this week.'
-    : (forceGreen && !hasGreenUnits)
-      ? 'No new, not-yet-studied errors were found in your entry this week — choose "Other reason" instead.'
-      : 'A new unit color coded green that matches one of the errors above.';
-  const otherOptHint = otherUnusable
-    ? 'Your teacher requires choosing one of your own highlighted errors this week.'
-    : 'You will need to explain your reason.';
-  // When only one reason is actually usable, pre-check it so the student isn't
-  // stuck clicking a radio whose outcome was never in question.
-  const mistakeForcedChecked = forceGreen && hasGreenUnits && hasAnnotation;
-  const otherForcedChecked = forceGreen && !hasGreenUnits;
+    : 'A new unit color coded green that matches one of the errors above.';
 
   // Unit section — three states: deadline passed, deadline open + already submitted, deadline open fresh
   let unitSectionHtml;
@@ -826,37 +787,27 @@ async function renderGrammarFeedback(week){
         <div class="unit-sel-desc">Look at the feedback above. Choose a new grammar unit to study and tell your teacher why you chose it.</div>
         ${alreadyNote}
         <label class="reason-opt ${mistakeOptDisabled}">
-          <input type="radio" name="grammar-reason" value="mistake" ${mistakeUnusable?'disabled':''} ${mistakeForcedChecked?'checked':''} onchange="handleGrammarReason(this)">
+          <input type="radio" name="grammar-reason" value="mistake" ${!hasAnnotation?'disabled':''} onchange="handleGrammarReason(this)">
           <div>
             <span class="ro-strong">A mistake in my blog entry</span>
             <span class="ro-soft">${mistakeOptHint}</span>
           </div>
         </label>
-        <label class="reason-opt ${otherOptDisabled}">
-          <input type="radio" name="grammar-reason" value="other" ${otherUnusable?'disabled':''} ${otherForcedChecked?'checked':''} onchange="handleGrammarReason(this)">
+        <label class="reason-opt">
+          <input type="radio" name="grammar-reason" value="other" onchange="handleGrammarReason(this)">
           <div>
             <span class="ro-strong">Other reason</span>
-            <span class="ro-soft">${otherOptHint}</span>
+            <span class="ro-soft">You will need to explain your reason.</span>
           </div>
         </label>
-        <div class="other-reason-wrap ${otherForcedChecked?'show':''}" id="otherReasonWrap">
+        <div class="other-reason-wrap" id="otherReasonWrap">
           <label style="display:block;font-family:'IBM Plex Mono',monospace;font-size:0.64rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">Explain your reason</label>
           <textarea id="otherReasonInput" style="width:100%;min-height:70px;font-family:'IBM Plex Sans',sans-serif;font-size:0.88rem;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;background:var(--paper);color:var(--ink);resize:vertical;outline:none;" placeholder="Why are you choosing this unit?"></textarea>
         </div>
         <div style="margin:14px 0 18px;">
           <label for="grammarMainUnit" style="display:block;font-family:'IBM Plex Mono',monospace;font-size:0.64rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;">New unit <span style="color:var(--stamp-red)">*</span></label>
           <div style="display:flex;gap:10px;">
-            ${mistakeForcedChecked
-              ? `<select class="unit-num-inp" id="grammarMainUnit">
-                   <option value="" disabled ${!existingMain?'selected':''}>Choose one of your highlighted units…</option>
-                   ${greenUnits.map(function(u){
-                     const bare = u.replace(/^[BI]/, '');
-                     const info = UNIT_TITLES[u];
-                     const label = u + (info && info.jp ? ' — ' + info.jp : '');
-                     return `<option value="${bare}" ${String(bare)===String(existingMain)?'selected':''}>${label}</option>`;
-                   }).join('')}
-                 </select>`
-              : `<input class="unit-num-inp" type="text" id="grammarMainUnit" inputmode="numeric" placeholder="e.g. 11" autocomplete="off" value="${existingMain}">`}
+            <input class="unit-num-inp" type="text" id="grammarMainUnit" inputmode="numeric" placeholder="e.g. 11" autocomplete="off" value="${existingMain}">
             <button class="btn btn-primary" id="grammarSubmitBtn" onclick="submitGrammarUnit(${week})" style="white-space:nowrap;">${btnLabel}</button>
           </div>
           ${countdownHtml}
@@ -884,22 +835,65 @@ async function renderGrammarFeedback(week){
       </div>
       <button class="btn-pdf" ${!hasAnnotation?'disabled title="No entry was submitted this week."':''} onclick="downloadCCFReflectionSheet()">📄 Download Reflection Sheet</button>
     </div>
-    <div class="card pdf-download-row">
-      <div class="info">
-        <div class="ttl">Copy AI-check prompt</div>
-        <div class="sub">Copies a ready-to-paste prompt for the weekend homework step — paste into Gemini, then add your two corrected sentences at the bottom.</div>
-      </div>
-      <button class="btn-pdf" ${!hasAnnotation?'disabled title="No entry was submitted this week."':''} onclick="copyAICheckPrompt()">📋 Copy Prompt</button>
-    </div>
   `;
   // Stored in a plain JS variable rather than serialized into the onclick
   // attribute above — no annotation content (quotes, apostrophes, anything)
   // ever has to survive HTML-attribute escaping this way.
-  window._ccfPdfData = { week, annotation: Object.assign({}, annotation||{}, {colourMap, showUntreatable: ccfSettings.showUntreatableErrors}), existingMain, existingSubmittedAt: submittedAt };
+  window._ccfPdfData = { week, annotation: Object.assign({}, annotation||{}, {colourMap, showUntreatable: ccfSettings.showUntreatableErrors}), existingMain };
   if(windowOpen && deadlineDate) startGrammarDeadlineCountdown(deadlineDate, week);
   } finally {
     hideLoading();
   }
+}
+
+// Shown instead of the normal grammar-feedback screen while the week's
+// "Grammar feedback opens" time hasn't arrived yet — the server withheld
+// both the annotation and colour/submission data, so there's nothing to
+// render but the wait itself. Ticks down live and re-fetches automatically
+// the moment the open time passes, same self-refreshing pattern as the
+// close-time countdown below.
+function renderGrammarNotYetOpen(week, opensAt){
+  const opensDate = opensAt ? new Date(opensAt) : null;
+  document.getElementById('content').innerHTML = `
+    <button class="back-link" onclick="renderPreviousWeekDetail(${week})">← Back to rubric</button>
+    <div class="card week-head">
+      <div class="label">Week ${String(week).padStart(2,'0')}</div>
+    </div>
+    <div class="card empty-note">
+      Grammar feedback for this week isn't open yet.
+      ${opensDate ? `<br><span style="font-size:0.8rem;">Opens ${opensDate.toLocaleString()}</span><div id="grammarOpenCountdown" style="margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:0.76rem;"></div>` : ''}
+    </div>
+  `;
+  if(opensDate) startGrammarOpenCountdown(opensDate, week);
+}
+
+// Live countdown to the week's open time, ticking down on the "not open yet"
+// screen. Self-cleaning like startGrammarDeadlineCountdown below — clears
+// itself if the student navigates away, and once time's up, re-fetches via
+// renderGrammarFeedback so the real content loads the moment it's allowed.
+function startGrammarOpenCountdown(opensAt, week){
+  if(window._grammarOpenCountdownInterval) clearInterval(window._grammarOpenCountdownInterval);
+  function tick(){
+    const el = document.getElementById('grammarOpenCountdown');
+    if(!el){ clearInterval(window._grammarOpenCountdownInterval); return; }
+    const diff = opensAt - new Date();
+    if(diff <= 0){
+      clearInterval(window._grammarOpenCountdownInterval);
+      renderGrammarFeedback(week);
+      return;
+    }
+    const days = Math.floor(diff / 86400000);
+    const hours = Math.floor((diff % 86400000) / 3600000);
+    const mins = Math.floor((diff % 3600000) / 60000);
+    const secs = Math.floor((diff % 60000) / 1000);
+    let text;
+    if(days > 0) text = `Opens in ${days}d ${hours}h`;
+    else if(hours > 0) text = `Opens in ${hours}h ${mins}m`;
+    else text = `Opens in ${mins}m ${secs}s`;
+    el.textContent = text;
+  }
+  tick();
+  window._grammarOpenCountdownInterval = setInterval(tick, 1000);
 }
 
 
@@ -998,8 +992,7 @@ function buildAnnotatedHtml(text, colourMap, showUntreatable){
   function esc(s){ return s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''; }
   const tokens = ccfTokenize(text, colourMap, showUntreatable);
   const parts = tokens.map(t=>{
-    if(t.break) return '<br>';
-    if(t.indent) return '<span class="ccf-indent"></span>';
+    if(t.break) return '<br><br>';
     if(!t.style) return esc(t.text);
     const noUnit = t.style.state==='purple' || t.style.state==='grey';
     let tip = `<div class="tt-code">${esc(CCF_CODE_LABELS[t.style.code]||t.style.code)}</div>`;
@@ -1015,7 +1008,7 @@ function buildAnnotatedHtml(text, colourMap, showUntreatable){
   });
   let html='';
   for(let i=0;i<parts.length;i++){
-    if(i>0 && parts[i]!=='<br>' && parts[i-1]!=='<br>' && parts[i-1]!=='<span class="ccf-indent"></span>') html+=' ';
+    if(i>0 && parts[i]!=='<br><br>' && parts[i-1]!=='<br><br>') html+=' ';
     html+=parts[i];
   }
   return html;
@@ -1073,7 +1066,7 @@ function ccfUnitBorder(unit, colourMap){
 }
 function ccfTagFor(style){
   const noUnit = style.state==='purple' || style.state==='grey';
-  return noUnit ? style.code : style.code + (style.primaryUnit ? '\u00b7'+style.primaryUnit : '');
+  return noUnit ? style.code : style.code + (style.primaryUnit ? '·'+style.primaryUnit : '');
 }
 
 // ── Tokenize the CCF tag format into word-level tokens ──────────────────
@@ -1086,39 +1079,16 @@ function ccfTagFor(style){
 // the PDF automatically stay consistent without each needing their own check.
 // The underlying tag stays in annotatedText regardless — this only affects
 // rendering, never the stored data.
-// ── Fixed ccfTokenize: pre-scans paragraph indentation on the ORIGINAL
-// text (before tag matching), so an annotated word appearing as a
-// paragraph's very first token still correctly triggers the indent —
-// this can't rely on per-call whitespace detection alone, since a tag
-// match can split a paragraph's leading whitespace away from its first
-// word. ──
 function ccfTokenize(text, colourMap, showUntreatable){
   const re=/\{(\^|[^{}|]*)\|([A-Z]+)(?:\|([BI]\d+(?:\/[BI]\d+)?))?\}/g;
   const tokens=[]; let last=0, m;
-
-  // Any run of newlines the student actually typed counts as one paragraph
-  // break — not just a full blank line. There's no soft-wrap concept here
-  // (entries come from a plain textarea rendered with white-space:pre-wrap,
-  // where every \n the student typed already shows as a break on screen),
-  // and the AI annotation pipeline's JSON output isn't guaranteed to
-  // preserve a literal blank line between paragraphs even when the
-  // original entry had one — a single \n between paragraphs is the more
-  // common shape it actually returns. Requiring \n\s*\n silently dropped
-  // paragraph structure for every entry annotated that way.
-  const paraTexts = text.split(/\n+/);
-  const paraIndents = paraTexts.map(p => /^[ \t]+\S/.test(p));
-  let paraIdx = 0;
-  let needIndentMarker = paraIndents[0];
-
   function pushWords(str, style){
-    String(str).split(/\n+/).forEach((para, i, arr)=>{
-      if(needIndentMarker){ tokens.push({indent:true}); needIndentMarker=false; }
+    // Splits on blank-line paragraph breaks into {break:true} markers, then
+    // on whitespace into individual word tokens — no separate space
+    // tokens; spacing between words is handled uniformly at render time.
+    String(str).split(/\n\s*\n/).forEach((para, i, arr)=>{
       para.split(/\s+/).filter(Boolean).forEach(w=> tokens.push({text:w, style}));
-      if(i < arr.length-1){
-        tokens.push({break:true});
-        paraIdx++;
-        needIndentMarker = paraIndents[paraIdx];
-      }
+      if(i < arr.length-1) tokens.push({break:true});
     });
   }
   while((m=re.exec(text))!==null){
@@ -1127,11 +1097,10 @@ function ccfTokenize(text, colourMap, showUntreatable){
     const unitRaw=m[3]?m[3].trim():'';
     const [primaryUnit, secondaryUnit] = unitRaw ? unitRaw.split('/') : [null,null];
     let state=ccfUnitState(code, primaryUnit, colourMap);
-    if(state==='grey' && showUntreatable===false) state=null;
+    if(state==='grey' && showUntreatable===false) state=null; // toggle off — render as plain text
     const noUnit = state==='purple' || state==='grey';
     const border = (!state || noUnit) ? false : ccfUnitBorder(primaryUnit, colourMap);
     const style = state ? {code, primaryUnit: noUnit?null:primaryUnit, secondaryUnit: noUnit?null:secondaryUnit, state, border} : null;
-    if(needIndentMarker){ tokens.push({indent:true}); needIndentMarker=false; }
     if(span==='^'){
       tokens.push({text:'^', style});
     } else {
@@ -1143,12 +1112,14 @@ function ccfTokenize(text, colourMap, showUntreatable){
   return tokens;
 }
 
+// ── Word-wrap that treats each styled word + its inline [CODE·UNIT] tag
+// as one atomic unit (so a tag never gets orphaned onto the next line) ──
 function ccfLayoutAnnotated(doc, tokens, fontSize, maxWidth){
   const tagFontSize = fontSize*0.62;
   doc.setFont('helvetica','normal'); doc.setFontSize(fontSize);
   const spaceW = doc.getTextWidth(' ');
   const widths = tokens.map(t=>{
-    if(t.break || t.indent) return 0;
+    if(t.break) return 0;
     doc.setFont('helvetica', t.style?'bold':'normal'); doc.setFontSize(fontSize);
     let w = doc.getTextWidth(t.text);
     if(t.style){
@@ -1157,16 +1128,13 @@ function ccfLayoutAnnotated(doc, tokens, fontSize, maxWidth){
     }
     return w;
   });
-  doc.setFont('helvetica','normal'); doc.setFontSize(fontSize);
+  doc.setFont('helvetica','normal'); doc.setFontSize(fontSize); // leave doc state clean for the next caller
   const lines=[]; let cur=[]; let curW=0;
-  let pendingIndent = false;
   tokens.forEach((t,i)=>{
-    if(t.indent){ pendingIndent = true; return; }
-    if(t.break){ if(cur.length){lines.push(cur); cur=[]; curW=0;} return; }
+    if(t.break){ if(cur.length){lines.push(cur); cur=[]; curW=0;} lines.push([]); return; }
     const w=widths[i];
     const add = cur.length? spaceW+w : w;
     if(curW+add>maxWidth && cur.length){ lines.push(cur); cur=[]; curW=0; }
-    if(cur.length===0 && pendingIndent){ cur.indent = true; pendingIndent = false; }
     cur.push(t); curW += (cur.length>1?spaceW:0)+w;
   });
   if(cur.length) lines.push(cur);
@@ -1177,10 +1145,9 @@ function ccfDrawAnnotated(doc, tokens, x0, y0, fontSize, lineHeight, maxWidth){
   doc.setFont('helvetica','normal'); doc.setFontSize(fontSize);
   const spaceW = doc.getTextWidth(' ');
   const tagFontSize = fontSize*0.62;
-  const PARA_INDENT_MM = 5;
   let y=y0;
   lines.forEach(line=>{
-    let x=x0 + (line.indent ? PARA_INDENT_MM : 0);
+    let x=x0;
     line.forEach(t=>{
       doc.setFont('helvetica', t.style?'bold':'normal'); doc.setFontSize(fontSize);
       let w = doc.getTextWidth(t.text);
@@ -1217,212 +1184,135 @@ function ccfDrawAnnotated(doc, tokens, x0, y0, fontSize, lineHeight, maxWidth){
   return y;
 }
 
-// ── Layout helpers for the CCF reflection sheet — one physical sheet,
-// front + back (see ccfDrawReflectionSheet for the full page structure). ──
-function ccfRuled(doc, y, n, gap, width){
-  const w = width || CCF_W;
-  for(let i=0;i<n;i++){
-    doc.setDrawColor(61,90,115); doc.setLineWidth(0.35);
-    doc.line(CCF_M+2, y, CCF_M+2+w, y);
-    if(i < n-1) y += gap; // advance only BETWEEN lines, not after the last one —
-                          // an earlier version of this function advanced past
-                          // the last line too, silently baking in a hidden
-                          // trailing gap that made every "gap after ruled
-                          // lines" tuning downstream ineffective. Confirmed
-                          // and fixed; every gap below is the true, actual
-                          // visible gap now.
-  }
+// ── Layout helpers (all take `doc` explicitly, so a scratch doc can be
+// used to MEASURE the fixed-height section below without drawing on the
+// real page — see ccfDrawPostBlogSection) ──────────────────────────────
+function ccfRuled(doc, y, n, gap){
+  for(let i=0;i<n;i++){ doc.setDrawColor(61,90,115); doc.setLineWidth(0.35); doc.line(CCF_M,y,210-CCF_M,y); y+=gap; }
   return y;
 }
 function ccfFieldLabel(doc, y, text){
-  doc.setFontSize(7.2); doc.setFont('helvetica','bold'); doc.setTextColor(91,99,88);
-  doc.text(text.toUpperCase(), CCF_M+2, y);
+  doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(91,99,88);
+  doc.text(text.toUpperCase(), CCF_M+4, y);
+  return y + 4.2;
+}
+function ccfFieldLabelTag(doc, y, text, fill, textColor){
+  const lbl = text.toUpperCase();
+  doc.setFontSize(7.5); doc.setFont('helvetica','bold');
+  const tw = doc.getTextWidth(lbl);
+  doc.setFillColor(...fill);
+  doc.roundedRect(CCF_M+2.5, y-3.6, tw+7, 5.2, 1, 1, 'F');
+  doc.setTextColor(...textColor);
+  doc.text(lbl, CCF_M+6, y);
   return y + 5.2;
 }
-
-// "How I fixed each mark" table — one row per annotation, deliberately not
-// scaled to how many the student actually used: a thin table under a
-// heavily-annotated sentence is the whole point of the fast in-class scan
-// (count-vs-count, not a reading task). Fixed at 5 rows. Unit/Page columns
-// are narrow (real content is 2-3 characters); Why? gets the most room.
-const CCF_TABLE_COLS = [
-  { label:'What I changed', frac:0.36 },
-  { label:'Unit',           frac:0.06 },
-  { label:'Page',           frac:0.06 },
-  { label:'Why?',           frac:0.52 },
-];
-function ccfDrawFixTable(doc, y, rows, width){
-  const tableStart = y;
-  const rowH = 6.3, headerH = 5;
-  let x = CCF_M + 2;
-  const colX = [];
-  CCF_TABLE_COLS.forEach(c => { colX.push(x); x += width * c.frac; });
-  colX.push(CCF_M + 2 + width);
-  doc.setFillColor(240,240,236);
-  doc.rect(CCF_M+2, y, width, headerH, 'F');
-  doc.setFontSize(6.3); doc.setFont('helvetica','bold'); doc.setTextColor(91,99,88);
-  CCF_TABLE_COLS.forEach((c,i) => { doc.text(c.label, colX[i]+1.5, y+3.6); });
-  y += headerH;
-  doc.setDrawColor(180,183,176); doc.setLineWidth(0.25);
-  for(let r=0;r<rows;r++){ doc.line(CCF_M+2, y+rowH, CCF_M+2+width, y+rowH); y += rowH; }
-  const tableEnd = y;
-  doc.setDrawColor(91,99,88); doc.setLineWidth(0.4);
-  doc.rect(CCF_M+2, tableStart, width, tableEnd-tableStart, 'S');
-  doc.setDrawColor(180,183,176); doc.setLineWidth(0.25);
-  for(let i=1;i<colX.length-1;i++){ doc.line(colX[i], tableStart, colX[i], tableEnd); }
-  return tableEnd;
+function ccfBoxAround(doc, yStart, yEnd){
+  doc.setDrawColor(91,99,88); doc.setLineWidth(0.45);
+  doc.roundedRect(CCF_M, yStart, CCF_W, yEnd-yStart, 2, 2, 'S');
+}
+function ccfSentenceBox(doc, y, labelText, fill, textColor){
+  const boxStart = y;
+  y += 3;
+  y = fill
+    ? ccfFieldLabelTag(doc, y, labelText, fill, textColor) + 3.5
+    : ccfFieldLabel(doc, y, labelText) + 3.5;
+  y = ccfRuled(doc, y, 2, 6.5) + 2.5;
+  y = ccfFieldLabel(doc, y, 'Correction attempt') + 3.5;
+  y = ccfRuled(doc, y, 2, 6.5) + 2.5;
+  y = ccfFieldLabel(doc, y, 'AI check / original sentence (homework)') + 3.5;
+  y = ccfRuled(doc, y, 2, 6.5) + 1.5;
+  ccfBoxAround(doc, boxStart, y);
+  return y;
 }
 
-// One "Sentence N" in-class correction block: colored title bar (green for
-// the new-unit sentence, yellow for the recurring-error sentence) merged
-// onto one line with "CORRECTIONS", full page width (no gutter) ->
-// Corrections (2 lines) -> My Finished Attempt (2 lines) -> fix table.
-function ccfDrawSentenceBlock(doc, y, sentenceNum, subtitle, fillColor, textColor){
-  const boxTop = y;
-  const titleBarTop = boxTop + 1.2;
-  const titleBarH = 6.5;
-  doc.setFillColor(...fillColor);
-  doc.rect(CCF_M+0.3, titleBarTop, CCF_W-0.6, titleBarH, 'F');
-  let ty = titleBarTop + titleBarH/2 + 1.5;
-  doc.setFontSize(7.2); doc.setFont('helvetica','bold'); doc.setTextColor(...textColor);
-  doc.text(`SENTENCE ${sentenceNum} (${subtitle.toUpperCase()}) - CORRECTIONS`, CCF_M+2, ty);
+// Everything from the divider through Sentence 2's box — same function used
+// both to MEASURE (on a disposable scratch doc, so we know exactly how much
+// room to leave for the blog entry) and to actually DRAW (on the real doc).
+// Because it's the same code path, the measurement can never drift out of
+// sync with the real layout, even as spacing keeps changing.
+function ccfDrawPostBlogSection(doc, yStart, newUnit){
+  let y = yStart;
+  y += 5;
+  doc.setDrawColor(215,218,206); doc.line(CCF_M,y,210-CCF_M,y); y += 7;
 
-  let y2 = boxTop + 1.2 + titleBarH + 4.5;
-  y2 = ccfRuled(doc, y2, 2, 5.8, CCF_W-4) + 3.8;
-  y2 = ccfFieldLabel(doc, y2, 'My Finished Attempt');
-  y2 = ccfRuled(doc, y2, 2, 5.8, CCF_W-4) + 1.2;
-  y2 = ccfDrawFixTable(doc, y2, 5, CCF_W-4);
-  const boxBottom = y2 + 5;
-  doc.setDrawColor(91,99,88); doc.setLineWidth(0.5);
-  doc.roundedRect(CCF_M-2, boxTop, CCF_W+4, boxBottom-boxTop, 2, 2, 'S');
-  return boxBottom;
-}
+  doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(91,99,88);
+  const newUnitLabel = 'NEW UNIT';
+  doc.text(newUnitLabel, CCF_M+4, y);
+  const labelW = doc.getTextWidth(newUnitLabel);
+  doc.setDrawColor(42,122,78); doc.setLineWidth(0.4);
+  doc.roundedRect(CCF_M+4+labelW+4, y-4.2, 20, 6.5, 1, 1, 'S');
 
-// New Unit box only now - In-class Completion checkbox removed. It's no
-// longer needed: since page 1 (the in-class page) is now its own separate
-// handed-in sheet rather than the front of a double-sided page, there's no
-// completion-tracking purpose left for a checkbox living on this specific
-// row to serve.
-function ccfDrawUnitRow(doc, y, newUnitValue, submittedAt){
-  doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(91,99,88);
-  doc.text('NEW UNIT', CCF_M, y);
-  const newUnitLabelW = doc.getTextWidth('NEW UNIT');
-  const newUnitBoxX = CCF_M + newUnitLabelW + 2.5;
-  doc.setDrawColor(61,90,115); doc.setLineWidth(0.4);
-  doc.roundedRect(newUnitBoxX, y-4.4, 16, 6, 1, 1, 'S');
-  if(newUnitValue){
-    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(32,38,31);
-    doc.text(String(newUnitValue), newUnitBoxX+3, y);
+  // Teacher check — same row as New Unit, top right. Two boxes, same size
+  // as the New Unit box, each with its label outside/left of it.
+  const tcW = 20, tcH = 6.5, tcGap = 8;
+  const checks = ['In-class completion', 'Homework completion'];
+  let cursorRight = CCF_M + CCF_W - 4;
+  const placed = [];
+  for(let i = checks.length - 1; i >= 0; i--){
+    doc.setFontSize(7.5); doc.setFont('helvetica','bold');
+    const labelText = checks[i].toUpperCase();
+    const labelWidth = doc.getTextWidth(labelText);
+    const boxRight = cursorRight;
+    const boxLeft = boxRight - tcW;
+    const labelEndX = boxLeft - 3;
+    placed[i] = { labelText, labelEndX, boxLeft };
+    cursorRight = labelEndX - labelWidth - tcGap;
   }
-  if(newUnitValue && submittedAt){
-    doc.setFontSize(6.3); doc.setFont('helvetica','italic'); doc.setTextColor(120,126,116);
-    doc.text(`Submitted by student on ${submittedAt}`, newUnitBoxX + 16 + 4, y);
-  }
-  return y + 5;
+  placed.forEach(p => {
+    doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(91,99,88);
+    doc.text(p.labelText, p.labelEndX, y, {align:'right'});
+    doc.setDrawColor(61,90,115); doc.setLineWidth(0.4);
+    doc.roundedRect(p.boxLeft, y-4.2, tcW, tcH, 1, 1, 'S');
+  });
+
+  y += 10;
+
+  y = ccfSentenceBox(doc, y, 'Sentence 1 — new unit', [219,242,229], [26,58,42]); y += 4;
+  y = ccfSentenceBox(doc, y, 'Sentence 2 — recurring', [253,244,205], [102,79,8]);
+  return y;
 }
 
-// New take-home box: lets the student copy down their two in-class
-// attempts before starting the homework below, since page 1 (with their
-// actual in-class writing) gets handed in separately now rather than
-// living on the back of this same physical sheet. Plain bordered box, no
-// colored title bar - this isn't tied to either sentence's own color
-// coding, just a shared staging area for both.
-function ccfDrawInClassAttemptsBox(doc, y){
-  const boxTop = y;
-  let y2 = boxTop + 5;
-  y2 = ccfFieldLabel(doc, y2, 'In-Class Attempts');
-  y2 = ccfFieldLabel(doc, y2, 'Sentence 1:');
-  y2 = ccfRuled(doc, y2, 2, 5.8, CCF_W-4) + 3.8;
-  y2 = ccfFieldLabel(doc, y2, 'Sentence 2:');
-  y2 = ccfRuled(doc, y2, 2, 5.8, CCF_W-4) + 3;
-  const boxBottom = y2;
-  doc.setDrawColor(91,99,88); doc.setLineWidth(0.5);
-  doc.roundedRect(CCF_M-2, boxTop, CCF_W+4, boxBottom-boxTop, 2, 2, 'S');
-  return boxBottom + 4;
-}
+function downloadCCFReflectionSheet(){
+  const stored = window._ccfPdfData;
+  if(!stored){ showToast('No data to download — try refreshing the page.'); return; }
+  const {week, annotation, existingMain: newUnit} = stored;
+  if(!window.jspdf){ showToast('PDF generator loading — try again in a moment.'); return; }
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
 
-// Weekend homework block — same colored-title-bar treatment as its
-// matching in-class sentence block, so the two stay visually linked
-// across both pages. 2 lines for the confirmed sentence (matches the
-// front page's field pattern), 8 lines for the AI's explanation (real
-// Gemini output runs several sentences — verified against actual
-// responses, not assumed. Bumped from 5 to 8 once the extra vertical
-// room freed up by moving this to its own standalone page was confirmed
-// safe against the page's print margin).
-function ccfDrawHomeworkBlock(doc, y, sentenceNum, fillColor, textColor){
-  const boxTop = y;
-  const titleBarTop = boxTop + 1.2;
-  const titleBarH = 6.5;
-  doc.setFillColor(...fillColor);
-  doc.rect(CCF_M+0.3, titleBarTop, CCF_W-0.6, titleBarH, 'F');
-  let ty = titleBarTop + titleBarH/2 + 1.5;
-  doc.setFontSize(7.2); doc.setFont('helvetica','bold'); doc.setTextColor(...textColor);
-  doc.text(`SENTENCE ${sentenceNum} — AI CHECK`, CCF_M+2, ty);
-
-  let y2 = boxTop + 1.2 + titleBarH + 4.5;
-  y2 = ccfFieldLabel(doc, y2, 'Confirmed correct sentence');
-  y2 = ccfRuled(doc, y2, 2, 5.8, CCF_W-4) + 3.8;
-  y2 = ccfFieldLabel(doc, y2, 'What the AI told me');
-  y2 = ccfRuled(doc, y2, 8, 5.8, CCF_W-4) + 3;
-  const boxBottom = y2 + 5;
-  doc.setDrawColor(91,99,88); doc.setLineWidth(0.5);
-  doc.roundedRect(CCF_M-2, boxTop, CCF_W+4, boxBottom-boxTop, 2, 2, 'S');
-  return boxBottom + 8;
-}
-
-function ccfPageHeader(doc, title, meta){
-  doc.setFontSize(13); doc.setFont('helvetica','bold'); doc.setTextColor(32,38,31);
-  doc.text(title, CCF_M, 12);
-  if(meta){
-    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(91,99,88);
-    doc.text(meta, 210-CCF_M, 12, {align:'right'});
-  }
-  doc.setDrawColor(61,90,115); doc.setLineWidth(0.8);
-  doc.line(CCF_M, 16, 210-CCF_M, 16);
-}
-
-// Builds one student's complete reflection sheet — one physical page
-// front, one back. Front: blog entry (adaptive font, measured against the
-// New Unit row + both sentence blocks' real height first — measure-on-a-
-// scratch-doc-then-draw-for-real, so measurement can never drift out of
-// sync with the actual layout) + the completion row + both sentence
-// blocks. Back: both AI-check homework blocks. isFirst controls whether a
-// new page is added before this student's own front page — false only
-// for the very first student in a merged multi-student PDF.
-//
-// MAX_Y is 285, not the page's full 297 — real printers typically can't
-// print within 8-12mm of the physical edge even though a PDF viewer shows
-// no such limit; this was found and fixed after an actual print test
-// clipped Sentence 2's bottom border at the old 292 threshold.
-function ccfDrawReflectionSheet(doc, studentName, classId, week, annotation, colourMap, showUntreatable, isFirst, newUnitValue, newUnitSubmittedAt){
-  const MAX_Y = 285;
   const hasAnnotation = annotation && annotation.annotatedText;
   const blogTitle = (annotation && annotation.title) ? annotation.title : `Week ${week} entry`;
-  const meta = `${classId}  \u00b7  Week ${week}  \u00b7  ${studentName}`;
 
-  if(!isFirst) doc.addPage();
-  ccfPageHeader(doc, 'Blog Entry Grammar Reflection', meta);
+  doc.setFontSize(14); doc.setFont('helvetica','bold'); doc.setTextColor(32,38,31);
+  doc.text('Blog Entry Grammar Reflection', CCF_M, 12);
+  doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(91,99,88);
+  doc.text(`${currentClassId}  ·  Week ${week}  ·  ${currentStudentName||currentStudent}`, 210-CCF_M, 12, {align:'right'});
+  doc.setDrawColor(61,90,115); doc.setLineWidth(0.8);
+  doc.line(CCF_M, 16, 210-CCF_M, 16);
+
   let y = 24;
-  doc.setFontSize(10.5); doc.setFont('helvetica','bold'); doc.setTextColor(32,38,31);
-  doc.text(blogTitle, CCF_M + CCF_W/2, y, {align:'center'});
-  y += 5;
-  doc.setDrawColor(215,218,206); doc.setLineWidth(0.25); doc.line(CCF_M,y,210-CCF_M,y); y += 5;
+  doc.setFontSize(11); doc.setFont('helvetica','bold'); doc.setTextColor(32,38,31);
+  doc.text(blogTitle, CCF_M, y);
+  y += 6;
+  doc.setDrawColor(215,218,206); doc.setLineWidth(0.25); doc.line(CCF_M,y,210-CCF_M,y); y += 6;
+
   const blogStartY = y;
 
-  const scratch = new window.jspdf.jsPDF({unit:'mm', format:'a4'});
-  let scratchY = ccfDrawUnitRow(scratch, 0, newUnitValue, newUnitSubmittedAt);
-  scratchY = ccfDrawSentenceBlock(scratch, scratchY, 1, 'New Unit', [219,242,229], [26,58,42]);
-  scratchY = ccfDrawSentenceBlock(scratch, scratchY, 2, 'Recurring', [253,244,205], [102,79,8]);
-  const FIXED_HEIGHT = scratchY;
-  const BLOG_AVAILABLE = MAX_Y - blogStartY - FIXED_HEIGHT;
-  const FONT_MIN = 5.5, FONT_MAX = 11;
+  // Measure the fixed-height section on a throwaway doc first, so
+  // AFTER_FIXED is always exactly what the real drawing code will use.
+  const scratch = new jsPDF({unit:'mm',format:'a4'});
+  const AFTER_FIXED = ccfDrawPostBlogSection(scratch, 0, newUnit);
+  const MAX_Y = 292;
+  const BLOG_AVAILABLE = MAX_Y - blogStartY - AFTER_FIXED;
+  const FONT_MIN = 5.5, FONT_MAX = 11.5;
 
   let chosenFont = FONT_MIN, chosenLines = null, tokens = null;
+
   if(hasAnnotation){
-    tokens = ccfTokenize(annotation.annotatedText, colourMap, showUntreatable);
+    tokens = ccfTokenize(annotation.annotatedText, annotation.colourMap, annotation.showUntreatable);
     for(let fs=FONT_MAX; fs>=FONT_MIN; fs-=0.25){
       const testLines = ccfLayoutAnnotated(doc, tokens, fs, CCF_W-8);
-      const lineH = fs*0.352778*1.35;
+      const lineH = fs*0.352778*1.42;
       if(testLines.length*lineH <= BLOG_AVAILABLE){ chosenFont=fs; chosenLines=testLines; break; }
       chosenLines=testLines;
     }
@@ -1431,161 +1321,30 @@ function ccfDrawReflectionSheet(doc, studentName, classId, week, annotation, col
     for(let fs=FONT_MAX; fs>=FONT_MIN; fs-=0.25){
       doc.setFontSize(fs);
       const testLines = doc.splitTextToSize(plainText, CCF_W-8);
-      const lineH = fs*0.352778*1.35;
+      const lineH = fs*0.352778*1.42;
       if(testLines.length*lineH <= BLOG_AVAILABLE){ chosenFont=fs; chosenLines=testLines; break; }
       chosenLines=testLines;
     }
   }
   if(chosenFont === FONT_MIN){
-    const lineH = FONT_MIN*0.352778*1.35;
+    const lineH = FONT_MIN*0.352778*1.42;
     if(chosenLines.length*lineH > BLOG_AVAILABLE){
-      console.warn('CCF reflection sheet: entry is too long to fit even at ' + FONT_MIN + 'pt — genuinely needs more room than one page allows.');
+      console.warn('CCF reflection sheet: entry is too long to fit even at ' + FONT_MIN + 'pt — genuinely needs a second page.');
     }
   }
-  const lineH = chosenFont*0.352778*1.35;
+
+  const lineH = chosenFont*0.352778*1.42;
   if(hasAnnotation){
-    ccfDrawAnnotated(doc, tokens, CCF_M+4, y, chosenFont, lineH, CCF_W-8);
+    y = ccfDrawAnnotated(doc, tokens, CCF_M+4, y, chosenFont, lineH, CCF_W-8);
   } else {
     doc.setFontSize(chosenFont); doc.setFont('helvetica','italic'); doc.setTextColor(150,155,145);
     chosenLines.forEach(l => { doc.text(l, CCF_M+4, y); y += lineH; });
   }
 
-  y = blogStartY + BLOG_AVAILABLE + 2;
-  y = ccfDrawUnitRow(doc, y, newUnitValue, newUnitSubmittedAt);
-  y = ccfDrawSentenceBlock(doc, y, 1, 'New Unit', [219,242,229], [26,58,42]);
-  y = ccfDrawSentenceBlock(doc, y, 2, 'Recurring', [253,244,205], [102,79,8]);
-
-  // No longer "the back of the sheet" - this is now its own separate,
-  // standalone take-home page, so it needs its own full header (title +
-  // class/week/name meta), matching page 1's format exactly rather than
-  // the bare "Homework" title it used when it was printed on a shared
-  // physical sheet with page 1's own header already covering that.
-  doc.addPage();
-  const homeworkMeta = `${classId}  \u00b7  Week ${week}  \u00b7  ${studentName}`;
-  ccfPageHeader(doc, 'Blog Entry Grammar Reflection - Homework', homeworkMeta);
-  y = 24;
-  y = ccfDrawInClassAttemptsBox(doc, y);
-  y = ccfDrawHomeworkBlock(doc, y, 1, [219,242,229], [26,58,42]);
-  y = ccfDrawHomeworkBlock(doc, y, 2, [253,244,205], [102,79,8]);
-}
-
-function downloadCCFReflectionSheet(){
-  const stored = window._ccfPdfData;
-  if(!stored){ showToast('No data to download — try refreshing the page.'); return; }
-  const {week, annotation, existingMain, existingSubmittedAt} = stored;
-  if(!window.jspdf){ showToast('PDF generator loading — try again in a moment.'); return; }
-  const {jsPDF}=window.jspdf;
-  const doc=new jsPDF({unit:'mm',format:'a4'});
-
-  ccfDrawReflectionSheet(doc, currentStudentName||currentStudent, currentClassLabel||currentClassId, week,
-    annotation, annotation ? annotation.colourMap : {}, annotation ? annotation.showUntreatable : true, true, existingMain, existingSubmittedAt);
+  y = ccfDrawPostBlogSection(doc, y, newUnit);
 
   const safeName=(currentStudentName||currentStudent).replace(/\s+/g,'_');
   doc.save(`EWS_Week${week}_CCF-Reflection_${safeName}.pdf`);
-}
-
-// ── AI-check prompt builder (homework copy button) ───────────────────────
-// Builds the full Japanese prompt for the weekend Gemini AI-check step:
-// explains the {text|CODE|UNIT} tag notation, includes a legend of only
-// the unit titles actually used in THIS entry (built from UNIT_TITLES,
-// not the full B1-B113/I1-I142 list every time), includes the full tagged
-// entry as context, and leaves two placeholders for the student to paste
-// in their own "My Finished Attempt" sentences before sending it to
-// Gemini. Deliberately verifies the student's own attempt rather than
-// generating a fresh correction — and deliberately does NOT give the
-// correction itself anywhere, matching the same "never show the
-// correction" principle as the paper worksheet.
-function ccfBuildUnitLegend(annotatedText){
-  const unitsUsed = [];
-  const seen = {};
-  const re = /\|([A-Z]?\d+)\}/g;
-  let m;
-  while((m = re.exec(annotatedText))){
-    const u = m[1];
-    if(!seen[u] && UNIT_TITLES[u]){ seen[u] = true; unitsUsed.push(u); }
-  }
-  unitsUsed.sort((a,b) => {
-    const pa = a[0], pb = b[0];
-    if(pa !== pb) return pa < pb ? -1 : 1;
-    return parseInt(a.slice(1)) - parseInt(b.slice(1));
-  });
-  return unitsUsed.map(u => `${u} = ${UNIT_TITLES[u].jp}`).join('\n');
-}
-
-function ccfBuildAICheckPrompt(annotatedText){
-  const legend = ccfBuildUnitLegend(annotatedText);
-  return `私は英語のライティングの授業を受けている学生です。以下は私が書いたブログ記事の全文です。
-文中の { } の部分は、先生のシステムが文法の間違いを見つけて印をつけた場所です。
-例:{is|SVA|B1} は「is という単語が、SVA(主語と動詞の一致)という種類の間違いで、
-B1という文法ユニットに関係しています」という意味です。{ } の中に記号だけで単語が
-ない場合は、「そこに何かが抜けている(足りない)」という意味です。
-
-このブログ記事で使われている文法ユニット番号の意味は下の「ユニット一覧」に
-書いてあります。修正や説明をするときは、必ずその文についている印のユニット番号を
-確認し、「ユニット一覧」でそのユニットが何を扱っているかを見てから答えてください。
-たとえ他にも直せる部分があるように見えても、印がついた箇所に集中し、説明は
-そのユニットが扱っている文法ポイントについて書いてください。修正した文を作る
-ときは、そのユニットが教えている文法の形を実際に使ってください。説明の中で
-ユニットの内容に触れるだけでなく、直した文自体がそのユニットの正しい形に
-なっている必要があります。
-
-このメッセージの最後に、私が授業中に自分で直した文を2つ書きます
-(「My Finished Attempt」)。それぞれについて、まず、ブログ記事全文の中から
-どの印つきの文を直したものか探してください(似ている文を探せば分かります)。
-見つけたら、その文についている印(いくつあるか)を確認し、私の直した文が
-その印を全部正しく直せているかチェックしてください。
-
-チェックの結果:
-・印を全部正しく直せていれば、「合っています」と伝えて、なぜ合っているのか
-  簡単に説明してください。
-・直しきれていない印がある場合(直し忘れ、または直したけどまだ間違っている)は、
-  どの印がまだ問題か具体的に指摘し、正しい文を教えてください。
-
-修正するときは、できるだけ元の文の形を残して、最小限の変更にしてください。
-もっと自然に聞こえる別の言い方があったとしても、大きく書き換えないでください。
-
-下の「ブログ記事全文」を文脈として使って、私が本当は何を言いたかったのかを
-考えてください。文だけを見ても意味がわからない場合があります。
-
-文脈を見てもよく分からない場合や、判断が難しい場合は、それでも構いません。
-一番近いと思う判断を教えてください。ただし、自信がない場合は「自信がない」と
-正直に言ってください。間違っているのに自信満々に答えるより、その方がいいです。
-
-答えは下の形式で書いてください。そうすればワークシートにそのまま書き写せます:
-
-文1 (SENTENCE 1)
-Confirmed correct sentence: [正しい文。私の直した文が合っていればそのまま、
-間違っていれば正しく直したもの]
-Explanation: [説明(日本語でOK)。関係するユニットの文法ポイントに触れること]
-
-文2 (SENTENCE 2)
-Confirmed correct sentence: [同上]
-Explanation: [同上]
-
----ユニット一覧---
-${legend}
-
----ブログ記事全文(印つき)---
-${annotatedText}
-
----私が直した2つの文(My Finished Attempt)---
-文1: (ここに1つ目の直した文を貼り付けてください)
-文2: (ここに2つ目の直した文を貼り付けてください)`;
-}
-
-async function copyAICheckPrompt(){
-  const stored = window._ccfPdfData;
-  if(!stored || !stored.annotation || !stored.annotation.annotatedText){
-    showToast('No entry available to build a prompt from.');
-    return;
-  }
-  const prompt = ccfBuildAICheckPrompt(stored.annotation.annotatedText);
-  try{
-    await navigator.clipboard.writeText(prompt);
-    showToast('Copied! Paste into Gemini, then add your two sentences at the bottom.');
-  }catch(err){
-    showToast("Couldn't copy — try again or copy manually.");
-  }
 }
 
 
@@ -1710,11 +1469,8 @@ async function renderNewPostTab(){
     ${data.settings.GroupsEnabled ? `
     <div class="section-label">Your group this week</div>
     <div class="card">${membersHtml}</div>` : ''}
-    <div class="rubric-toggle" id="rubricToggle" onclick="toggleRubricSection()">
-      <span class="rt-left">📋 Rubric<span class="rt-hint" id="rubricHint">— tap to view how this week is scored</span></span>
-      <span class="rt-chev">⌄</span>
-    </div>
-    <div class="hidden" id="rubricSection">${rubricHtml}</div>
+    <div class="section-label">Rubric</div>
+    ${rubricHtml}
   `;
   wireComposerEvents();
   currentMediaType = null;
@@ -2022,13 +1778,6 @@ async function openPostDetail(postId, origin){
   const post = data.post;
   const wc = post.TextContent.trim().split(/\s+/).filter(Boolean).length;
 
-  // getPostDetail itself doesn't return the class's feature toggles, so fall back to
-  // whatever getNewPostData last cached (the screen you had to come through to get here).
-  // Unknown defaults to "on" so behavior is unchanged if that cache is somehow empty.
-  const cachedSettings = currentPostData && currentPostData.settings;
-  const commentsFeatureOn = !cachedSettings || cachedSettings.CommentsEnabled !== false;
-  const repliesFeatureOn = !cachedSettings || cachedSettings.RepliesEnabled !== false;
-
   // Arm writing-protection if there's an actual writing control on this page (a comment box,
   // or the possibility of a reply box) — not just because the post happens to be open.
   const hasReplyableComment = data.comments.some(c=>!c.reply);
@@ -2047,7 +1796,7 @@ async function openPostDetail(postId, origin){
           </div>
           <div class="word-count" id="replyinput-wc-${c.commentId}">0 words (30+ needed for credit)</div>
         </div></div>`;
-    } else if(!c.reply && data.isOwnPost && !data.replyOpen && repliesFeatureOn){
+    } else if(!c.reply && data.isOwnPost && !data.replyOpen){
       replyHtml = `<div class="reply"><div class="closed-note" style="margin-top:6px;">Reply period closed.</div></div>`;
     }
     return `<div class="comment"><div class="avatar" style="background:var(--postal-blue)">${avatarInner(c.name, c.profilePicURL)}</div><div class="comment-body"><div class="c-name">${c.name}</div><div class="c-text">${c.text}</div></div></div>${replyHtml}`;
@@ -2056,7 +1805,7 @@ async function openPostDetail(postId, origin){
   const alreadyCommented = data.comments.some(c=>String(c.studentNumber)===String(currentStudent));
   let commentInputHtml;
   if(!data.commentOpen){
-    commentInputHtml = commentsFeatureOn ? `<div class="closed-note">Comment period closed for this week.</div>` : '';
+    commentInputHtml = `<div class="closed-note">Comment period closed for this week.</div>`;
   } else if(data.isOwnPost || alreadyCommented){
     commentInputHtml = '';
   } else {
@@ -2259,31 +2008,27 @@ function buildCompletionTimeline(data){
   const postClosePassed = now > new Date(sched.PostClose);
   const commentDeadlinePassed = now > new Date(sched.CommentDeadline);
 
-  if(data.settings.CommentsEnabled){
-    const commentDetails = data.commentDetails || [];
-    const commentsDone = (commentDetails.length > 0 && commentDetails.every(c=>c.done))
-      || (commentDetails.length === 0 && postClosePassed); // no groupmate ever posted, and posting's now closed
-    steps.push({
-      label: 'Comments', sub: '(1 per member)', done: commentsDone, deadline: sched.CommentDeadline,
-      submittedHtml: commentDetails.length
-        ? commentDetails.map(c=> `<div class="tl-submitted">${c.name}: ${c.done ? formatDeadline(c.createdAt) : '—'}</div>`).join('')
-        : (postClosePassed ? `<div class="tl-submitted">No groupmates posted — nothing to comment on.</div>` : ''),
-    });
-  }
+  const commentDetails = data.commentDetails || [];
+  const commentsDone = (commentDetails.length > 0 && commentDetails.every(c=>c.done))
+    || (commentDetails.length === 0 && postClosePassed); // no groupmate ever posted, and posting's now closed
+  steps.push({
+    label: 'Comments', sub: '(1 per member)', done: commentsDone, deadline: sched.CommentDeadline,
+    submittedHtml: commentDetails.length
+      ? commentDetails.map(c=> `<div class="tl-submitted">${c.name}: ${c.done ? formatDeadline(c.createdAt) : '—'}</div>`).join('')
+      : (postClosePassed ? `<div class="tl-submitted">No groupmates posted — nothing to comment on.</div>` : ''),
+  });
 
-  if(data.settings.RepliesEnabled){
-    const replyDetails = data.replyDetails || [];
-    const repliesDone = !!data.myPost && (
-      (replyDetails.length > 0 && replyDetails.every(r=>r.done))
-      || (replyDetails.length === 0 && commentDeadlinePassed) // nobody ever commented, and commenting's now closed
-    );
-    steps.push({
-      label: 'Replies', sub: '(1 per comment received)', done: repliesDone, deadline: sched.ReplyDeadline,
-      submittedHtml: replyDetails.length
-        ? replyDetails.map(r=> `<div class="tl-submitted">${r.name}: ${r.done ? formatDeadline(r.createdAt) : '—'}</div>`).join('')
-        : (data.myPost && commentDeadlinePassed ? `<div class="tl-submitted">No comments received — nothing to reply to.</div>` : ''),
-    });
-  }
+  const replyDetails = data.replyDetails || [];
+  const repliesDone = !!data.myPost && (
+    (replyDetails.length > 0 && replyDetails.every(r=>r.done))
+    || (replyDetails.length === 0 && commentDeadlinePassed) // nobody ever commented, and commenting's now closed
+  );
+  steps.push({
+    label: 'Replies', sub: '(1 per comment received)', done: repliesDone, deadline: sched.ReplyDeadline,
+    submittedHtml: replyDetails.length
+      ? replyDetails.map(r=> `<div class="tl-submitted">${r.name}: ${r.done ? formatDeadline(r.createdAt) : '—'}</div>`).join('')
+      : (data.myPost && commentDeadlinePassed ? `<div class="tl-submitted">No comments received — nothing to reply to.</div>` : ''),
+  });
 
   const stepsHtml = steps.map((s, i)=>{
     let status = s.done ? 'done' : (now > new Date(s.deadline) ? 'overdue' : 'pending');
@@ -2305,20 +2050,6 @@ function buildCompletionTimeline(data){
   }).join('');
 
   return `<div class="card"><div class="completion-timeline">${stepsHtml}</div></div>`;
-}
-
-// Collapsed by default — the composer view starts hidden every time it's
-// rendered (a fresh render, e.g. loading the week, always collapses it again),
-// so it never stays stuck open from a previous visit.
-function toggleRubricSection(){
-  const section = document.getElementById('rubricSection');
-  const toggle = document.getElementById('rubricToggle');
-  const hint = document.getElementById('rubricHint');
-  if(!section || !toggle) return;
-  const opening = section.classList.contains('hidden');
-  section.classList.toggle('hidden', !opening);
-  toggle.classList.toggle('open', opening);
-  if(hint) hint.textContent = opening ? '— tap to hide' : '— tap to view how this week is scored';
 }
 
 function buildRubricTable(rubric){
@@ -2383,7 +2114,7 @@ window.addEventListener('pageshow', markTabReturn);
 // ── AUTO-LOGIN FROM DASHBOARD ────────────────────────────────────────────
 (function() {
   const params = new URLSearchParams(window.location.search);
-  const autoStudent = params.get('studentNumber');
+  const autoStudent = params.get('student');
   const goto = params.get('goto');
   if (goto) gotoDestination = goto;
   if (autoStudent) {

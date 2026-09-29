@@ -1863,7 +1863,8 @@ function renderSchedule() {
       '<div><label class="field-label">Picture deadline</label><input class="text-input" type="datetime-local" id="sched-' + w + '-pictureDeadline" value="' + toLocal(s.PictureDeadline) + '"></div>' +
       '<div><label class="field-label">Comment deadline</label><input class="text-input" type="datetime-local" id="sched-' + w + '-commentDeadline" value="' + toLocal(s.CommentDeadline) + '"></div>' +
       '<div><label class="field-label">Reply deadline</label><input class="text-input" type="datetime-local" id="sched-' + w + '-replyDeadline" value="' + toLocal(s.ReplyDeadline) + '"></div>' +
-      '<div><label class="field-label">Grammar unit submission</label><input class="text-input" type="datetime-local" id="sched-' + w + '-grammarSubmitDeadline" value="' + toLocal(s.GrammarSubmitDeadline) + '"></div>' +
+      '<div><label class="field-label">Grammar feedback opens</label><input class="text-input" type="datetime-local" id="sched-' + w + '-grammarOpenTime" value="' + toLocal(s.GrammarOpenTime) + '"></div>' +
+      '<div><label class="field-label">Grammar unit submission deadline</label><input class="text-input" type="datetime-local" id="sched-' + w + '-grammarSubmitDeadline" value="' + toLocal(s.GrammarSubmitDeadline) + '"></div>' +
       '</div>' +
       '<button class="btn btn-sm" style="margin-top:14px" onclick="saveScheduleWeek(' + w + ')">Save changes</button></div>';
   }).join('');
@@ -1881,7 +1882,8 @@ async function saveScheduleWeek(week) {
     dateRangeLabel: val('dateRangeLabel'), prompt: val('prompt'),
     postOpen: val('postOpen'), postClose: val('postClose'),
     pictureDeadline: val('pictureDeadline'), commentDeadline: val('commentDeadline'),
-    replyDeadline: val('replyDeadline'), grammarSubmitDeadline: val('grammarSubmitDeadline')
+    replyDeadline: val('replyDeadline'), grammarSubmitDeadline: val('grammarSubmitDeadline'),
+    grammarOpenTime: val('grammarOpenTime')
   };
   const result = await api('forum', payload);
   if (!result.ok) { alert(result.error || "Couldn't save."); return; }
@@ -1891,6 +1893,7 @@ async function saveScheduleWeek(week) {
   s.PostOpen = payload.postOpen; s.PostClose = payload.postClose;
   s.PictureDeadline = payload.pictureDeadline; s.CommentDeadline = payload.commentDeadline;
   s.ReplyDeadline = payload.replyDeadline; s.GrammarSubmitDeadline = payload.grammarSubmitDeadline;
+  s.GrammarOpenTime = payload.grammarOpenTime;
 
   const badge = document.getElementById('sched-saved-' + week);
   badge.style.display = 'inline-block';
@@ -1925,16 +1928,18 @@ async function addNewWeek() {
   const commentDeadline = reference ? shiftDate(reference.CommentDeadline) : '';
   const replyDeadline = reference ? shiftDate(reference.ReplyDeadline) : '';
   const grammarSubmitDeadline = reference ? shiftDate(reference.GrammarSubmitDeadline) : '';
+  const grammarOpenTime = reference ? shiftDate(reference.GrammarOpenTime) : '';
   const dateRangeLabel = (postOpen && replyDeadline) ? (formatRangeDate(postOpen) + ' \u2013 ' + formatRangeDate(replyDeadline)) : '';
 
   const result = await api('forum', {
     action: 'saveSchedule', classId: currentClassId, week: w, dateRangeLabel: dateRangeLabel, prompt: '',
     postOpen: postOpen, postClose: postClose, pictureDeadline: pictureDeadline, commentDeadline: commentDeadline,
-    replyDeadline: replyDeadline, grammarSubmitDeadline: grammarSubmitDeadline
+    replyDeadline: replyDeadline, grammarSubmitDeadline: grammarSubmitDeadline, grammarOpenTime: grammarOpenTime
   });
   if (result.ok) {
     forumClassData.schedule.push({ Week: w, DateRangeLabel: dateRangeLabel, Prompt: '', PostOpen: postOpen, PostClose: postClose,
-      PictureDeadline: pictureDeadline, CommentDeadline: commentDeadline, ReplyDeadline: replyDeadline, GrammarSubmitDeadline: grammarSubmitDeadline });
+      PictureDeadline: pictureDeadline, CommentDeadline: commentDeadline, ReplyDeadline: replyDeadline, GrammarSubmitDeadline: grammarSubmitDeadline,
+      GrammarOpenTime: grammarOpenTime });
 
     // Auto-randomize groups for the new week too, using the same group
     // count as last time — easy for a teacher to forget to do by hand
