@@ -679,6 +679,25 @@ function xhrGet(url) {
     xhr.send();
   });
 }
+// POST variant — for calls whose payload is too big to survive being percent-encoded
+// into a URL (query strings have a hard length ceiling; Apps Script/the browser/Google's
+// edge all reject an oversized one outright, before the request even reaches your code —
+// that's the "net::ERR_FAILED 400" a GET throws in that case). text/plain keeps this a
+// CORS "simple request" so it doesn't trigger a preflight against the Apps Script
+// redirect chain (same trick already used by callApi() in the forum's other frontends).
+function xhrPost(url, bodyObj) {
+  return new Promise(function(resolve, reject) {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader('Content-Type', 'text/plain;charset=utf-8');
+    xhr.onload = function() {
+      try { resolve(JSON.parse(xhr.responseText)); }
+      catch (e) { reject(new Error('Invalid response: ' + xhr.responseText.slice(0, 150))); }
+    };
+    xhr.onerror = function() { reject(new Error('Network error')); };
+    xhr.send(JSON.stringify(bodyObj));
+  });
+}
 async function api(engine, params, opts) {
   const base = engine === 'quiz' ? QUIZ_ENGINE_URL : FORUM_ENGINE_URL;
   // _ts guarantees a unique URL on every single call, so no caching layer —
@@ -686,15 +705,19 @@ async function api(engine, params, opts) {
   // stale response for an identical (action, classId, token) combination,
   // which is exactly the situation repeated testing creates.
   const allParams = Object.assign({}, params, { token: authToken, _ts: Date.now() + '' + Math.random() });
-  const url = base + '?' + new URLSearchParams(allParams).toString();
   // silent: true skips the automatic overlay toggle — for batch operations
   // (e.g. the Reflections tab fetching 25 students' annotations across
   // several parallel calls) that manage one steady overlay themselves
   // instead of flickering it on/off with every individual call finishing.
   const silent = opts && opts.silent;
+  // method: 'POST' — opt in for any call whose payload can run large (pasted
+  // text, bulk JSON, etc.). Everything else keeps using GET unchanged.
+  const usePost = opts && opts.method === 'POST';
   if (!silent) showLoading(loadingTextForAction(params.action));
   try {
-    const data = await xhrGet(url);
+    const data = usePost
+      ? await xhrPost(base, allParams)
+      : await xhrGet(base + '?' + new URLSearchParams(allParams).toString());
     if (!data.ok && !data.requiresPassword) throw new Error(data.error || 'Request failed');
     return data;
   } finally {
@@ -3023,7 +3046,7 @@ async function doImportAnnotations() {
   const resultDiv = document.getElementById('grammarImportResult');
   if (!raw) { showToast('Paste the verified JSON first.'); return; }
   resultDiv.innerHTML = '<div class="empty-note">Importing…</div>';
-  const result = await api('forum', { action: 'importAnnotations', classId: currentClassId, payload: raw });
+  const result = await api('forum', { action: 'importAnnotations', classId: currentClassId, payload: raw }, { method: 'POST' });
   if (!result.ok) { resultDiv.innerHTML = '<div class="msg error" style="display:block">' + esc(result.error) + '</div>'; return; }
   const notFoundHtml = result.notFound && result.notFound.length
     ? '<div class="msg error" style="display:block;margin-top:6px">Not matched to a student in Roster: ' + result.notFound.join(', ') + '</div>' : '';
