@@ -277,7 +277,7 @@
   .ccf-purple{background:#E6DEF7;color:#4A2A80;}
   .ccf-grey{background:#E6E6E4;color:#5A5A56;}
   .ccf-border{box-shadow:0 0 0 1.5px #2A7A4E;}
-  .ccf-indent{display:inline-block;width:1.4em;}
+  .ccf-indent{white-space:pre;}
   .err-tt{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:10px;padding:11px 14px;min-width:220px;max-width:280px;font-size:0.72rem;line-height:1.5;z-index:100;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,0.25);white-space:normal;text-align:left;font-family:'IBM Plex Sans',sans-serif;}
   .err-tt::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:var(--ink);}
   .ccf-tag:hover .err-tt{display:block;}
@@ -1060,9 +1060,16 @@ const CCF_CODE_LABELS={VT:'Verb Tense',SVA:'Subject-Verb Agreement',ART:'Article
 function buildAnnotatedHtml(text, colourMap, showUntreatable){
   function esc(s){ return s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''; }
   const tokens = ccfTokenize(text, colourMap, showUntreatable);
+  // The indent span renders the student's OWN literal leading whitespace
+  // (t.ws) as real text, not a fixed-width placeholder box — the browser
+  // has genuine Unicode support, so a full-width space (U+3000, the normal
+  // Japanese indent character), a run of regular spaces, or a tab all get
+  // their true visual width for free, exactly as the student typed and
+  // saved it. No approximation needed here (unlike the PDF path, whose
+  // Latin-only font can't display a full-width space's own glyph).
   const parts = tokens.map(t=>{
     if(t.break) return '<br>';
-    if(t.indent) return '<span class="ccf-indent"></span>';
+    if(t.indent) return `<span class="ccf-indent">${esc(t.ws)}</span>`;
     if(!t.style) return esc(t.text);
     const noUnit = t.style.state==='purple' || t.style.state==='grey';
     let tip = `<div class="tt-code">${esc(CCF_CODE_LABELS[t.style.code]||t.style.code)}</div>`;
@@ -1078,7 +1085,12 @@ function buildAnnotatedHtml(text, colourMap, showUntreatable){
   });
   let html='';
   for(let i=0;i<parts.length;i++){
-    if(i>0 && parts[i]!=='<br>' && parts[i-1]!=='<br>' && parts[i-1]!=='<span class="ccf-indent"></span>') html+=' ';
+    // No separating space after a <br> or after the indent span — the
+    // indent span's own text already supplies that gap (whatever width
+    // the student actually typed), so adding one more would pad it out.
+    // Checked against the tokens themselves rather than the rendered HTML
+    // string, so this stays correct regardless of what's inside the span.
+    if(i>0 && !tokens[i-1].break && !tokens[i-1].indent) html+=' ';
     html+=parts[i];
   }
   return html;
@@ -1169,25 +1181,31 @@ function ccfTokenize(text, colourMap, showUntreatable){
   // common shape it actually returns. Requiring \n\s*\n silently dropped
   // paragraph structure for every entry annotated that way.
   const paraTexts = text.split(/\n+/);
-  // Indent every paragraph after the first — the standard first-line-indent
-  // convention for the printed/on-screen sheet. Students never type literal
-  // leading spaces/tabs before a paragraph (they just press Enter), so
-  // detecting indentation from the raw text's own whitespace (the old
-  // /^[ \t]+\S/ check) never matched anything in practice: paragraph breaks
-  // would show, but no paragraph was ever actually indented. Fixed to apply
-  // indentation structurally instead of trying to detect it.
-  const paraIndents = paraTexts.map((p, i) => i > 0);
+  // Captures the student's OWN literal leading whitespace per paragraph —
+  // not just whether it exists, but the exact characters typed — so both
+  // the on-screen view and the printed sheet can reproduce their actual
+  // typed width (1 space vs 5 spaces vs a tab vs a full-width space all
+  // render differently, matching what's really there). null means no
+  // leading whitespace at all, so no indent. \s in a JS regex already
+  // covers the full-width space (U+3000 / "　") — the normal indent
+  // convention carried over from Japanese writing — along with ASCII
+  // space/tab, so this correctly captures whichever the student used,
+  // however many characters of it.
+  const paraIndentWs = paraTexts.map(p => {
+    const wm = /^[^\S\n]+/.exec(p);
+    return wm ? wm[0] : null;
+  });
   let paraIdx = 0;
-  let needIndentMarker = paraIndents[0];
+  let needIndentMarker = paraIndentWs[0];
 
   function pushWords(str, style){
     String(str).split(/\n+/).forEach((para, i, arr)=>{
-      if(needIndentMarker){ tokens.push({indent:true}); needIndentMarker=false; }
+      if(needIndentMarker){ tokens.push({indent:true, ws:needIndentMarker}); needIndentMarker=null; }
       para.split(/\s+/).filter(Boolean).forEach(w=> tokens.push({text:w, style}));
       if(i < arr.length-1){
         tokens.push({break:true});
         paraIdx++;
-        needIndentMarker = paraIndents[paraIdx];
+        needIndentMarker = paraIndentWs[paraIdx];
       }
     });
   }
@@ -1201,7 +1219,7 @@ function ccfTokenize(text, colourMap, showUntreatable){
     const noUnit = state==='purple' || state==='grey';
     const border = (!state || noUnit) ? false : ccfUnitBorder(primaryUnit, colourMap);
     const style = state ? {code, primaryUnit: noUnit?null:primaryUnit, secondaryUnit: noUnit?null:secondaryUnit, state, border} : null;
-    if(needIndentMarker){ tokens.push({indent:true}); needIndentMarker=false; }
+    if(needIndentMarker){ tokens.push({indent:true, ws:needIndentMarker}); needIndentMarker=null; }
     if(span==='^'){
       tokens.push({text:'^', style});
     } else {
@@ -1229,28 +1247,57 @@ function ccfLayoutAnnotated(doc, tokens, fontSize, maxWidth){
   });
   doc.setFont('helvetica','normal'); doc.setFontSize(fontSize);
   const lines=[]; let cur=[]; let curW=0;
-  let pendingIndent = false;
+  let pendingIndentWs = null;
   tokens.forEach((t,i)=>{
-    if(t.indent){ pendingIndent = true; return; }
+    if(t.indent){ pendingIndentWs = t.ws; return; }
     if(t.break){ if(cur.length){lines.push(cur); cur=[]; curW=0;} return; }
     const w=widths[i];
     const add = cur.length? spaceW+w : w;
     if(curW+add>maxWidth && cur.length){ lines.push(cur); cur=[]; curW=0; }
-    if(cur.length===0 && pendingIndent){ cur.indent = true; pendingIndent = false; }
+    if(cur.length===0 && pendingIndentWs){ cur.indentWs = pendingIndentWs; pendingIndentWs = null; }
     cur.push(t); curW += (cur.length>1?spaceW:0)+w;
   });
   if(cur.length) lines.push(cur);
   return lines;
+}
+// Reproduces the literal indent width the student typed — 1 space, 5
+// spaces, a tab, a full-width space, whatever's actually in their text —
+// rather than one fixed marker for any indent at all.
+//   · Regular ASCII space: jsPDF's own measured space width at the current
+//     font/size (spaceW) — exact, the font has a real glyph for it.
+//   · Full-width / ideographic space (U+3000 / "　", the normal Japanese
+//     indent character): the PDF's Latin font has no glyph for it, but it
+//     doesn't need one — a space has no ink to draw. Its width is a fixed
+//     typographic fact, not a guess: a full-width space is defined as
+//     exactly one em (equal to the font size itself), computed directly
+//     from fontSize using the same pt→mm factor used elsewhere in this
+//     file (see lineHeight in ccfDrawReflectionSheet), giving the true
+//     width rather than an approximation of it.
+//   · Tab: has no width of its own in raw PDF text at all (no tab-stop
+//     concept). Approximated at the browser's own default tab-size of 8
+//     characters, so it comes out close to how it would actually have
+//     looked in the plain-text composer — an approximation, not an exact
+//     figure, though the composer's textarea doesn't actually let a
+//     student insert a real tab character today, so this is mainly a
+//     safety net for stored data rather than something students will hit.
+function ccfIndentWidthMM(ws, spaceW, fontSize){
+  if(!ws) return 0;
+  let w = 0;
+  for(const ch of ws){
+    if(ch === '　') w += fontSize * 0.352778;
+    else if(ch === '\t') w += spaceW * 8;
+    else w += spaceW;
+  }
+  return w;
 }
 function ccfDrawAnnotated(doc, tokens, x0, y0, fontSize, lineHeight, maxWidth){
   const lines = ccfLayoutAnnotated(doc, tokens, fontSize, maxWidth);
   doc.setFont('helvetica','normal'); doc.setFontSize(fontSize);
   const spaceW = doc.getTextWidth(' ');
   const tagFontSize = fontSize*0.62;
-  const PARA_INDENT_MM = 5;
   let y=y0;
   lines.forEach(line=>{
-    let x=x0 + (line.indent ? PARA_INDENT_MM : 0);
+    let x=x0 + ccfIndentWidthMM(line.indentWs, spaceW, fontSize);
     line.forEach(t=>{
       doc.setFont('helvetica', t.style?'bold':'normal'); doc.setFontSize(fontSize);
       let w = doc.getTextWidth(t.text);

@@ -2515,22 +2515,27 @@ function ccfTokenize(text, colourMap, showUntreatable) {
   // into running text (and lost the indent flag with it) for any entry that
   // only had single Enters — which is most of them. Fixed to match.
   const paraTexts = text.split(/\n[ \t]*\n|\n/);
-  // Indent every paragraph after the first — the standard first-line-indent
-  // convention for the printed sheet. Students never type literal leading
-  // spaces/tabs before a paragraph (they just press Enter), so detecting
-  // indentation from the raw text's own whitespace (the old /^[ \t]+\S/
-  // check) never matched anything in practice: paragraph breaks would show,
-  // but no paragraph was ever actually indented. Fixed to apply indentation
-  // structurally instead of trying to detect it.
-  const paraIndents = paraTexts.map(function(p, i) { return i > 0; });
+  // Captures the student's OWN literal leading whitespace per paragraph —
+  // not just whether it exists, but the exact characters typed — so the
+  // drawn indent reproduces their actual typed width (1 space vs 5 spaces
+  // vs a tab vs a full-width space all render differently, matching what's
+  // really there). null means no leading whitespace at all, so no indent.
+  // \s in a JS regex already covers the full-width space (U+3000 / "　") —
+  // the normal indent convention carried over from Japanese writing — along
+  // with ASCII space/tab, so this correctly captures whichever the student
+  // used, however many characters of it.
+  const paraIndentWs = paraTexts.map(function(p) {
+    const wm = /^[^\S\n]+/.exec(p);
+    return wm ? wm[0] : null;
+  });
   let paraIdx = 0;
-  let needIndentMarker = paraIndents[0];
+  let needIndentMarker = paraIndentWs[0];
 
   function pushWords(str, style) {
     String(str).split(/\n[ \t]*\n|\n/).forEach(function(para, i, arr) {
-      if (needIndentMarker) { tokens.push({ indent: true }); needIndentMarker = false; }
+      if (needIndentMarker) { tokens.push({ indent: true, ws: needIndentMarker }); needIndentMarker = null; }
       para.split(/\s+/).filter(Boolean).forEach(function(w) { tokens.push({ text: w, style: style }); });
-      if (i < arr.length - 1) { tokens.push({ brk: true }); paraIdx++; needIndentMarker = paraIndents[paraIdx]; }
+      if (i < arr.length - 1) { tokens.push({ brk: true }); paraIdx++; needIndentMarker = paraIndentWs[paraIdx]; }
     });
   }
   while ((m = re.exec(text)) !== null) {
@@ -2544,7 +2549,7 @@ function ccfTokenize(text, colourMap, showUntreatable) {
     const noUnit = state === 'purple' || state === 'grey';
     const border = (!state || noUnit) ? false : ccfUnitBorder(primaryUnit, colourMap);
     const style = state ? { code: code, primaryUnit: noUnit ? null : primaryUnit, secondaryUnit: noUnit ? null : secondaryUnit, state: state, border: border } : null;
-    if (needIndentMarker) { tokens.push({ indent: true }); needIndentMarker = false; }
+    if (needIndentMarker) { tokens.push({ indent: true, ws: needIndentMarker }); needIndentMarker = null; }
     if (span === '^') {
       tokens.push({ text: '^', style: style });
     } else {
@@ -2572,29 +2577,57 @@ function ccfLayoutAnnotated(doc, tokens, fontSize, maxWidth) {
   });
   doc.setFont('helvetica', 'normal'); doc.setFontSize(fontSize);
   const lines = []; let cur = []; let curW = 0;
-  let pendingIndent = false;
+  let pendingIndentWs = null;
   tokens.forEach(function(t, i) {
-    if (t.indent) { pendingIndent = true; return; }
+    if (t.indent) { pendingIndentWs = t.ws; return; }
     if (t.brk) { if (cur.length) { lines.push(cur); cur = []; curW = 0; } lines.push([]); return; }
     const w = widths[i];
     const add = cur.length ? spaceW + w : w;
     if (curW + add > maxWidth && cur.length) { lines.push(cur); cur = []; curW = 0; }
-    if (cur.length === 0 && pendingIndent) { cur.indent = true; pendingIndent = false; }
+    if (cur.length === 0 && pendingIndentWs) { cur.indentWs = pendingIndentWs; pendingIndentWs = null; }
     cur.push(t); curW += (cur.length > 1 ? spaceW : 0) + w;
   });
   if (cur.length) lines.push(cur);
   return lines;
 }
 
+// Reproduces the literal indent width the student typed — 1 space, 5
+// spaces, a tab, a full-width space, whatever's actually in their text —
+// rather than one fixed marker for any indent at all.
+//   · Regular ASCII space: jsPDF's own measured space width at the current
+//     font/size (spaceW) — exact, the font has a real glyph for it.
+//   · Full-width / ideographic space (U+3000 / "　", the normal Japanese
+//     indent character): the PDF's Latin font has no glyph for it, but it
+//     doesn't need one — a space has no ink to draw. Its width is a fixed
+//     typographic fact, not a guess: a full-width space is defined as
+//     exactly one em (equal to the font size itself), so it's computed
+//     directly from fontSize using the same pt→mm factor already used
+//     elsewhere in this file (see lineHeight above), giving the true width
+//     rather than an approximation of it.
+//   · Tab: has no width of its own in raw PDF text at all (no tab-stop
+//     concept). Approximated at the browser's own default tab-size of 8
+//     characters, so a tab — if one ever makes it into an entry — comes out
+//     close to how it would actually have looked in the plain-text
+//     composer, though this one is a defensible approximation rather than
+//     an exact figure.
+function ccfIndentWidthMM(ws, spaceW, fontSize) {
+  if (!ws) return 0;
+  let w = 0;
+  for (const ch of ws) {
+    if (ch === '　') w += fontSize * 0.352778;
+    else if (ch === '\t') w += spaceW * 8;
+    else w += spaceW;
+  }
+  return w;
+}
 function ccfDrawAnnotated(doc, tokens, x0, y0, fontSize, lineHeight, maxWidth) {
   const lines = ccfLayoutAnnotated(doc, tokens, fontSize, maxWidth);
   doc.setFont('helvetica', 'normal'); doc.setFontSize(fontSize);
   const spaceW = doc.getTextWidth(' ');
   const tagFontSize = fontSize * 0.62;
-  const PARA_INDENT_MM = 5;
   let y = y0;
   lines.forEach(function(line) {
-    let x = x0 + (line.indent ? PARA_INDENT_MM : 0);
+    let x = x0 + ccfIndentWidthMM(line.indentWs, spaceW, fontSize);
     line.forEach(function(t) {
       doc.setFont('helvetica', t.style ? 'bold' : 'normal'); doc.setFontSize(fontSize);
       let w = doc.getTextWidth(t.text);
