@@ -3102,7 +3102,18 @@ async function doImportAnnotations() {
     if (!result.ok) { resultDiv.innerHTML = '<div class="msg error" style="display:block">' + esc(result.error) + '</div>'; return; }
     const notFoundHtml = result.notFound && result.notFound.length
       ? '<div class="msg error" style="display:block;margin-top:6px">Not matched to a student in Roster: ' + result.notFound.join(', ') + '</div>' : '';
-    resultDiv.innerHTML = '<div class="msg ok" style="display:block">✓ Imported ' + result.imported + ' ' + (result.imported === 1 ? 'entry' : 'entries') + ' for Week ' + result.week + '.</div>' + notFoundHtml;
+    // The backend restores each paragraph's real leading whitespace (the
+    // indent the student actually typed) from their original submission,
+    // rather than trusting the AI's retyped copy for it — see
+    // restoreParagraphIndentation in Forum Engine. That only works when the
+    // AI's annotated version has the same number of paragraphs as the
+    // original; if it merged/split one, the backend deliberately skips
+    // indentation for that student rather than risking a wrong guess, and
+    // flags them here so it can be checked by hand instead of failing silently.
+    const indentMismatchHtml = result.indentMismatches && result.indentMismatches.length
+      ? '<div class="msg error" style="display:block;margin-top:6px">Paragraph structure didn\'t match the original for: ' + result.indentMismatches.join(', ') +
+        ' — indentation was left as imported for ' + (result.indentMismatches.length === 1 ? 'them' : 'these students') + '; worth a quick look at their entry.</div>' : '';
+    resultDiv.innerHTML = '<div class="msg ok" style="display:block">✓ Imported ' + result.imported + ' ' + (result.imported === 1 ? 'entry' : 'entries') + ' for Week ' + result.week + '.</div>' + notFoundHtml + indentMismatchHtml;
   } catch (e) {
     // Without this, a thrown/rejected api() call (network error, "Request
     // failed", etc.) leaves the "Importing…" placeholder above stuck
