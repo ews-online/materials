@@ -339,7 +339,7 @@
       <button class="btn btn-primary btn-block" style="margin-top:14px;" onclick="login()">Enter</button>
       <div class="error-msg" id="loginError">Student number not found. Check and try again.</div>
     </div>
-    <div class="version-tag">v2.9 — 2026-09-29</div>
+    <div class="version-tag">v3.0 — 2026-09-29</div>
   </div>
 
   <!-- ===================== MAIN APP ===================== -->
@@ -1671,6 +1671,93 @@ function clearDraft(week){
   try{ localStorage.removeItem(draftKey(week)); }catch(e){}
 }
 
+// ============ POST DEADLINE WATCH (auto-save at PostClose) ============
+// Lets a student's in-progress entry survive the exact moment the posting
+// window closes: while the composer or the edit-post form is open, a live
+// countdown ticks down to that week's PostClose. At zero, it grabs whatever
+// is currently sitting in the title/text fields, submits it to the server
+// as an autoSubmit, and locks both fields against further edits — nothing
+// typed after that point can still sneak in, since the fields are disabled
+// before the request even goes out. The server accepts an autoSubmit through
+// a short grace window (POST_AUTO_SUBMIT_GRACE_MS in ForumEngine.gs) to
+// absorb network latency at the exact deadline second; a manual submit gets
+// no such grace. Self-cleaning: if the watched fields leave the DOM (the
+// student navigated away, or already finished normally before the bell),
+// the interval clears itself on its next tick rather than firing into
+// nothing.
+let _postDeadlineWatch = null;
+
+function startPostDeadlineWatch(deadline, mode, context){
+  stopPostDeadlineWatch();
+  const titleId = mode === 'compose' ? 'postTitle' : 'editTitleInput';
+  const textId  = mode === 'compose' ? 'postText'  : 'editTextInput';
+  function tick(){
+    const titleField = document.getElementById(titleId);
+    const textField = document.getElementById(textId);
+    if(!titleField || !textField){ stopPostDeadlineWatch(); return; } // left the DOM — nothing left to watch
+    const diff = deadline - new Date();
+    const label = document.getElementById('postDeadlineCountdown');
+    if(diff <= 0){
+      stopPostDeadlineWatch();
+      autoSubmitAtDeadline(mode, context, titleField, textField);
+      return;
+    }
+    if(label){
+      const mins = Math.floor(diff / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+      label.textContent = `Time remaining: ${mins}:${String(secs).padStart(2,'0')}`;
+    }
+  }
+  tick();
+  _postDeadlineWatch = setInterval(tick, 1000);
+}
+function stopPostDeadlineWatch(){
+  if(_postDeadlineWatch){ clearInterval(_postDeadlineWatch); _postDeadlineWatch = null; }
+}
+
+async function autoSubmitAtDeadline(mode, context, titleField, textField){
+  const text = textField.value || '';
+  titleField.disabled = true;
+  textField.disabled = true;
+  if(!text.trim()){
+    // Nothing was written — nothing to save. Just let the normal closed-window
+    // state take over (re-fetches and shows "posting window closed" as usual).
+    showToast("Time's up — the posting window has closed.");
+    if(mode === 'compose') renderNewPostTab(); else openPostDetail(context.postId, postDetailOrigin);
+    return;
+  }
+  const title = (titleField.value || '').trim() || 'Untitled (auto-saved at deadline)';
+  showToast("Time's up — saving your entry…");
+  try{
+    let result;
+    if(mode === 'compose'){
+      result = await callApi('createPost', {
+        classId: currentClassId, studentNumber: currentStudent, week: currentWeek,
+        title, textContent: text,
+        imageURL: currentMediaType === 'image' ? currentMediaValue : '',
+        youtubeURL: currentMediaType === 'youtube' ? currentMediaValue : '',
+        autoSubmit: true,
+      });
+    } else {
+      result = await callApi('updatePost', {
+        classId: currentClassId, studentNumber: currentStudent, postId: context.postId,
+        title, textContent: text, autoSubmit: true,
+      });
+    }
+    if(result.success){
+      if(mode === 'compose'){ currentMediaType = null; currentMediaValue = null; clearDraft(currentWeek); }
+      showToast("Time's up — your entry was saved.");
+      if(mode === 'compose') renderNewPostTab(); else openPostDetail(context.postId, postDetailOrigin);
+    } else {
+      // Extremely unlikely (would need to miss even the grace window), but if it
+      // happens the student needs a human, not another silent retry.
+      showToast(result.error || "Time's up, but saving failed — please tell your teacher right away.");
+    }
+  }catch(e){
+    showToast("Time's up, but we couldn't reach the server — please tell your teacher right away.");
+  }
+}
+
 async function renderNewPostTab(){
   isWritingSomething = false;
   showLoading('Loading…');
@@ -1708,6 +1795,7 @@ async function renderNewPostTab(){
   const sched = data.schedule;
   const now = new Date();
   const postOpen = now >= new Date(sched.PostOpen) && now <= new Date(sched.PostClose);
+  const showingComposer = !data.myPost && postOpen;
 
   let entryBlockHtml;
   if(data.myPost){
@@ -1729,6 +1817,7 @@ async function renderNewPostTab(){
             <span id="wordCountLabel">0 words</span>
             <span>Min 40 words for full marks</span>
           </div>
+          <div id="postDeadlineCountdown" style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--ink-soft);margin-top:2px;"></div>
           ${data.settings.PictureEnabled ? `<div id="composerMediaArea"></div>` : ''}
           <button class="btn btn-primary" style="display:block;margin:14px auto 0;padding:11px 36px;" onclick="submitPost()">Post entry</button>
         </div>
@@ -1783,6 +1872,11 @@ async function renderNewPostTab(){
   currentMediaType = null;
   currentMediaValue = null;
   renderComposerMediaArea();
+  // Auto-save-at-deadline watch — armed whenever the composer is on screen,
+  // even before "Start writing" is clicked, so a student who opens the tab
+  // and starts typing right up to the bell never loses that work. See
+  // startPostDeadlineWatch below.
+  if(showingComposer && sched.PostClose) startPostDeadlineWatch(new Date(sched.PostClose), 'compose', {});
   } finally {
     hideLoading();
   }
@@ -2210,6 +2304,7 @@ function startEditPost(postId){
   document.getElementById('postDetailBodyArea').innerHTML = `
     <textarea id="editTextInput" style="min-height:200px;line-height:1.6;">${post.TextContent}</textarea>
     <div class="meta-row"><span id="editWordCountLabel">${wordCountOf(post.TextContent)} words</span><span></span></div>
+    <div id="postDeadlineCountdown" style="font-family:'IBM Plex Mono',monospace;font-size:0.72rem;color:var(--ink-soft);margin-top:2px;"></div>
     <div class="grade-actions" style="margin-top:10px;">
       <button class="btn btn-ghost" style="flex:1;" onclick="openPostDetail('${postId}', postDetailOrigin)">Cancel</button>
       <button class="btn btn-primary" style="flex:1;" onclick="savePostEdit('${postId}')">Save changes</button>
@@ -2219,6 +2314,13 @@ function startEditPost(postId){
   ta.addEventListener('input', ()=>{
     document.getElementById('editWordCountLabel').textContent = wordCountOf(ta.value) + ' words';
   });
+  // Same auto-save-at-deadline watch as the composer, armed with THIS post's
+  // week's PostClose (returned by getPostDetail) — edit mode is only ever
+  // reachable while that week's window is still open, but a student could
+  // still be mid-edit when it closes.
+  if(currentDetailData && currentDetailData.postCloseDeadline){
+    startPostDeadlineWatch(new Date(currentDetailData.postCloseDeadline), 'edit', { postId });
+  }
 }
 function wordCountOf(text){ return text.trim().split(/\s+/).filter(Boolean).length; }
 
