@@ -2515,7 +2515,14 @@ function ccfTokenize(text, colourMap, showUntreatable) {
   // into running text (and lost the indent flag with it) for any entry that
   // only had single Enters — which is most of them. Fixed to match.
   const paraTexts = text.split(/\n[ \t]*\n|\n/);
-  const paraIndents = paraTexts.map(function(p) { return /^[ \t]+\S/.test(p); });
+  // Indent every paragraph after the first — the standard first-line-indent
+  // convention for the printed sheet. Students never type literal leading
+  // spaces/tabs before a paragraph (they just press Enter), so detecting
+  // indentation from the raw text's own whitespace (the old /^[ \t]+\S/
+  // check) never matched anything in practice: paragraph breaks would show,
+  // but no paragraph was ever actually indented. Fixed to apply indentation
+  // structurally instead of trying to detect it.
+  const paraIndents = paraTexts.map(function(p, i) { return i > 0; });
   let paraIdx = 0;
   let needIndentMarker = paraIndents[0];
 

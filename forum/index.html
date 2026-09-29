@@ -1169,7 +1169,14 @@ function ccfTokenize(text, colourMap, showUntreatable){
   // common shape it actually returns. Requiring \n\s*\n silently dropped
   // paragraph structure for every entry annotated that way.
   const paraTexts = text.split(/\n+/);
-  const paraIndents = paraTexts.map(p => /^[ \t]+\S/.test(p));
+  // Indent every paragraph after the first — the standard first-line-indent
+  // convention for the printed/on-screen sheet. Students never type literal
+  // leading spaces/tabs before a paragraph (they just press Enter), so
+  // detecting indentation from the raw text's own whitespace (the old
+  // /^[ \t]+\S/ check) never matched anything in practice: paragraph breaks
+  // would show, but no paragraph was ever actually indented. Fixed to apply
+  // indentation structurally instead of trying to detect it.
+  const paraIndents = paraTexts.map((p, i) => i > 0);
   let paraIdx = 0;
   let needIndentMarker = paraIndents[0];
 
