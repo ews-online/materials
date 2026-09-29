@@ -2508,13 +2508,19 @@ function ccfTagFor(style) {
 function ccfTokenize(text, colourMap, showUntreatable) {
   const re = /\{(\^|[^{}|]*)\|([A-Z]+)(?:\|([BI]\d+(?:\/[BI]\d+)?))?\}/g;
   const tokens = []; let last = 0, m;
-  const paraTexts = text.split(/\n\s*\n/);
+  // Splits on EITHER a single Enter or a full blank line — students mostly
+  // write with one Enter between paragraphs (no blank line), same as
+  // splitIntoParagraphs() elsewhere in this file. The old /\n\s*\n/ pattern
+  // required a true blank line, so it silently merged every paragraph break
+  // into running text (and lost the indent flag with it) for any entry that
+  // only had single Enters — which is most of them. Fixed to match.
+  const paraTexts = text.split(/\n[ \t]*\n|\n/);
   const paraIndents = paraTexts.map(function(p) { return /^[ \t]+\S/.test(p); });
   let paraIdx = 0;
   let needIndentMarker = paraIndents[0];
 
   function pushWords(str, style) {
-    String(str).split(/\n\s*\n/).forEach(function(para, i, arr) {
+    String(str).split(/\n[ \t]*\n|\n/).forEach(function(para, i, arr) {
       if (needIndentMarker) { tokens.push({ indent: true }); needIndentMarker = false; }
       para.split(/\s+/).filter(Boolean).forEach(function(w) { tokens.push({ text: w, style: style }); });
       if (i < arr.length - 1) { tokens.push({ brk: true }); paraIdx++; needIndentMarker = paraIndents[paraIdx]; }
