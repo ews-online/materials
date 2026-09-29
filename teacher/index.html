@@ -3046,11 +3046,18 @@ async function doImportAnnotations() {
   const resultDiv = document.getElementById('grammarImportResult');
   if (!raw) { showToast('Paste the verified JSON first.'); return; }
   resultDiv.innerHTML = '<div class="empty-note">Importing…</div>';
-  const result = await api('forum', { action: 'importAnnotations', classId: currentClassId, payload: raw }, { method: 'POST' });
-  if (!result.ok) { resultDiv.innerHTML = '<div class="msg error" style="display:block">' + esc(result.error) + '</div>'; return; }
-  const notFoundHtml = result.notFound && result.notFound.length
-    ? '<div class="msg error" style="display:block;margin-top:6px">Not matched to a student in Roster: ' + result.notFound.join(', ') + '</div>' : '';
-  resultDiv.innerHTML = '<div class="msg ok" style="display:block">✓ Imported ' + result.imported + ' ' + (result.imported === 1 ? 'entry' : 'entries') + ' for Week ' + result.week + '.</div>' + notFoundHtml;
+  try {
+    const result = await api('forum', { action: 'importAnnotations', classId: currentClassId, payload: raw }, { method: 'POST' });
+    if (!result.ok) { resultDiv.innerHTML = '<div class="msg error" style="display:block">' + esc(result.error) + '</div>'; return; }
+    const notFoundHtml = result.notFound && result.notFound.length
+      ? '<div class="msg error" style="display:block;margin-top:6px">Not matched to a student in Roster: ' + result.notFound.join(', ') + '</div>' : '';
+    resultDiv.innerHTML = '<div class="msg ok" style="display:block">✓ Imported ' + result.imported + ' ' + (result.imported === 1 ? 'entry' : 'entries') + ' for Week ' + result.week + '.</div>' + notFoundHtml;
+  } catch (e) {
+    // Without this, a thrown/rejected api() call (network error, "Request
+    // failed", etc.) leaves the "Importing…" placeholder above stuck
+    // forever with no indication anything went wrong.
+    resultDiv.innerHTML = '<div class="msg error" style="display:block">' + esc(e.message || 'Something went wrong — try again.') + '</div>';
+  }
 }
 
 async function doGenerateSpellingPrompt() {
@@ -3072,14 +3079,25 @@ async function doImportSpellingCorrections() {
   const resultDiv = document.getElementById('spellingImportResult');
   if (!raw) { showToast('Paste the corrections JSON first.'); return; }
   resultDiv.innerHTML = '<div class="empty-note">Saving…</div>';
-  const result = await api('forum', { action: 'importSpellingCorrections', classId: currentClassId, payload: raw });
-  if (!result.ok) {
-    const mismatchHtml = result.mismatches && result.mismatches.length ? '<div class="msg error" style="display:block;margin-top:4px">' + result.mismatches.join('<br>') + '</div>' : '';
-    resultDiv.innerHTML = '<div class="msg error" style="display:block">' + esc(result.error) + '</div>' + mismatchHtml;
-    return;
+  try {
+    // POST, same fix as doImportAnnotations() above — each correction now
+    // carries a full AI-generated exampleSentence, so this payload can run
+    // large enough to blow past a GET request's URL length limit.
+    const result = await api('forum', { action: 'importSpellingCorrections', classId: currentClassId, payload: raw }, { method: 'POST' });
+    if (!result.ok) {
+      const mismatchHtml = result.mismatches && result.mismatches.length ? '<div class="msg error" style="display:block;margin-top:4px">' + result.mismatches.join('<br>') + '</div>' : '';
+      resultDiv.innerHTML = '<div class="msg error" style="display:block">' + esc(result.error) + '</div>' + mismatchHtml;
+      return;
+    }
+    const mismatchHtml = result.mismatches && result.mismatches.length ? '<div class="chip chip-gold" style="margin-top:6px">Skipped: ' + result.mismatches.join(', ') + '</div>' : '';
+    resultDiv.innerHTML = '<div class="msg ok" style="display:block">✓ Saved ' + esc(result.fileName) + ' (' + result.studentsWritten + ' student(s)) to the spelling folder.</div>' + mismatchHtml;
+  } catch (e) {
+    // Same reasoning as doImportAnnotations(): without this, a thrown or
+    // rejected api() call leaves the "Saving…" placeholder stuck forever
+    // with no indication anything went wrong — which is exactly what was
+    // happening here.
+    resultDiv.innerHTML = '<div class="msg error" style="display:block">' + esc(e.message || 'Something went wrong — try again.') + '</div>';
   }
-  const mismatchHtml = result.mismatches && result.mismatches.length ? '<div class="chip chip-gold" style="margin-top:6px">Skipped: ' + result.mismatches.join(', ') + '</div>' : '';
-  resultDiv.innerHTML = '<div class="msg ok" style="display:block">✓ Saved ' + esc(result.fileName) + ' (' + result.studentsWritten + ' student(s)) to the spelling folder.</div>' + mismatchHtml;
 }
 
 /* ====================== SCAFFOLD ASSIGNMENT ====================== */
