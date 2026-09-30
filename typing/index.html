@@ -765,7 +765,7 @@ tr:hover td { background: var(--surface2); }
       <div class="step-dots" id="sp-dots"></div>
     </div>
   </div>
-  <p style="font-family:'JetBrains Mono',monospace;font-size:.65rem;color:#3a3f5a;max-width:600px;text-align:center;line-height:1.6;padding:0 1rem;margin-top:1rem">*Practice words are misspellings taken from your blog entries, corrected to the proper spelling. Example sentences are written fresh for each word, for typing practice.</p>
+  <p style="font-family:'JetBrains Mono',monospace;font-size:.65rem;color:#3a3f5a;max-width:600px;text-align:center;line-height:1.6;padding:0 1rem;margin-top:1rem">*Practice words are taken from your blog entries. They have been corrected to the proper spelling of the word. Sentences are also taken from your blog entries. There may be spelling and grammar errors remaining that were not automatically corrected.</p>
 </div>
 
 <!-- ═══ SPELL COMPLETE ═══ -->
@@ -777,7 +777,7 @@ tr:hover td { background: var(--surface2); }
     <p id="sp-complete-sub" style="font-family:'JetBrains Mono',monospace;font-size:.75rem;color:var(--text-muted)"></p>
     <div id="sp-complete-actions" style="display:flex;flex-direction:column;gap:.75rem;width:100%"></div>
     
-  <p style="font-family:'JetBrains Mono',monospace;font-size:.65rem;color:#3a3f5a;max-width:600px;text-align:center;line-height:1.6;padding:0 1rem;margin-top:1rem">*Practice words are misspellings taken from your blog entries, corrected to the proper spelling. Example sentences are written fresh for each word, for typing practice.</p>
+  <p style="font-family:'JetBrains Mono',monospace;font-size:.65rem;color:#3a3f5a;max-width:600px;text-align:center;line-height:1.6;padding:0 1rem;margin-top:1rem">*Practice words are taken from your blog entries. They have been corrected to the proper spelling of the word. Sentences are also taken from your blog entries. There may be spelling and grammar errors remaining that were not automatically corrected.</p>
   </div>
 </div>
 
@@ -1059,8 +1059,14 @@ async function apiGet(params) {
 }
 
 async function apiPost(body) {
-  // Use GET with encoded JSON payload to avoid CORS issues with Apps Script
-  const params = new URLSearchParams({ payload: JSON.stringify(Object.assign({}, body, { token: authToken })) });
+  // Use GET with encoded JSON payload to avoid CORS issues with Apps Script.
+  // IMPORTANT: the backend's doGet() only unwraps a query param literally
+  // named "data" (`if (p.data) { body = JSON.parse(p.data); ... }`) — it
+  // never looks at "payload". Sending this under "payload" (as this used
+  // to) means action/token never reach route(), so every apiPost call came
+  // back as an empty action + no session, i.e. "Session expired or invalid"
+  // on every single submission, unconditionally. Must be "data" to match.
+  const params = new URLSearchParams({ data: JSON.stringify(Object.assign({}, body, { token: authToken })) });
   const res = await fetch(SCRIPT_URL + '?' + params.toString());
   return res.json();
 }
@@ -1585,7 +1591,7 @@ function handleBaselineParagraph(wpm) {
 async function submitBaseline(avgWpm) {
   showLoading(true);
   try {
-    await apiPost({
+    const res = await apiPost({
       action:        'submitResult',
       studentNumber: state.studentNumber,
       className:     state.className,
@@ -1598,6 +1604,12 @@ async function submitBaseline(avgWpm) {
       score:         0,
       totalPoints:   0,
     });
+    // The backend can come back with ok:false (session expired, a duplicate
+    // submission, a server-side error, etc.) while the HTTP request itself
+    // still succeeds — apiPost/fetch never throws for that. Without this
+    // check we'd sail on to "return home" below and the student would see
+    // no error at all while nothing was actually saved.
+    if (!res || !res.ok) throw new Error((res && res.error) || 'Submit failed');
     // Refresh results and return home
     const resData = await apiGet({ action: 'getResults', studentNumber: state.studentNumber });
     state.pastResults       = resData.results || [];
@@ -1605,7 +1617,7 @@ async function submitBaseline(avgWpm) {
     buildHomeScreen();
     showScreen('home');
   } catch (err) {
-    alert('Error submitting results. Please try again.');
+    alert('Your results were NOT saved: ' + (err && err.message ? err.message : 'please try again.'));
     console.error(err);
   } finally {
     showLoading(false);
@@ -1696,7 +1708,7 @@ async function submitGraded(score, total) {
                      (wpmPass  ? sess.wpmPoints         : 0);
 
   try {
-    await apiPost({
+    const res = await apiPost({
       action:        'submitResult',
       studentNumber: state.studentNumber,
       className:     state.className,
@@ -1709,13 +1721,18 @@ async function submitGraded(score, total) {
       score:         finalScore,
       totalPoints:   sess.completionPoints + sess.accuracyPoints + sess.wpmPoints,
     });
+    // See the comment in submitBaseline: the backend can reply ok:false
+    // (expired session, duplicate, server error) without the fetch itself
+    // failing, so this has to be checked explicitly or a failed save looks
+    // identical to a successful one from the student's side.
+    if (!res || !res.ok) throw new Error((res && res.error) || 'Submit failed');
     const resData = await apiGet({ action: 'getResults', studentNumber: state.studentNumber });
     state.pastResults            = resData.results || [];
     state.session.alreadyCompleted = true;
     buildHomeScreen();
     showScreen('home');
   } catch (err) {
-    alert('Error submitting results. Please try again.');
+    alert('Your results were NOT saved: ' + (err && err.message ? err.message : 'please try again.'));
     state.submittedFinal = false;
     console.error(err);
   } finally {
@@ -2198,15 +2215,19 @@ function spSubmitCompletion() {
   spCompletedCount += batchCount;
 
   if (spSessionCompleted.length > 0) {
-    fetch(SCRIPT_URL + '?' + new URLSearchParams({ payload: JSON.stringify({
+    // Same "data" key + token fix as apiPost — these raw fetches were using
+    // key "payload" (backend only reads "data") AND never included a token
+    // at all, so route()'s validateSession() always rejected them too.
+    fetch(SCRIPT_URL + '?' + new URLSearchParams({ data: JSON.stringify({
       action: 'markSpellWords',
       studentNumber: state.studentNumber,
       studentName: state.nameEng,
-      words: spSessionCompleted
+      words: spSessionCompleted,
+      token: authToken
     }) }).toString()).catch(() => {});
   }
 
-  fetch(SCRIPT_URL + '?' + new URLSearchParams({ payload: JSON.stringify({
+  fetch(SCRIPT_URL + '?' + new URLSearchParams({ data: JSON.stringify({
     action: 'spellingDrill',
     studentNum: state.studentNumber,
     studentName: state.nameEng,
@@ -2214,7 +2235,8 @@ function spSubmitCompletion() {
     wordsCount: batchCount,
     words: spSessionCompleted.join(', '),
     timestamp: now.toISOString(),
-    completed: true
+    completed: true,
+    token: authToken
   }) }).toString()).catch(() => {});
 
   // Clear remaining pool so re-entry shows end card, keep spellWordBank for reset
@@ -2257,9 +2279,10 @@ function spShowEndCard() {
     resetBtn.onclick = async () => {
       resetBtn.disabled = true;
       showLoading(true, 'Resetting your word bank...');
-      await fetch(SCRIPT_URL + '?' + new URLSearchParams({ payload: JSON.stringify({
+      await fetch(SCRIPT_URL + '?' + new URLSearchParams({ data: JSON.stringify({
         action: 'resetSpellProgress',
-        studentNumber: state.studentNumber
+        studentNumber: state.studentNumber,
+        token: authToken
       }) }).toString()).catch(() => {});
       try {
         const rd = await apiGet({ action: 'getSpellWords', studentNumber: state.studentNumber });
