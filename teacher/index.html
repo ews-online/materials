@@ -1625,7 +1625,16 @@ function moodleReportRows() {
     // criterion breakdown underneath stays plain so a low score doesn't
     // read as a wall of red text.
     const totalColor = total >= 60 ? 'green' : 'red';
-    const html = '<p><strong>' + esc(r.name) + '</strong></p><p style="color:' + totalColor + '"><strong>Total: ' + total + ' / ' + max + '</strong></p><ul>' + criterionItems + '</ul>';
+    // Overall feedback comes from the same WeeklyFeedback-backed field the
+    // grading sidebar's "Overall feedback" textarea saves to (sub.savedFeedback),
+    // not the client-only gradingFeedbackDraft cache — that's only populated
+    // for students whose card was actually opened this session, so it'd be
+    // missing for anyone the teacher hasn't clicked into yet. Newlines become
+    // <br> rather than staying as real line breaks, same reason as the rest of
+    // this cell: a literal \n here would split the row across Excel cells.
+    const feedbackText = (sub.savedFeedback || '').trim();
+    const feedbackHtml = feedbackText ? '<p>' + esc(feedbackText).replace(/\n/g, '<br>') + '</p>' : '';
+    const html = '<p><strong>' + esc(r.name) + '</strong></p><p style="color:' + totalColor + '"><strong>Total: ' + total + ' / ' + max + '</strong></p><ul>' + criterionItems + '</ul>' + feedbackHtml;
     return total + '\t' + html;
   });
 }
