@@ -1584,34 +1584,56 @@ async function loadSubmissionsForWeek(week) {
   return result;
 }
 
-function downloadMoodleReport() {
+// Builds one row per student for the Moodle offline-grading paste: [0] the
+// raw total (just the number, for the Grade column) and [1] a single-line
+// HTML feedback block (for the Feedback comments column). Both stay on one
+// line each — no literal \n or \t inside the HTML itself, only <br>/<li> —
+// because the whole report is pasted as tab-separated rows straight into
+// Excel; a stray real tab or newline inside a cell's own content would
+// silently split that one student across two rows/columns instead of
+// landing in a single cell.
+function moodleReportRows() {
   const subResult = gradingSubmissionsCache[gradingWeek];
-  if (!subResult) { alert('Load the grading tab for this week first.'); return; }
+  if (!subResult) return null;
   const rubric = getRubricVersionForWeek(gradingWeek).criteria;
 
-  const lines = subResult.roster.map(function(r) {
+  return subResult.roster.map(function(r) {
     const sn = r.studentNumber;
     const sub = subResult.submissions[sn] || {};
     const saved = sub.savedGrades || {};
     const session = gradingSelections[sn] || {};
     let total = 0, max = 0;
-    const criterionLines = rubric.map(function(crit) {
+    const criterionItems = rubric.map(function(crit) {
       const critMax = crit.tiers.length ? Math.max.apply(null, crit.tiers.map(function(t) { return Number(t.points) || 0; })) : 0;
       max += critMax;
       const tierIdx = saved[crit.id] !== undefined ? saved[crit.id] : (session[crit.id] !== undefined ? session[crit.id] : null);
-      if (tierIdx === null || tierIdx === undefined || !crit.tiers[tierIdx]) return crit.name + ': Not graded';
+      if (tierIdx === null || tierIdx === undefined || !crit.tiers[tierIdx]) return '<li>' + crit.name + ': Not graded</li>';
       const pts = Number(crit.tiers[tierIdx].points) || 0;
       total += pts;
-      return crit.name + ': ' + crit.tiers[tierIdx].label + ' = ' + pts + ' points';
-    }).join('\n');
-    return total + '\t' + r.name + ' (' + sn + ')\n' + criterionLines + '\nTotal: ' + total + ' / ' + max;
-  }).join('\n\n');
+      return '<li>' + crit.name + ': ' + crit.tiers[tierIdx].label + ' = ' + pts + ' points</li>';
+    }).join('');
+    // Colour follows the TOTAL only (60+ green, under 60 red) — not
+    // per-criterion — so a passing total never sits under a wall of red
+    // criterion lines or vice versa. Applied to the total line itself; the
+    // criterion breakdown underneath stays plain so a low score doesn't
+    // read as a wall of red text.
+    const totalColor = total >= 60 ? 'green' : 'red';
+    const html = '<p style="color:' + totalColor + '"><strong>Total: ' + total + ' / ' + max + '</strong></p><ul>' + criterionItems + '</ul>';
+    return total + '\t' + html;
+  });
+}
 
-  const blob = new Blob([lines], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = currentClassId + '_Week' + String(gradingWeek).padStart(2, '0') + '_Moodle_Grades.txt';
-  a.click(); URL.revokeObjectURL(url);
+function doGenerateMoodleReport() {
+  const container = document.getElementById('moodleReportContainer');
+  const rows = moodleReportRows();
+  if (!rows) { showToast('Load the grading tab for this week first.'); return; }
+  container.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+    '<span style="font-size:12px;color:var(--ink-mute)">' + rows.length + ' student(s) — paste starting in the Score column; Score and Feedback fill together</span>' +
+    '<button class="btn btn-ghost btn-sm" onclick="copyMoodleReport()">📋 Copy to clipboard</button></div>' +
+    '<textarea id="moodleReportText" rows="10" readonly style="font-family:monospace;font-size:11px">' + esc(rows.join('\n')) + '</textarea>';
+}
+function copyMoodleReport() {
+  copyTextToClipboard(document.getElementById('moodleReportText').value, 'Copied — paste into Excel starting at the Score column.');
 }
 
 function getSelections(sn, rubric, sub, week, schedule) {
@@ -1752,8 +1774,9 @@ async function renderGrading() {
   document.getElementById('forum-content').innerHTML =
     '<div class="grading-toolbar"><select onchange="gradingWeek=parseInt(this.value);gradingIdx=0;gradingSelections={};renderGrading();">' + weekOptions + '</select>' +
     '<div class="chip chip-gold">Graded ' + gradedCount + ' / ' + studentNumbers.length + '</div>' +
-    '<button class="btn btn-ghost btn-sm" onclick="downloadMoodleReport()">⬇ Moodle Report</button>' +
+    '<button class="btn btn-ghost btn-sm" onclick="doGenerateMoodleReport()">📋 Moodle Report</button>' +
     '<button class="search-btn" onclick="openStudentSearch()">🔍</button></div>' +
+    '<div id="moodleReportContainer" style="margin:-8px 0 14px"></div>' +
     '<div class="total-pts-note" style="margin:-8px 0 14px">Using rubric version starting Week ' + rubricVersion.startWeek + ' (Rubric tab to manage versions)</div>' +
     '<div class="grading-layout"><div>' + bodyHtml + '</div><div class="grade-sidebar card">' +
     '<div class="grade-sidebar-sticky">' +
