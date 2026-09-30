@@ -1597,7 +1597,14 @@ function moodleReportRows() {
   if (!subResult) return null;
   const rubric = getRubricVersionForWeek(gradingWeek).criteria;
 
-  return subResult.roster.map(function(r) {
+  // Sorted by student number (numeric-aware, so "2" sorts before "10")
+  // rather than left in roster/API order, since this is pasted straight
+  // into a gradebook that's organized by student number.
+  const sortedRoster = subResult.roster.slice().sort(function(a, b) {
+    return String(a.studentNumber).localeCompare(String(b.studentNumber), undefined, { numeric: true, sensitivity: 'base' });
+  });
+
+  return sortedRoster.map(function(r) {
     const sn = r.studentNumber;
     const sub = subResult.submissions[sn] || {};
     const saved = sub.savedGrades || {};
@@ -1618,13 +1625,15 @@ function moodleReportRows() {
     // criterion breakdown underneath stays plain so a low score doesn't
     // read as a wall of red text.
     const totalColor = total >= 60 ? 'green' : 'red';
-    const html = '<p style="color:' + totalColor + '"><strong>Total: ' + total + ' / ' + max + '</strong></p><ul>' + criterionItems + '</ul>';
+    const html = '<p><strong>' + esc(r.name) + '</strong></p><p style="color:' + totalColor + '"><strong>Total: ' + total + ' / ' + max + '</strong></p><ul>' + criterionItems + '</ul>';
     return total + '\t' + html;
   });
 }
 
 function doGenerateMoodleReport() {
   const container = document.getElementById('moodleReportContainer');
+  // Second click on the same button toggles the report closed again.
+  if (container.innerHTML.trim()) { container.innerHTML = ''; return; }
   const rows = moodleReportRows();
   if (!rows) { showToast('Load the grading tab for this week first.'); return; }
   container.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
