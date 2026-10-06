@@ -339,7 +339,7 @@
       <button class="btn btn-primary btn-block" style="margin-top:14px;" onclick="login()">Enter</button>
       <div class="error-msg" id="loginError">Student number not found. Check and try again.</div>
     </div>
-    <div class="version-tag">v3.0 — 2026-09-29</div>
+    <div class="version-tag">v3.1 — 2026-10-06</div>
   </div>
 
   <!-- ===================== MAIN APP ===================== -->
@@ -1438,53 +1438,144 @@ function ccfDrawUnitRow(doc, y, newUnitValue, submittedAt){
   return y + 5;
 }
 
-// New take-home box: lets the student copy down their two in-class
-// attempts before starting the homework below, since page 1 (with their
-// actual in-class writing) gets handed in separately now rather than
-// living on the back of this same physical sheet. Plain bordered box, no
-// colored title bar - this isn't tied to either sentence's own color
-// coding, just a shared staging area for both.
-function ccfDrawInClassAttemptsBox(doc, y){
+// ── Homework page (redesigned 2026-10-06) ───────────────────────────────
+// All student-facing text on this page is Japanese. jsPDF's built-in
+// Helvetica has no Japanese glyphs, so each Japanese string is drawn by the
+// browser onto a hidden canvas (using whatever Japanese system font the
+// device has) and placed into the PDF as a high-resolution image. y is the
+// text BASELINE in mm, same convention as doc.text(), so it slots into the
+// existing layout maths unchanged. Identical strings are rendered once and
+// reused via a jsPDF image alias, so a bulk multi-student PDF doesn't embed
+// the same label hundreds of times. Returns the drawn text width in mm.
+const CCF_JP_FONT = '"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic","YuGothic","Meiryo","Noto Sans CJK JP","Noto Sans JP",sans-serif';
+const CCF_JP_PX_PER_MM = 16;
+const _ccfJpCache = {};
+function ccfJpText(doc, text, x, y, opts) {
+  opts = opts || {};
+  const sizePt = opts.size || 8;
+  const bold = !!opts.bold;
+  const color = opts.color || [32, 38, 31];
+  const align = opts.align || 'left';
+  const key = [text, sizePt, bold ? 1 : 0, color.join(',')].join('|');
+  let img = _ccfJpCache[key];
+  if (!img) {
+    const fontPx = sizePt * 0.352778 * CCF_JP_PX_PER_MM;
+    const c = document.createElement('canvas');
+    const ctx = c.getContext('2d');
+    const fontStr = (bold ? '700' : '400') + ' ' + fontPx + 'px ' + CCF_JP_FONT;
+    ctx.font = fontStr;
+    const m = ctx.measureText(text);
+    const ascent = Math.ceil(m.actualBoundingBoxAscent || fontPx * 0.88) + 2;
+    const descent = Math.ceil(m.actualBoundingBoxDescent || fontPx * 0.12) + 2;
+    c.width = Math.ceil(m.width) + 4;
+    c.height = ascent + descent;
+    ctx.font = fontStr;
+    ctx.fillStyle = 'rgb(' + color.join(',') + ')';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(text, 2, ascent);
+    img = { url: c.toDataURL('image/png'), w: c.width / CCF_JP_PX_PER_MM, h: c.height / CCF_JP_PX_PER_MM,
+            ascent: ascent / CCF_JP_PX_PER_MM, alias: 'ccfjp' + Object.keys(_ccfJpCache).length };
+    _ccfJpCache[key] = img;
+  }
+  const pad = 2 / CCF_JP_PX_PER_MM;
+  let x0 = x - pad;
+  if (align === 'right') x0 = x - img.w + pad;
+  if (align === 'center') x0 = x - img.w / 2;
+  doc.addImage(img.url, 'PNG', x0, y - img.ascent, img.w, img.h, img.alias, 'FAST');
+  return img.w - 2 * pad;
+}
+
+function ccfJpLabel(doc, y, text, note) {
+  const w = ccfJpText(doc, text, CCF_M + 2, y, { size: 7.6, bold: true, color: [91, 99, 88] });
+  if (note) ccfJpText(doc, note, CCF_M + 2 + w + 2, y, { size: 6.6, color: [120, 126, 116] });
+  return y + 5.6;
+}
+
+// Numbered how-to steps at the top of the homework page.
+const CCF_HW_STEPS = [
+  ['1.', '授業で直した2つの文を、下の「授業中に直した文」に書き写す。'],
+  ['2.', 'フォーラムの文法フィードバックのページで「Copy Prompt」を押してコピーし、Geminiに貼り付ける。'],
+  ['',   '最後に自分の2つの文を入れて送信する。※必ずこのプロンプトを使うこと。自分で質問を書かない。'],
+  ['3.', 'AIの答えを読んで、下の欄に記入する。'],
+  ['',   '※AIもまちがえることがあります。おかしいと思ったら、正直に書くこと。'],
+  ['4.', '次の授業に持ってくる。']
+];
+function ccfDrawHomeworkInstructions(doc, y) {
   const boxTop = y;
-  let y2 = boxTop + 5;
-  y2 = ccfFieldLabel(doc, y2, 'In-Class Attempts');
-  y2 = ccfFieldLabel(doc, y2, 'Sentence 1:');
-  y2 = ccfRuled(doc, y2, 2, 5.8, CCF_W-4) + 3.8;
-  y2 = ccfFieldLabel(doc, y2, 'Sentence 2:');
-  y2 = ccfRuled(doc, y2, 2, 5.8, CCF_W-4) + 3;
-  const boxBottom = y2;
-  doc.setDrawColor(91,99,88); doc.setLineWidth(0.5);
-  doc.roundedRect(CCF_M-2, boxTop, CCF_W+4, boxBottom-boxTop, 2, 2, 'S');
+  let y2 = boxTop + 5.2;
+  ccfJpText(doc, '宿題のやり方', CCF_M + 2, y2, { size: 8, bold: true, color: [61, 90, 115] });
+  y2 += 5.2;
+  CCF_HW_STEPS.forEach(function(step) {
+    if (step[0]) ccfJpText(doc, step[0], CCF_M + 3, y2, { size: 7.6, bold: true, color: [32, 38, 31] });
+    ccfJpText(doc, step[1], CCF_M + 8, y2, { size: 7.6, color: [32, 38, 31] });
+    y2 += 4.3;
+  });
+  const boxBottom = y2 - 1;
+  doc.setDrawColor(61, 90, 115); doc.setLineWidth(0.4);
+  doc.roundedRect(CCF_M - 2, boxTop, CCF_W + 4, boxBottom - boxTop, 2, 2, 'S');
   return boxBottom + 4;
 }
 
-// Weekend homework block — same colored-title-bar treatment as its
-// matching in-class sentence block, so the two stay visually linked
-// across both pages. 2 lines for the confirmed sentence (matches the
-// front page's field pattern), 8 lines for the AI's explanation (real
-// Gemini output runs several sentences — verified against actual
-// responses, not assumed. Bumped from 5 to 8 once the extra vertical
-// room freed up by moving this to its own standalone page was confirmed
-// safe against the page's print margin).
-function ccfDrawHomeworkBlock(doc, y, sentenceNum, fillColor, textColor){
+// Take-home copy of the two in-class attempts (page 1 is handed in
+// separately). "文1:" sits at the start of its first ruled line.
+function ccfDrawInClassAttemptsBox(doc, y) {
+  const boxTop = y;
+  let y2 = boxTop + 5.2;
+  y2 = ccfJpLabel(doc, y2, '授業中に直した文');
+  function labelledLines(yy, label) {
+    const lw = ccfJpText(doc, label, CCF_M + 2, yy, { size: 7.4, bold: true, color: [91, 99, 88] });
+    doc.setDrawColor(61, 90, 115); doc.setLineWidth(0.35);
+    doc.line(CCF_M + 2 + lw + 2, yy + 0.8, CCF_M + 2 + CCF_W - 4, yy + 0.8);
+    doc.line(CCF_M + 2, yy + 0.8 + 5.8, CCF_M + 2 + CCF_W - 4, yy + 0.8 + 5.8);
+    return yy + 0.8 + 5.8;
+  }
+  y2 = labelledLines(y2 + 1, '文1:') + 5.2;
+  y2 = labelledLines(y2, '文2:') + 3;
+  const boxBottom = y2;
+  doc.setDrawColor(91, 99, 88); doc.setLineWidth(0.5);
+  doc.roundedRect(CCF_M - 2, boxTop, CCF_W + 4, boxBottom - boxTop, 2, 2, 'S');
+  return boxBottom + 4;
+}
+
+// One AI-check block per sentence (green/yellow title bar matches the
+// in-class page). Questions, in order: did the AI agree (circle) → the AI's
+// sentence with changes underlined → the AI's explanation in their own
+// words → does the textbook's explanation match the AI's (circle) → what
+// they'll watch out for next time (learner-training reflection).
+function ccfDrawHomeworkBlock(doc, y, sentenceNum, fillColor, textColor) {
   const boxTop = y;
   const titleBarTop = boxTop + 1.2;
   const titleBarH = 6.5;
-  doc.setFillColor(...fillColor);
-  doc.rect(CCF_M+0.3, titleBarTop, CCF_W-0.6, titleBarH, 'F');
-  let ty = titleBarTop + titleBarH/2 + 1.5;
-  doc.setFontSize(7.2); doc.setFont('helvetica','bold'); doc.setTextColor(...textColor);
-  doc.text(`SENTENCE ${sentenceNum} — AI CHECK`, CCF_M+2, ty);
+  doc.setFillColor(fillColor[0], fillColor[1], fillColor[2]);
+  doc.rect(CCF_M + 0.3, titleBarTop, CCF_W - 0.6, titleBarH, 'F');
+  doc.setFontSize(7.2); doc.setFont('helvetica', 'bold'); doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+  doc.text('SENTENCE ' + sentenceNum + ' — AI CHECK', CCF_M + 2, titleBarTop + titleBarH / 2 + 1.5);
 
-  let y2 = boxTop + 1.2 + titleBarH + 4.5;
-  y2 = ccfFieldLabel(doc, y2, 'Confirmed correct sentence');
-  y2 = ccfRuled(doc, y2, 2, 5.8, CCF_W-4) + 3.8;
-  y2 = ccfFieldLabel(doc, y2, 'What the AI told me');
-  y2 = ccfRuled(doc, y2, 8, 5.8, CCF_W-4) + 3;
-  const boxBottom = y2 + 5;
-  doc.setDrawColor(91,99,88); doc.setLineWidth(0.5);
-  doc.roundedRect(CCF_M-2, boxTop, CCF_W+4, boxBottom-boxTop, 2, 2, 'S');
-  return boxBottom + 8;
+  const optX = CCF_M + 112;
+  let y2 = boxTop + 1.2 + titleBarH + 5.6;
+  ccfJpText(doc, 'AIはあなたの文が正しいと言いましたか？', CCF_M + 2, y2, { size: 7.6, bold: true, color: [91, 99, 88] });
+  ccfJpText(doc, 'はい　　・　　一部　　・　　いいえ', optX, y2, { size: 8.4, bold: true, color: [32, 38, 31] });
+  ccfJpText(doc, '（○で囲む）', CCF_M + CCF_W - 2, y2, { size: 6.6, color: [120, 126, 116], align: 'right' });
+  y2 += 7.4;
+
+  y2 = ccfJpLabel(doc, y2, 'AIの文', '※AIが変えたところに下線を引く（「はい」ならそのまま写す）');
+  y2 = ccfRuled(doc, y2 + 1, 2, 5.8, CCF_W - 4) + 4.4;
+
+  y2 = ccfJpLabel(doc, y2, 'AIの説明', '（自分の言葉で短くまとめる）');
+  y2 = ccfRuled(doc, y2 + 1, 4, 5.8, CCF_W - 4) + 4.8;
+
+  ccfJpText(doc, '教科書の説明とAIの説明は同じですか？', CCF_M + 2, y2, { size: 7.6, bold: true, color: [91, 99, 88] });
+  ccfJpText(doc, '同じ　・　違う　・　わからない', optX, y2, { size: 8.4, bold: true, color: [32, 38, 31] });
+  ccfJpText(doc, '（○で囲む）', CCF_M + CCF_W - 2, y2, { size: 6.6, color: [120, 126, 116], align: 'right' });
+  y2 += 7.8;
+
+  y2 = ccfJpLabel(doc, y2, '次に同じまちがいをしないために、何に気をつけますか？');
+  y2 = ccfRuled(doc, y2 + 1, 2, 5.8, CCF_W - 4) + 2;
+
+  const boxBottom = y2 + 3;
+  doc.setDrawColor(91, 99, 88); doc.setLineWidth(0.5);
+  doc.roundedRect(CCF_M - 2, boxTop, CCF_W + 4, boxBottom - boxTop, 2, 2, 'S');
+  return boxBottom + 4;
 }
 
 function ccfPageHeader(doc, title, meta){
@@ -1580,7 +1671,8 @@ function ccfDrawReflectionSheet(doc, studentName, classId, week, annotation, col
   doc.addPage();
   const homeworkMeta = `${classId}  \u00b7  Week ${week}  \u00b7  ${studentName}`;
   ccfPageHeader(doc, 'Blog Entry Grammar Reflection - Homework', homeworkMeta);
-  y = 24;
+  y = 21;
+  y = ccfDrawHomeworkInstructions(doc, y);
   y = ccfDrawInClassAttemptsBox(doc, y);
   y = ccfDrawHomeworkBlock(doc, y, 1, [219,242,229], [26,58,42]);
   y = ccfDrawHomeworkBlock(doc, y, 2, [253,244,205], [102,79,8]);
