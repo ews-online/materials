@@ -356,7 +356,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v4.16 — Reflection sheet: new Japanese homework page</div>
+      <div class="version-tag">v4.17 — Units tab: reports review-only students with nothing to review</div>
     </div>
   </div>
 
@@ -3576,6 +3576,14 @@ async function generateQuizzes() {
     }
     if (result.skippedNoAssignment && result.skippedNoAssignment.length) {
       html += '<div class="total-pts-note" style="margin-top:8px">No unit assignment entered yet: ' + result.skippedNoAssignment.map(esc).join(', ') + '</div>';
+    }
+    // Review-only (0) students with no earlier units to review yet — the
+    // backend can't build a quiz for them, so say so instead of leaving them
+    // silently missing from the count.
+    if (result.nothingToReview && result.nothingToReview.length) {
+      html += '<div style="background:var(--paper);border:1.5px solid var(--stamp-red,#b03030);border-radius:10px;padding:12px 14px;margin-top:10px;">' +
+        '<b>No quiz made — review only, but no earlier units to review yet:</b> ' + result.nothingToReview.map(esc).join(', ') +
+        '<div style="font-size:12px;margin-top:4px">Mark them absent in Test Control, or enter a unit for them and generate again.</div></div>';
     }
     resultEl.innerHTML = html;
     await loadQuizUnits();
