@@ -356,7 +356,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v4.17 — Units tab: reports review-only students with nothing to review</div>
+      <div class="version-tag">v4.18 — Grading Sheet PDF: Japanese names print correctly</div>
     </div>
   </div>
 
@@ -4125,7 +4125,24 @@ function downloadGradingSheetPdf() {
     styles: { fontSize: fontSize, cellPadding: cellPadding, overflow: 'linebreak' },
     headStyles: { fillColor: [26, 74, 107], textColor: 255, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [242, 240, 235] },
-    columnStyles: { 3: { halign: 'center' }, 4: { halign: 'center' }, 5: { halign: 'center' } }
+    // Column 1 is Name (Jpn.) — its text is drawn as an image below, so give
+    // it a fixed width instead of letting autoTable size it from blank text.
+    columnStyles: { 1: { minCellWidth: 34 }, 3: { halign: 'center' }, 4: { halign: 'center' }, 5: { halign: 'center' } },
+    // jsPDF's built-in Helvetica has no Japanese glyphs, which is what
+    // printed the Japanese names as garbage. Any body cell containing
+    // non-Latin text is left blank for autoTable and then drawn with
+    // ccfJpText (the browser's own Japanese font, placed as an image — same
+    // method as the reflection sheet's homework page).
+    didParseCell: function(data) {
+      if (data.section !== 'body') return;
+      const raw = String(data.cell.raw == null ? '' : data.cell.raw);
+      if (/[^\u0000-\u00ff]/.test(raw)) { data.cell.jpText = raw; data.cell.text = ['']; }
+    },
+    didDrawCell: function(data) {
+      if (data.section !== 'body' || !data.cell.jpText) return;
+      const baseline = data.cell.y + data.cell.height / 2 + fontSize * 0.352778 * 0.36;
+      ccfJpText(doc, data.cell.jpText, data.cell.x + data.cell.padding('left'), baseline, { size: fontSize, color: [20, 20, 20] });
+    }
   });
 
   if (doc.internal.getNumberOfPages() > 1) {
