@@ -356,7 +356,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v4.14 — Grading Sheet PDF: fixed checkmarks not rendering, unit label now number-only</div>
+      <div class="version-tag">v4.15 — Grading tab: week dropdown now shows and switches to the right week</div>
     </div>
   </div>
 
@@ -1674,9 +1674,24 @@ function getSelections(sn, rubric, sub, week, schedule) {
 }
 
 async function renderGrading() {
+  // Default to the most recent week whose posting window has opened (the
+  // one you'd actually be grading), not whatever row happens to be first in
+  // the Schedule sheet. Falls back to the earliest week if none have opened.
+  if (gradingWeek === null && forumClassData.schedule.length) {
+    const now = new Date();
+    const opened = forumClassData.schedule
+      .filter(function(s) { return s.PostOpen && new Date(s.PostOpen) <= now; })
+      .sort(function(a, b) { return Number(b.Week) - Number(a.Week); });
+    gradingWeek = opened.length ? opened[0].Week
+      : forumClassData.schedule.slice().sort(function(a, b) { return Number(a.Week) - Number(b.Week); })[0].Week;
+  }
+  // Built AFTER gradingWeek is settled, and marks that week as selected —
+  // previously no option was ever marked selected, so the dropdown always
+  // displayed its first (newest) entry regardless of which week's
+  // submissions were actually loaded, and picking that entry did nothing
+  // because the browser saw no change.
   const weekOptions = forumClassData.schedule.slice().sort(function(a, b) { return b.Week - a.Week; })
-    .map(function(s) { return '<option value="' + s.Week + '">Week ' + String(s.Week).padStart(2, '0') + '</option>'; }).join('');
-  if (gradingWeek === null && forumClassData.schedule.length) gradingWeek = forumClassData.schedule[0].Week;
+    .map(function(s) { return '<option value="' + s.Week + '" ' + (String(s.Week) === String(gradingWeek) ? 'selected' : '') + '>Week ' + String(s.Week).padStart(2, '0') + '</option>'; }).join('');
   if (!forumClassData.schedule.length) {
     document.getElementById('forum-content').innerHTML = '<div class="card empty-note">No weeks set up in Schedule yet — add one in the Schedule tab first.</div>';
     return;
