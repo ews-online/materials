@@ -356,7 +356,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v4.18 — Grading Sheet PDF: Japanese names print correctly</div>
+      <div class="version-tag">v4.19 — Quiz: flags + Student View keyed per question; Bonus removed</div>
     </div>
   </div>
 
@@ -3684,7 +3684,7 @@ function teacherToggleFlag(qKey, week, studentNum, studentName, resRow) {
   const nowFlagged = !currentlyFlagged;
   teacherFlagQueue[qKey] = {
     shouldFlag: nowFlagged, week: week, studentNum: studentNum, studentName: studentName,
-    qNum: resRow.number || '', unit: resRow.unit || '', question: resRow.question || '',
+    qIndex: resRow.qIndex || '', qNum: resRow.number || '', unit: resRow.unit || '', question: resRow.question || '',
     studentAnswer: resRow.studentAnswer || '', correctAnswer: resRow.correctAnswer || '', score: resRow.score || 0
   };
   if (btn) {
@@ -3720,7 +3720,7 @@ async function submitTeacherFlags() {
   for (const f of entries) {
     await api('quiz', {
       action: 'flagForStudent', classId: currentClassId, week: f.week, studentNumber: f.studentNum,
-      qNum: f.qNum, unit: f.unit, question: f.question, studentAnswer: f.studentAnswer, correctAnswer: f.correctAnswer,
+      qIndex: f.qIndex, qNum: f.qNum, unit: f.unit, question: f.question, studentAnswer: f.studentAnswer, correctAnswer: f.correctAnswer,
       score: f.score, unflag: !f.shouldFlag
     });
   }
@@ -3798,7 +3798,9 @@ function renderPreview() {
           const bg = resRow.result === 'correct' ? '#e6f4ec' : resRow.result === 'half' ? '#fef6e4' : '#faeaea';
           const border = resRow.result === 'correct' ? '#a3d4b8' : resRow.result === 'half' ? '#f0d080' : '#f0b0b0';
           const col = resRow.result === 'correct' ? '#2d7a4f' : resRow.result === 'half' ? '#b87a00' : '#b83232';
-          const qKey = 'q' + (resRow.number || i) + '_s';
+          // qIndex = position in the quiz; section numbers repeat, which gave
+          // several buttons the same id (so clicks updated the wrong one).
+          const qKey = 'q' + (resRow.qIndex || ('i' + i));
           html += '<div style="background:' + bg + ';border:1.5px solid ' + border + ';border-radius:6px;padding:8px 12px;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:8px">' +
             '<div style="flex:1"><div style="font-weight:500;color:' + col + '">' + esc(resRow.studentAnswer || '(no answer)') + '</div>' +
             (resRow.result !== 'correct' ? '<div style="font-size:12px;color:var(--ink-mute)">Correct: <span style="color:#2d7a4f;font-weight:500">' + esc(resRow.correctAnswer) + '</span></div>' : '') + '</div>' +
@@ -3826,7 +3828,7 @@ function renderStudentAnswerBoxes(resultRows, double) {
     const bg = r.result === 'correct' ? '#e6f4ec' : r.result === 'half' ? '#fef6e4' : '#faeaea';
     const border = r.result === 'correct' ? '#a3d4b8' : r.result === 'half' ? '#f0d080' : '#f0b0b0';
     const col = r.result === 'correct' ? '#2d7a4f' : r.result === 'half' ? '#b87a00' : '#b83232';
-    const qKey = 'q' + (r.number || idx) + '_' + idx;
+    const qKey = 'q' + (r.qIndex || ('x' + idx));
     return '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">' + (double ? '<span style="font-weight:600;color:var(--accent)">' + markers[idx] + '</span>' : '') +
       '<div style="flex:1;background:' + bg + ';border:1.5px solid ' + border + ';border-radius:6px;padding:6px 10px;font-size:12px;display:flex;justify-content:space-between;align-items:center;gap:8px">' +
       '<div style="flex:1"><div style="font-weight:500;color:' + col + '">' + esc(r.studentAnswer || '(no answer)') + '</div>' +
@@ -4164,10 +4166,10 @@ async function loadFlags() {
   tableEl.innerHTML = quizFlagsCache.length ? (
     '<table class="data-table"><thead><tr><th>Student</th><th>Question</th><th>Their answer</th><th>Correct answer</th><th>Reason</th><th>Status</th><th>Corrected score</th><th></th></tr></thead><tbody>' +
     quizFlagsCache.map(function(f) {
-      return '<tr class="flag-row" data-flag-key="' + esc(f.studentNumber) + '|' + esc(f.qNum) + '"><td>' + esc(f.studentName) + '</td>' +
+      return '<tr class="flag-row" data-flag-key="' + esc(f.studentNumber) + '|' + esc(f.qIndex) + '"><td>' + esc(f.studentName) + '</td>' +
         '<td style="max-width:220px">' +
           '<div style="font-size:10px;font-weight:700;color:var(--ink-mute);text-transform:uppercase;letter-spacing:0.03em;margin-bottom:2px">' + esc(f.unit) + '</div>' +
-          '<div>' + esc(f.question) + '</div>' +
+          '<div>' + esc(f.question).replace(/_{3,}/g, '______') + '</div>' +
           (f.instruction ? '<div style="font-size:11px;color:var(--ink-mute);font-style:italic;margin-top:3px">' + esc(f.instruction) + '</div>' : '') +
         '</td>' +
         '<td>' + esc(f.studentAnswer) + '</td><td>' + esc(f.correctAnswer) + '</td><td style="max-width:150px">' + esc(f.flagReason) + '</td>' +
@@ -4175,27 +4177,29 @@ async function loadFlags() {
         // A rejected flag means the auto-score stands, so a corrected-score
         // override is meaningless — lock the field at 0 rather than let it
         // keep showing a leftover value typed in before Reject was clicked.
-        '<td><input class="text-input" style="width:60px" type="number" step="0.5" id="fl-score-' + f.studentNumber + '-' + f.qNum + '" value="' + esc(f.status === 'Rejected' ? 0 : f.correctedScore) + '"' + (f.status === 'Rejected' ? ' disabled' : '') + '></td>' +
-        '<td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="doUpdateFlag(\'' + f.studentNumber + '\',' + f.qNum + ',\'Approved\')">Approve</button> ' +
-        '<button class="btn btn-ghost btn-sm" onclick="doUpdateFlag(\'' + f.studentNumber + '\',' + f.qNum + ',\'Rejected\')">Reject</button></td></tr>';
+        '<td><input class="text-input" style="width:60px" type="number" step="0.5" id="fl-score-' + f.studentNumber + '-' + f.qIndex + '" value="' + esc(f.status === 'Rejected' ? 0 : f.correctedScore) + '"' + (f.status === 'Rejected' ? ' disabled' : '') + '></td>' +
+        '<td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="doUpdateFlag(\'' + f.studentNumber + '\',' + f.qIndex + ',\'Approved\')">Approve</button> ' +
+        '<button class="btn btn-ghost btn-sm" onclick="doUpdateFlag(\'' + f.studentNumber + '\',' + f.qIndex + ',\'Rejected\')">Reject</button></td></tr>';
     }).join('') + '</tbody></table>'
   ) : '<div class="empty-note">No flagged questions this week.</div>';
 }
 function flagChipHtml(status) {
   return '<span class="chip ' + (status === 'Approved' ? 'chip-green' : status === 'Rejected' ? 'chip-red' : 'chip-gold') + '">' + esc(status) + '</span>';
 }
-async function doUpdateFlag(studentNumber, qNum, status) {
-  const scoreInput = document.getElementById('fl-score-' + studentNumber + '-' + qNum);
+// qIndex = the question's position in that student's quiz (unique), not
+// its section number (which repeats in every section).
+async function doUpdateFlag(studentNumber, qIndex, status) {
+  const scoreInput = document.getElementById('fl-score-' + studentNumber + '-' + qIndex);
   const week = document.getElementById('quiz-flags-week').value;
   // Optimistic + silent + scoped to this one row's status chip: reviewing
   // flags is usually several in a row, so Approve/Reject can't wait on the
   // network or flash the full-screen spinner each time — same pattern as
   // Test Control's checkboxes and the Grades tab's homework checkboxes.
-  const row = (quizFlagsCache || []).find(function(r) { return String(r.studentNumber) === String(studentNumber) && String(r.qNum) === String(qNum); });
+  const row = (quizFlagsCache || []).find(function(r) { return String(r.studentNumber) === String(studentNumber) && String(r.qIndex) === String(qIndex); });
   const prevStatus = row ? row.status : null;
   const prevScore = scoreInput ? scoreInput.value : '';
   const prevDisabled = scoreInput ? scoreInput.disabled : false;
-  const tr = document.querySelector('.flag-row[data-flag-key="' + CSS.escape(String(studentNumber)) + '|' + CSS.escape(String(qNum)) + '"]');
+  const tr = document.querySelector('.flag-row[data-flag-key="' + CSS.escape(String(studentNumber)) + '|' + CSS.escape(String(qIndex)) + '"]');
   const statusCell = tr ? tr.querySelector('.flag-status-cell') : null;
   // Rejecting always forces the corrected score to 0 and locks the field —
   // there's no override to enter once the flag itself is rejected. Any other
@@ -4208,7 +4212,7 @@ async function doUpdateFlag(studentNumber, qNum, status) {
     if (status === 'Rejected') scoreInput.value = '0';
   }
   try {
-    const result = await api('quiz', { action: 'updateFlag', classId: currentClassId, week: week, studentNumber: studentNumber, qNum: qNum, status: status, correctedScore: correctedScore }, { silent: true });
+    const result = await api('quiz', { action: 'updateFlag', classId: currentClassId, week: week, studentNumber: studentNumber, qIndex: qIndex, status: status, correctedScore: correctedScore }, { silent: true });
     if (!result.ok) throw new Error(result.error || "Couldn't update.");
     showToast('✓ Flag updated.');
   } catch (e) {
@@ -4251,12 +4255,12 @@ async function loadGrades() {
   quizGradeWeightsCache = result.weights || quizGradeWeightsCache;
   const tri = function(v) { return v === true ? '✓' : v === false ? '✗' : '—'; };
   tableEl.innerHTML = quizGradesCache.length ? (
-    '<table class="data-table"><thead><tr><th>Student</th><th>Practice Q</th><th>Flashcard</th><th>New</th><th>Review</th><th>Bonus</th><th>Total</th><th>Flags</th></tr></thead><tbody>' +
+    '<table class="data-table"><thead><tr><th>Student</th><th>Practice Q</th><th>Flashcard</th><th>New</th><th>Review</th><th>Total</th><th>Flags</th></tr></thead><tbody>' +
     quizGradesCache.map(function(r) {
       return '<tr class="grades-row" data-student="' + esc(r.studentNumber) + '"><td>' + esc(r.nameEng) + '</td>' +
         '<td><input class="pq-checkbox" type="checkbox" ' + (r.practiceQ ? 'checked' : '') + ' onchange="saveHomework(\'' + r.studentNumber + '\',\'practiceQ\',this.checked)"></td>' +
         '<td><input class="fc-checkbox" type="checkbox" ' + (r.flashcard ? 'checked' : '') + ' onchange="saveHomework(\'' + r.studentNumber + '\',\'flashcard\',this.checked)"></td>' +
-        '<td>' + tri(r.quizNewPassed) + '</td><td>' + tri(r.quizReviewPassed) + '</td><td>' + (r.bonus ? '✓' : '—') + '</td>' +
+        '<td>' + tri(r.quizNewPassed) + '</td><td>' + tri(r.quizReviewPassed) + '</td>' +
         '<td class="total-cell"><b>' + r.total + '</b></td>' +
         '<td>' + (r.flagsPending ? '<span class="chip chip-gold">' + r.flagsPending + ' pending</span>' : (r.flagsResolved ? r.flagsResolved + ' resolved' : '—')) + '</td></tr>';
     }).join('') + '</tbody></table>'
@@ -4357,8 +4361,7 @@ function downloadQuizMoodleCsv() {
       '<li>' + (r.practiceQ ? '\u2713' : '\u2717') + ' Practice questions</li>' +
       '<li>' + (r.flashcard ? '\u2713' : '\u2717') + ' Flashcard</li>' +
       (r.quizNewPassed !== null ? '<li>' + (r.quizNewPassed ? '\u2713' : '\u2717') + ' New unit(s)</li>' : '') +
-      (r.quizReviewPassed !== null ? '<li>' + (r.quizReviewPassed ? '\u2713' : '\u2717') + ' Review unit(s)</li>' : '') +
-      (r.bonus ? '<li>\u2713 Bonus</li>' : '') + '</ul>';
+      (r.quizReviewPassed !== null ? '<li>' + (r.quizReviewPassed ? '\u2713' : '\u2717') + ' Review unit(s)</li>' : '') + '</ul>';
     return csvRow([r.studentNumber, r.nameEng, r.total, feedback]);
   });
   const csv = header + '\n' + rows.join('\n');

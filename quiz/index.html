@@ -168,7 +168,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--i
   <div class="already-card">
     <h2 id="sessionErrorText">Couldn't find your session — please go back and open this from your dashboard.</h2>
     <button class="btn" onclick="location.href='../student/'" style="margin-top:1rem">&#8592; Back to dashboard</button>
-    <div class="version-tag">v1.1</div>
+    <div class="version-tag">v1.3</div>
   </div>
 </div>
 
@@ -222,7 +222,21 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--i
     <div style="font-size:2.5rem;color:var(--red)">⚠️</div>
     <h2 style="color:var(--red)">Your answers weren't sent.</h2>
     <p style="color:var(--ink-soft);font-size:0.9rem;margin-top:0.5rem" id="submit-error-msg">Please don't close this tab — tell your teacher, then try again.</p>
-    <button class="btn" onclick="retrySubmit()" style="margin-top:1.5rem">Try sending again</button>
+    <button class="btn" id="retry-submit-btn" onclick="retrySubmit()" style="margin-top:1.5rem">Try sending again</button>
+    <div style="margin-top:0.9rem"><button class="btn" onclick="showMyAnswers()" style="background:none;color:var(--ink);border:1.5px solid var(--border)">回答を見る（写真を撮る） · Show my answers</button></div>
+  </div>
+</div>
+
+<!-- Read-only list of what the student typed, so they can photograph it for
+     the teacher if sending keeps failing. Built from the answers kept in
+     this browser (see the LOCAL BACKUP section). -->
+<div class="screen" id="my-answers">
+  <div class="already-card" style="max-width:640px;text-align:left">
+    <h2 style="text-align:center">My answers · 自分の回答</h2>
+    <p style="color:var(--ink-soft);font-size:0.85rem;text-align:center;margin-top:0.4rem" id="my-answers-meta"></p>
+    <p style="font-size:0.85rem;text-align:center;margin-top:0.4rem">この画面の写真を撮って、先生に見せてください。<br><span style="color:var(--ink-soft)">Take a photo of this screen and show your teacher.</span></p>
+    <div id="my-answers-list" style="margin-top:1rem"></div>
+    <div style="text-align:center"><button class="btn" onclick="show('submit-error')" style="margin-top:1.2rem">← Back · 戻る</button></div>
   </div>
 </div>
 
@@ -298,7 +312,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--i
 
 <script>
 const QUIZ_ENGINE_URL = 'https://script.google.com/macros/s/AKfycbwl3JTLm5TZPX6YixmU_ALo37IKGUlUpwhNS8XZnBHuCqoCakOdRn0pP1mJRyt6DLHMew/exec';
-const APP_VERSION = 'v1.1';
+const APP_VERSION = 'v1.3';
 
 let authToken = null, currentStudentNumber = null, currentClassId = null, currentClassLabel = null, currentName = null;
 let studentData = null;      // { week, questions, testDuration, reviewOnly }
@@ -466,6 +480,7 @@ function startQuiz() {
   document.getElementById('quiz-title').textContent = 'Week ' + studentData.week + ' — Grammar Quiz';
   document.getElementById('quiz-student').textContent = currentName;
   renderQuizBody();
+  restoreBackupIntoInputs();
   startTimer();
   startQuizStopPoll();
   // Best-effort: lets Test Control show "Taking test" instead of just
@@ -791,7 +806,74 @@ function renderQuizBody() {
   updateProgress();
 }
 
-function saveAnswer(i, val) { answers[i] = val; updateProgress(); }
+function saveAnswer(i, val) { answers[i] = val; writeBackup(); updateProgress(); }
+
+// ── LOCAL BACKUP ──────────────────────────────────────────────────────────
+// Every keystroke is also kept in this browser, so a refresh, a crash or a
+// failed send never loses what the student typed: reopening the quiz puts
+// their answers back, keeps the original finish time (no fresh 10 minutes),
+// and the error screen can show them to photograph. Cleared once the server
+// confirms the answers are saved. Storage can be blocked (private mode), so
+// every access is wrapped — the quiz still works, just without the backup.
+function backupKey() { return 'ewsquiz_' + currentClassId + '_' + currentStudentNumber + '_' + (studentData && studentData.week); }
+function quizSignature() {
+  const qs = (studentData && studentData.questions) || [];
+  return qs.length + '|' + (qs[0] ? qs[0].question : '') + '|' + (qs.length ? qs[qs.length - 1].question : '');
+}
+function readBackup() {
+  try {
+    const b = JSON.parse(localStorage.getItem(backupKey()) || 'null');
+    return b && b.sig === quizSignature() ? b : null; // ignore it if the quiz was regenerated
+  } catch (e) { return null; }
+}
+function writeBackup(extra) {
+  try {
+    const b = readBackup() || { sig: quizSignature() };
+    b.answers = answers.slice();
+    b.savedAt = Date.now();
+    if (extra) Object.assign(b, extra);
+    localStorage.setItem(backupKey(), JSON.stringify(b));
+  } catch (e) {}
+}
+function clearBackup() { try { localStorage.removeItem(backupKey()); } catch (e) {} }
+function restoreBackupIntoInputs() {
+  const b = readBackup();
+  if (!b || !Array.isArray(b.answers)) return;
+  b.answers.forEach(function(val, i) {
+    if (val === undefined || val === null || val === '') return;
+    answers[i] = val;
+    const el = document.getElementById('input-' + i);
+    if (el) el.value = val;
+  });
+  updateProgress();
+}
+
+// Read-only list of the typed answers, for a photo if sending keeps failing.
+function showMyAnswers() {
+  const qs = (studentData && studentData.questions) || [];
+  const b = readBackup();
+  const typed = qs.map(function(q, i) {
+    const live = document.getElementById('input-' + i);
+    return (live && live.value) || answers[i] || (b && b.answers ? b.answers[i] : '') || '';
+  });
+  let html = '', n = 0;
+  for (let i = 0; i < qs.length; i++) {
+    const q = qs[i];
+    if (q.isExample) continue;
+    n++;
+    const isPair = q.blankIndex === 0 && qs[i + 1] && qs[i + 1].blankIndex === 1 && qs[i + 1].question === q.question;
+    const ans = isPair ? ('① ' + (typed[i] || '—') + '　② ' + (typed[i + 1] || '—')) : (typed[i] || '—');
+    html += '<div style="padding:0.45rem 0;border-bottom:1px solid var(--border);font-size:0.9rem">' +
+      '<div style="color:var(--ink-soft);font-size:0.75rem">' + escText(q.unit || '') + ' · ' + escText(q.part || '') + '</div>' +
+      '<div>' + n + '. ' + escText(q.question) + '</div>' +
+      '<div style="font-weight:600;margin-top:0.15rem">→ ' + escText(ans) + '</div></div>';
+    if (isPair) i++;
+  }
+  document.getElementById('my-answers-list').innerHTML = html || '<p>No answers found.</p>';
+  document.getElementById('my-answers-meta').textContent = currentName + ' · ' + currentStudentNumber + ' · Week ' + (studentData ? studentData.week : '') + ' · ' + new Date().toLocaleString();
+  show('my-answers');
+}
+function escText(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 function updateProgress() {
   const nonExamples = studentData.questions.filter(function(q) { return !q.isExample && String(q.number).toUpperCase() !== 'EX'; });
   const total = nonExamples.length;
@@ -805,8 +887,12 @@ function updateProgress() {
 // ── TIMER ─────────────────────────────────────────────────────────────────
 function startTimer() {
   const duration = studentData.testDuration || 10;
-  const endTime = Date.now() + duration * 60 * 1000;
-  secondsLeft = duration * 60;
+  // Reopened after a refresh: keep counting to the ORIGINAL finish time.
+  // If that's already passed, the first tick submits the restored answers.
+  const saved = readBackup();
+  const endTime = (saved && saved.endTime) ? saved.endTime : Date.now() + duration * 60 * 1000;
+  writeBackup({ endTime: endTime });
+  secondsLeft = Math.max(0, Math.round((endTime - Date.now()) / 1000));
   updateTimerDisplay();
   timerInterval = setInterval(function() {
     secondsLeft = Math.max(0, Math.round((endTime - Date.now()) / 1000));
@@ -853,22 +939,50 @@ async function submitQuiz(fromTimer) {
 async function doSubmit() {
   try {
     const data = await api(lastSubmitPayload);
+    if (data.alreadySubmitted) { await recoverSavedSubmission(); return; }
     if (data.error) { showSubmitError(data.error); return; }
     submittedResult = data;
     gradedQuestions = data.questions;
+    clearBackup();
     // Confirm the submission went through before showing anything about the
     // grade — the student taps "次へ" on their own to move on, at which
     // point proceedToResults() checks whether results are released yet.
     show('submit-confirm');
   } catch (err) {
+    // The answers often DID save — the server just took too long to reply,
+    // so the browser gave up waiting. Check before telling the student it failed.
+    if (await recoverSavedSubmission()) return;
     showSubmitError(null);
   }
 }
+// Looks up whether this student's answers are already saved. If they are,
+// treat it as a successful submit (same confirm screen) instead of an error.
+// Returns true if it recovered, false if nothing is saved yet.
+async function recoverSavedSubmission() {
+  try {
+    const saved = await api({ action: 'getMyResults', week: studentData.week });
+    if (saved && saved.found) {
+      gradedQuestions = saved.questions;
+      clearBackup();
+      show('submit-confirm');
+      return true;
+    }
+  } catch (e) { /* still unreachable — fall through to the error screen */ }
+  return false;
+}
 function showSubmitError(msg) {
   document.getElementById('submit-error-msg').textContent = msg || "Please don't close this tab — tell your teacher, then try again.";
+  const btn = document.getElementById('retry-submit-btn');
+  if (btn) { btn.disabled = false; btn.textContent = 'Try sending again'; }
   show('submit-error');
 }
-function retrySubmit() { doSubmit(); }
+// Visible feedback while retrying — before, the screen didn't change at all,
+// so it looked like the button did nothing.
+async function retrySubmit() {
+  const btn = document.getElementById('retry-submit-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending… 送信中'; }
+  await doSubmit();
+}
 
 // ── RESULTS (using the server's own graded questions directly — no
 // client-side recomputation of scores or pass/fail at all) ──────────────
@@ -1086,8 +1200,15 @@ async function finalSubmit() {
   btn.disabled = true; btn.textContent = 'Saving…';
 
   const flagged = gradedQuestions.filter(function(q) { return q.flagged; });
-  const flagsPayload = flagged.map(function(q) {
-    return { number: q.number, unit: q.unit, question: q.question, studentAnswer: q.studentAnswer, correctAnswer: q.correctAnswer, autoScore: q.score, reason: q.flagReason };
+  // qIndex = the question's position in the quiz (1-based, examples not
+  // counted). Section numbers repeat, so they can't identify a question.
+  const qIndexOf = {};
+  let pos = 0;
+  gradedQuestions.forEach(function(q, i) { if (!q.isExample) { pos++; qIndexOf[i] = q.qIndex || pos; } });
+  const flagsPayload = [];
+  gradedQuestions.forEach(function(q, i) {
+    if (!q.flagged) return;
+    flagsPayload.push({ qIndex: qIndexOf[i], number: q.number, unit: q.unit, question: q.question, studentAnswer: q.studentAnswer, correctAnswer: q.correctAnswer, autoScore: q.score, reason: q.flagReason });
   });
   if (flagsPayload.length) {
     try { await api({ action: 'flagQuestions', week: studentData.week, flags: JSON.stringify(flagsPayload) }); } catch (e) { /* best-effort */ }
