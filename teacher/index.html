@@ -356,7 +356,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v4.19 — Quiz: flags + Student View keyed per question; Bonus removed</div>
+      <div class="version-tag">v4.20 — Quiz Moodle CSV feedback includes flag results</div>
     </div>
   </div>
 
@@ -4351,9 +4351,49 @@ async function markAllHomeworkDone() {
   if (failed.length) alert("Couldn't save for: " + failed.join(', ') + ' — please check those individually.');
   else showToast('✓ Marked all as done.');
 }
-function downloadQuizMoodleCsv() {
+// Flag decisions go into each student's Moodle feedback so they can see
+// their flagged questions were looked at: Approved / Rejected, plus any
+// still waiting for review. One getFlags call for the whole week.
+function moodleEsc(t) {
+  return String(t === undefined || t === null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function moodleFlagFeedback(flags) {
+  if (!flags || !flags.length) return '';
+  const order = { 'Approved': 0, 'Rejected': 1 };
+  const sorted = flags.slice().sort(function(a, b) {
+    return (order[a.status] !== undefined ? order[a.status] : 2) - (order[b.status] !== undefined ? order[b.status] : 2) || Number(a.qIndex) - Number(b.qIndex);
+  });
+  const items = sorted.map(function(f) {
+    let verdict;
+    if (f.status === 'Approved') {
+      const pts = f.correctedScore !== '' && f.correctedScore !== null && f.correctedScore !== undefined ? ' (' + f.correctedScore + ' pt)' : '';
+      verdict = '<strong>\u2713 Approved \u00b7 \u6b63\u89e3\u306b\u3057\u307e\u3057\u305f' + pts + '</strong>';
+    } else if (f.status === 'Rejected') {
+      verdict = '<strong>\u2717 Rejected \u00b7 \u4e0d\u6b63\u89e3\u306e\u307e\u307e</strong>';
+    } else {
+      verdict = '<strong>\u2026 Still being reviewed \u00b7 \u78ba\u8a8d\u4e2d</strong>';
+    }
+    const question = String(f.question || '').replace(/_{3,}/g, '______');
+    return '<li>' + verdict + '<br>' + moodleEsc(question) +
+      '<br>Your answer \u00b7 \u3042\u306a\u305f\u306e\u7b54\u3048: ' + moodleEsc(f.studentAnswer || '(no answer)') +
+      '<br>Correct answer \u00b7 \u6b63\u89e3: ' + moodleEsc(String(f.correctAnswer || '').split(' / ')[0]) + '</li>';
+  }).join('');
+  return '<p><strong>Flagged questions \u00b7 \u30d5\u30e9\u30b0\u3092\u4ed8\u3051\u305f\u554f\u984c</strong></p><ul>' + items + '</ul>';
+}
+
+async function downloadQuizMoodleCsv() {
   if (!quizGradesCache) { alert('Load a week\'s grades first.'); return; }
   const week = document.getElementById('quiz-grades-week').value;
+  const flagsByStudent = {};
+  try {
+    const fr = await api('quiz', { action: 'getFlags', classId: currentClassId, week: week });
+    (fr.flags || []).forEach(function(f) {
+      const k = String(f.studentNumber);
+      (flagsByStudent[k] = flagsByStudent[k] || []).push(f);
+    });
+  } catch (e) {
+    if (!confirm('Couldn\'t load this week\'s flags (' + (e.message || 'error') + '). Download the CSV without flag results?')) return;
+  }
   const header = csvRow(['Identifier', 'Full name', 'Grade', 'Feedback comments']);
   const rows = quizGradesCache.map(function(r) {
     if (!r.submitted) return csvRow([r.studentNumber, r.nameEng, '', 'Incomplete']);
@@ -4361,7 +4401,8 @@ function downloadQuizMoodleCsv() {
       '<li>' + (r.practiceQ ? '\u2713' : '\u2717') + ' Practice questions</li>' +
       '<li>' + (r.flashcard ? '\u2713' : '\u2717') + ' Flashcard</li>' +
       (r.quizNewPassed !== null ? '<li>' + (r.quizNewPassed ? '\u2713' : '\u2717') + ' New unit(s)</li>' : '') +
-      (r.quizReviewPassed !== null ? '<li>' + (r.quizReviewPassed ? '\u2713' : '\u2717') + ' Review unit(s)</li>' : '') + '</ul>';
+      (r.quizReviewPassed !== null ? '<li>' + (r.quizReviewPassed ? '\u2713' : '\u2717') + ' Review unit(s)</li>' : '') + '</ul>' +
+      moodleFlagFeedback(flagsByStudent[String(r.studentNumber)]);
     return csvRow([r.studentNumber, r.nameEng, r.total, feedback]);
   });
   const csv = header + '\n' + rows.join('\n');
