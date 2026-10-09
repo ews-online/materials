@@ -340,7 +340,7 @@
       <button class="btn btn-primary btn-block" style="margin-top:14px;" onclick="login()">Enter</button>
       <div class="error-msg" id="loginError">Student number not found. Check and try again.</div>
     </div>
-    <div class="version-tag">v3.2 — 2026-10-09</div>
+    <div class="version-tag">v3.3 — 2026-10-09</div>
   </div>
 
   <!-- ===================== MAIN APP ===================== -->
@@ -1543,8 +1543,10 @@ function ccfDrawInClassAttemptsBox(doc, y) {
 // One AI-check block per sentence (green/yellow title bar matches the
 // in-class page). Questions, in order: did the AI agree (circle) → the AI's
 // sentence with changes underlined → the AI's explanation in their own
-// words → does the textbook's explanation match the AI's (circle) → what
-// they'll watch out for next time (learner-training reflection).
+// words → does their own "Why?" (written from the textbook in class) match
+// the AI's explanation (circle — learner self-comparison, 2026-10-09; replaced
+// the old textbook-vs-AI question) → what they'll watch out for next time
+// (learner-training reflection, re-read before writing the next blog).
 function ccfDrawHomeworkBlock(doc, y, sentenceNum, fillColor, textColor) {
   const boxTop = y;
   const titleBarTop = boxTop + 1.2;
@@ -1567,8 +1569,8 @@ function ccfDrawHomeworkBlock(doc, y, sentenceNum, fillColor, textColor) {
   y2 = ccfJpLabel(doc, y2, 'AIの説明', '（自分の言葉で短くまとめる）');
   y2 = ccfRuled(doc, y2 + 1, 4, 5.8, CCF_W - 4) + 4.8;
 
-  ccfJpText(doc, '教科書の説明とAIの説明は同じですか？', CCF_M + 2, y2, { size: 7.6, bold: true, color: [91, 99, 88] });
-  ccfJpText(doc, '同じ　・　違う　・　わからない', optX, y2, { size: 8.4, bold: true, color: [32, 38, 31] });
+  ccfJpText(doc, '自分の「Why?」（教科書を見て書いた理由）とAIの説明は同じですか？', CCF_M + 2, y2, { size: 7.6, bold: true, color: [91, 99, 88] });
+  ccfJpText(doc, '同じ　・　一部違う　・　違う', optX, y2, { size: 8.4, bold: true, color: [32, 38, 31] });
   ccfJpText(doc, '（○で囲む）', CCF_M + CCF_W - 2, y2, { size: 6.6, color: [120, 126, 116], align: 'right' });
   y2 += 7.8;
 
