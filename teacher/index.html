@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
@@ -356,7 +357,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v4.20 — Quiz Moodle CSV feedback includes flag results</div>
+      <div class="version-tag">v4.21 — Worksheets: student ID QR code + ID text in header</div>
     </div>
   </div>
 
@@ -2874,7 +2875,7 @@ function ccfDrawHomeworkInstructions(doc, y) {
   CCF_HW_STEPS.forEach(function(step) {
     if (step[0]) ccfJpText(doc, step[0], CCF_M + 3, y2, { size: 7.6, bold: true, color: [32, 38, 31] });
     ccfJpText(doc, step[1], CCF_M + 8, y2, { size: 7.6, color: [32, 38, 31] });
-    y2 += 4.3;
+    y2 += 3.9;
   });
   const boxBottom = y2 - 1;
   doc.setDrawColor(61, 90, 115); doc.setLineWidth(0.4);
@@ -2944,26 +2945,53 @@ function ccfDrawHomeworkBlock(doc, y, sentenceNum, fillColor, textColor) {
   return boxBottom + 4;
 }
 
-function ccfPageHeader(doc, title, meta) {
-  doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.setTextColor(32, 38, 31);
-  doc.text(title, CCF_M, 12);
+// ── Worksheet header: [QR] Title / stu_… ........ class · week · name ──
+// QR payload = year|class|week|StudentId, e.g. 2026|EWSII|W2|stu_02376a16.
+// The StudentId is also printed as plain text under the title so an AI (or
+// a person) can read it straight off a scan without decoding the QR. The QR
+// is drawn as vector squares (no image), so it stays sharp when printed.
+const CCF_QR_SIZE = 12.5;      // mm
+const CCF_HDR_LINE_Y = 18.5;   // header rule
+function ccfDrawQr(doc, text, x, y, size) {
+  if (typeof qrcode !== 'function') return false; // QR library failed to load: sheet still prints, ID text still shows
+  const qr = qrcode(0, 'M'); qr.addData(String(text)); qr.make();
+  const n = qr.getModuleCount(), cell = size / n;
+  doc.setFillColor(0, 0, 0);
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++)
+    if (qr.isDark(r, c)) doc.rect(x + c * cell, y + r * cell, cell + 0.02, cell + 0.02, 'F');
+  return true;
+}
+function ccfQrPayload(classLabel, week, studentId) {
+  return new Date().getFullYear() + '|' + String(classLabel || '').replace(/\s+/g, '') + '|W' + week + '|' + studentId;
+}
+function ccfPageHeader(doc, title, meta, studentId, qrPayload) {
+  let titleX = CCF_M;
+  if (studentId) { ccfDrawQr(doc, qrPayload || studentId, CCF_M, 4, CCF_QR_SIZE); titleX = CCF_M + CCF_QR_SIZE + 4; }
+  const titleY = studentId ? 10.5 : 12.5;
+  doc.setFontSize(12.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(32, 38, 31);
+  doc.text(title, titleX, titleY);
+  if (studentId) {
+    doc.setFont('courier', 'bold'); doc.setFontSize(10); doc.setTextColor(0, 0, 0);
+    doc.text(String(studentId), titleX, 15.8);
+  }
   if (meta) {
     doc.setFontSize(8); doc.setFont('helvetica', 'normal'); doc.setTextColor(91, 99, 88);
-    doc.text(meta, 210 - CCF_M, 12, { align: 'right' });
+    doc.text(meta, 210 - CCF_M, titleY, { align: 'right' });
   }
   doc.setDrawColor(61, 90, 115); doc.setLineWidth(0.8);
-  doc.line(CCF_M, 16, 210 - CCF_M, 16);
+  doc.line(CCF_M, CCF_HDR_LINE_Y, 210 - CCF_M, CCF_HDR_LINE_Y);
 }
 
-function ccfDrawReflectionSheet(doc, studentName, classLabel, week, annotation, colourMap, showUntreatable, isFirst, newUnitValue, newUnitSubmittedAt) {
+function ccfDrawReflectionSheet(doc, studentName, classLabel, week, annotation, colourMap, showUntreatable, isFirst, newUnitValue, newUnitSubmittedAt, studentId) {
+  const qrPayload = studentId ? ccfQrPayload(classLabel, week, studentId) : '';
   const MAX_Y = 285;
   const hasAnnotation = annotation && annotation.annotatedText;
   const blogTitle = (annotation && annotation.title) ? annotation.title : ('Week ' + week + ' entry');
   const meta = classLabel + '  \u00b7  Week ' + week + '  \u00b7  ' + studentName;
 
   if (!isFirst) doc.addPage();
-  ccfPageHeader(doc, 'Blog Entry Grammar Reflection', meta);
-  let y = 24;
+  ccfPageHeader(doc, 'Blog Entry Grammar Reflection', meta, studentId, qrPayload);
+  let y = 26.5;
   doc.setFontSize(10.5); doc.setFont('helvetica', 'bold'); doc.setTextColor(32, 38, 31);
   doc.text(blogTitle, CCF_M + CCF_W / 2, y, { align: 'center' });
   y += 5;
@@ -3012,16 +3040,23 @@ function ccfDrawReflectionSheet(doc, studentName, classLabel, week, annotation, 
 
   doc.addPage();
   const homeworkMeta = classLabel + '  \u00b7  Week ' + week + '  \u00b7  ' + studentName;
-  ccfPageHeader(doc, 'Blog Entry Grammar Reflection - Homework', homeworkMeta);
-  y = 21;
+  ccfPageHeader(doc, 'Blog Entry Grammar Reflection - Homework', homeworkMeta, studentId, qrPayload);
+  y = 23.5;
   y = ccfDrawHomeworkInstructions(doc, y);
   y = ccfDrawInClassAttemptsBox(doc, y);
   y = ccfDrawHomeworkBlock(doc, y, 1, [219,242,229], [26,58,42]);
   y = ccfDrawHomeworkBlock(doc, y, 2, [253,244,205], [102,79,8]);
 }
 
+// The system StudentId (stu_…) for the worksheet QR/header comes from the
+// class roster already loaded for this class (getClassData).
+function ccfStudentIdFor(studentNumber) {
+  const roster = (forumClassData && forumClassData.roster) || [];
+  const rec = roster.find(function(r) { return String(r.StudentNumber) === String(studentNumber); });
+  return rec && rec.StudentId ? rec.StudentId : '';
+}
 function addCCFReflectionPage(doc, studentName, classLabel, studentNumber, week, annotation, colourMap, showUntreatable, isFirst, newUnitValue, newUnitSubmittedAt) {
-  ccfDrawReflectionSheet(doc, studentName, classLabel, week, annotation, colourMap, showUntreatable, isFirst, newUnitValue, newUnitSubmittedAt);
+  ccfDrawReflectionSheet(doc, studentName, classLabel, week, annotation, colourMap, showUntreatable, isFirst, newUnitValue, newUnitSubmittedAt, ccfStudentIdFor(studentNumber));
 }
 
 function withTimeout(promise, ms) {
