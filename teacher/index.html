@@ -357,7 +357,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v4.24 — Worksheet homework steps refer to the class page</div>
+      <div class="version-tag">v4.25 — Grammar Quiz tabs open on the latest week</div>
     </div>
   </div>
 
@@ -3475,7 +3475,39 @@ function showQuizSub(name) {
   if (name === 'grades') { loadGradeWeights(); loadGrades(); }
   if (name === 'qb') { /* waits for explicit Load click - tier+unit not chosen yet */ }
 }
-async function loadQuizPanel() { showQuizSub('units'); }
+// Each time the Grammar Quiz panel opens, the Week boxes on Units, Flags
+// and Grades jump to the latest week instead of starting at 1:
+//   Flags / Grades -> the latest week that has a generated quiz or results.
+//   Units          -> the latest week with any unit entered (students'
+//                     Forum submissions fill next week's column before you
+//                     generate, so this lands on the week you're preparing).
+// Only done on opening the panel; changing a box yourself is kept while you
+// move between the sub-tabs.
+let quizUnitsWeekAutoPending = false;
+let latestQuizWeek = 0;
+async function loadQuizPanel() {
+  quizUnitsWeekAutoPending = true;
+  latestQuizWeek = 0;
+  try {
+    const r = await api('quiz', { action: 'getWeeksWithQuizData', classId: currentClassId });
+    const weeks = (r && r.ok && r.weeks) || [];
+    latestQuizWeek = weeks.length ? Math.max.apply(null, weeks.map(Number)) : 0;
+  } catch (e) { /* leave the boxes as they are */ }
+  if (latestQuizWeek > 0) {
+    document.getElementById('quiz-flags-week').value = latestQuizWeek;
+    document.getElementById('quiz-grades-week').value = latestQuizWeek;
+  }
+  showQuizSub('units');
+}
+function applyLatestUnitsWeek() {
+  if (!quizUnitsWeekAutoPending) return;
+  quizUnitsWeekAutoPending = false;
+  let latest = latestQuizWeek;
+  ((quizUnitsCache && quizUnitsCache.students) || []).forEach(function(st) {
+    (st.weeks || []).forEach(function(cell, i) { if (String(cell).trim() !== '' && i + 1 > latest) latest = i + 1; });
+  });
+  if (latest > 0) document.getElementById('quiz-units-week').value = latest;
+}
 
 /* ====================== UNITS TAB ====================== */
 let quizUnitsCache = null;
@@ -3487,6 +3519,7 @@ async function loadQuizUnits() {
     const result = await api('quiz', { action: 'getWeeklyUnitAssignments', classId: currentClassId });
     if (!result.ok) { tableEl.innerHTML = '<div class="empty-note">' + esc(result.error) + '</div>'; return; }
     quizUnitsCache = result;
+    applyLatestUnitsWeek();
     renderQuizUnitsTable();
   } catch (e) {
     tableEl.innerHTML = '<div class="empty-note">Something went wrong loading this: ' + esc(e.message) + '</div>';
