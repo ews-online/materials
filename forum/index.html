@@ -308,6 +308,17 @@
   .btn-pdf:hover{border-color:var(--ink-soft);}
   .btn-pdf:disabled{opacity:0.4;cursor:default;}
 
+  /* ── Sentences corrected in class (2026-10-10) ── */
+  .att-block{border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:12px;background:#FAFBF8;}
+  .att-title{font-family:'Fraunces',serif;font-weight:600;font-size:0.95rem;margin-bottom:8px;}
+  .att-label{display:block;font-size:0.76rem;color:var(--ink-soft);margin:10px 0 5px;line-height:1.45;}
+  .att-select{width:100%;font-family:'IBM Plex Sans',sans-serif;font-size:0.86rem;padding:9px 10px;border:1.5px solid var(--border);border-radius:10px;background:#fff;color:var(--ink);}
+  .att-preview{margin-top:8px;font-size:0.88rem;line-height:1.9;}
+  .att-hint{font-size:0.78rem;color:var(--ink-soft);}
+  .att-unit{width:120px !important;}
+  .att-text{width:100%;min-height:56px;resize:vertical;line-height:1.5;font-size:0.95rem;}
+  .att-status{font-size:0.8rem;font-family:'IBM Plex Mono',monospace;}
+
   /* ── Pre-post self-check + composer notice (2026-10-09) ── */
   .compose-note{font-size:0.74rem;color:var(--ink-soft);margin-top:8px;line-height:1.55;}
   .sc-modal-box{max-width:460px;text-align:left;max-height:90vh;overflow-y:auto;}
@@ -389,7 +400,7 @@
       <button class="btn btn-primary btn-block" style="margin-top:14px;" onclick="login()">Enter</button>
       <div class="error-msg" id="loginError">Student number not found. Check and try again.</div>
     </div>
-    <div class="version-tag">v3.5 — 2026-10-09</div>
+    <div class="version-tag">v3.8 — 2026-10-10</div>
   </div>
 
   <!-- ===================== MAIN APP ===================== -->
@@ -452,6 +463,7 @@ async function callApi(action, payload) {
 
 let currentStudent = null;
 let currentStudentId = null;   // system StudentId (stu_…), for the worksheet QR/header
+let currentTextbookTier = 'Basic'; // 'Basic' | 'Intermediate' — B/I unit prefix for a student's own sentence
 let currentStudentName = null; // full name string e.g. "Rei YAMAGUCHI", set at login
 let currentToken = null; // session token from login — the new engine requires this on every call after login
 let gotoDestination = null;    // set from ?goto= URL param, consumed once after login
@@ -494,6 +506,7 @@ async function login(){
     currentToken = result.token;
     currentStudent = result.studentNumber || val;
     currentStudentId = result.studentId || null;
+    currentTextbookTier = result.textbookTier || 'Basic';
     currentClassId = result.classId;
     currentClassLabel = result.classLabel || result.classId;
     currentName = result.nameEng || result.nameJP || currentStudent;
@@ -780,10 +793,12 @@ async function renderGrammarFeedback(week){
   // MasterLogin.gs status check computed a class-global "next open week"
   // instead of using the week actually being viewed, so it could report
   // "not submitted" for a real submission to a different week.
-  const [annotationResult, colourResult] = await Promise.allSettled([
+  const [annotationResult, colourResult, attemptsResult] = await Promise.allSettled([
     callApi('getAnnotationForWeek', { classId: currentClassId, studentNumber: currentStudent, week }),
     callApi('getColourStateForWeek', { classId: currentClassId, studentNumber: currentStudent, week }),
+    callApi('getSentenceAttempts', { classId: currentClassId, studentNumber: currentStudent, week }),
   ]);
+  const savedAttempts = (attemptsResult.status==='fulfilled' && attemptsResult.value && attemptsResult.value.success) ? (attemptsResult.value.attempts || []) : [];
 
   const annotationData = (annotationResult.status==='fulfilled' && annotationResult.value && annotationResult.value.success) ? annotationResult.value : null;
   const colourDataRaw = (colourResult.status==='fulfilled' && colourResult.value && colourResult.value.success) ? colourResult.value : null;
@@ -949,10 +964,12 @@ async function renderGrammarFeedback(week){
       </div>
       <button class="btn-pdf" ${!hasAnnotation?'disabled title="No entry was submitted this week."':''} onclick="downloadCCFReflectionSheet()">📄 Download Reflection Sheet</button>
     </div>
+    ${ccfAttemptSectionHtml(hasAnnotation)}
+    <div class="section-label">AI check (homework) AIチェック（宿題）</div>
     <div class="card pdf-download-row">
       <div class="info">
         <div class="ttl">Copy AI-check prompt</div>
-        <div class="sub">Copies a ready-to-paste prompt for the weekend homework step — paste into Gemini, then add your two corrected sentences at the bottom.</div>
+        <div class="sub">Copies the homework prompt, with your two saved sentences already inside. Paste it into the AI as it is — see the class page for which AI and settings to use.<br>保存した2つの文が入ったプロンプトをコピーします。そのままAIに貼り付けてください（使うAIと設定はクラスのページを見てください）。</div>
       </div>
       <button class="btn-pdf" ${!hasAnnotation?'disabled title="No entry was submitted this week."':''} onclick="copyAICheckPrompt()">📋 Copy Prompt</button>
     </div>
@@ -961,6 +978,7 @@ async function renderGrammarFeedback(week){
   // attribute above — no annotation content (quotes, apostrophes, anything)
   // ever has to survive HTML-attribute escaping this way.
   window._ccfPdfData = { week, annotation: Object.assign({}, annotation||{}, {colourMap, showUntreatable: ccfSettings.showUntreatableErrors}), existingMain, existingSubmittedAt: submittedAt };
+  if(hasAnnotation) ccfInitAttemptSection(ccfStripHiddenTags(annotation.annotatedText, ccfSettings.showUntreatableErrors), savedAttempts, existingMain);
   if(windowOpen && deadlineDate) startGrammarDeadlineCountdown(deadlineDate, week);
   } finally {
     hideLoading();
@@ -1546,9 +1564,9 @@ function ccfJpLabel(doc, y, text, note) {
 // Numbered how-to steps at the top of the homework page.
 const CCF_HW_STEPS = [
   ['1.', '授業で直した2つの文を、下の「授業中に直した文」に書き写す。'],
-  ['2.', 'フォーラムの文法フィードバックのページで「Copy Prompt」を押してコピーし、Geminiに貼り付ける。'],
-  ['',   '最後に自分の2つの文を入れて送信する。※必ずこのプロンプトを使うこと。自分で質問を書かない。'],
-  ['3.', 'AIの答えを読んで、下の欄に記入する。'],
+  ['2.', 'フォーラムの文法フィードバックのページで「Copy Prompt」を押してコピーし、AIに貼り付けて送信する。'],
+  ['',   '※授業中に保存した2つの文は自動で入っています。必ずこのプロンプトを使い、自分で質問を書かない。'],
+  ['3.', 'AIの答えを読んで、下の欄に記入する。（使うAIと設定は、クラスのページの説明を見ること）'],
   ['',   '※AIもまちがえることがあります。おかしいと思ったら、正直に書くこと。'],
   ['4.', '次の授業に持ってくる。']
 ];
@@ -1761,101 +1779,592 @@ function downloadCCFReflectionSheet(){
   doc.save(`EWS_Week${week}_CCF-Reflection_${safeName}.pdf`);
 }
 
-// ── AI-check prompt builder (homework copy button) ───────────────────────
-// Builds the full Japanese prompt for the weekend Gemini AI-check step:
-// explains the {text|CODE|UNIT} tag notation, includes a legend of only
-// the unit titles actually used in THIS entry (built from UNIT_TITLES,
-// not the full B1-B113/I1-I142 list every time), includes the full tagged
-// entry as context, and leaves two placeholders for the student to paste
-// in their own "My Finished Attempt" sentences before sending it to
-// Gemini. Deliberately verifies the student's own attempt rather than
-// generating a fresh correction — and deliberately does NOT give the
-// correction itself anywhere, matching the same "never show the
-// correction" principle as the paper worksheet.
-function ccfBuildUnitLegend(annotatedText){
-  const unitsUsed = [];
-  const seen = {};
-  const re = /\|([A-Z]?\d+)\}/g;
-  let m;
-  while((m = re.exec(annotatedText))){
-    const u = m[1];
-    if(!seen[u] && UNIT_TITLES[u]){ seen[u] = true; unitsUsed.push(u); }
-  }
-  unitsUsed.sort((a,b) => {
-    const pa = a[0], pb = b[0];
-    if(pa !== pb) return pa < pb ? -1 : 1;
-    return parseInt(a.slice(1)) - parseInt(b.slice(1));
-  });
-  return unitsUsed.map(u => `${u} = ${UNIT_TITLES[u].jp}`).join('\n');
+// ── AI-check homework: in-class attempts + prompt builder (2026-10-10) ────
+// Students pick the two marked sentences they corrected (dropdowns), type
+// their finished attempts in class, and Save. "Copy Prompt" then builds the
+// AI-check prompt with every mark ALREADY PAIRED to what the student wrote
+// (ccfmMatchAttempt below — plain word comparison, no AI). The AI only has
+// to judge each pair, which tested far more reliably than asking it to find
+// the student's changes itself. Works with any chat AI; which AI and which
+// settings to use is explained on the class page, not here (deliberately unnamed).
+// Never shows a correction before the student's own attempt is saved.
+
+/* ════════════════════════════════════════════════════════════════════════
+   CCF ATTEMPT MATCHER — pairs each mark in an annotated sentence with what
+   the student wrote at that spot in their corrected attempt. Plain word
+   comparison (no AI): same idea as a "compare documents" / track-changes
+   tool. Written so it can be pasted into the forum page unchanged.
+
+   ccfmMatchAttempt(markedSentence, attempt) →
+     { rewritten, marks:[{tag, value, status}], others:[string] }
+     status: 'changed' | 'unchanged' | 'deleted' | 'moved' | 'rewritten'
+   ════════════════════════════════════════════════════════════════════════ */
+
+const CCFM_TAG_RE = /\{(\^|[^{}|]*)\|([A-Z]+)(?:\|([BI]\d+(?:\/[BI]\d+)?))?\}/g;
+
+// Words (letters/digits/apostrophes, incl. curly ’), single punctuation
+// marks, and runs of non-Latin text (e.g. Japanese) each become one token.
+function ccfmTokenize(text) {
+  return String(text || '').replace(/[‘’`´]/g, "'").replace(/[“”]/g, '"').match(/[A-Za-z0-9]+(?:['’][A-Za-z0-9]+)*|[　-鿿＀-￯]+|[^\sA-Za-z0-9]/g) || [];
 }
 
-function ccfBuildAICheckPrompt(annotatedText){
-  const legend = ccfBuildUnitLegend(annotatedText);
-  return `私は英語のライティングの授業を受けている学生です。以下は私が書いたブログ記事の全文です。
-文中の { } の部分は、先生のシステムが文法の間違いを見つけて印をつけた場所です。
-例:{is|SVA|B1} は「is という単語が、SVA(主語と動詞の一致)という種類の間違いで、
-B1という文法ユニットに関係しています」という意味です。{ } の中に記号だけで単語が
-ない場合は、「そこに何かが抜けている(足りない)」という意味です。
+// Original sentence → ordered word tokens (each knows its mark, if any) and
+// gap marks (^) recorded by position: a gap "after word k" (k = -1: start).
+function ccfmParseMarked(sentence) {
+  const words = [], gaps = [], marks = [];
+  let last = 0, m;
+  const re = new RegExp(CCFM_TAG_RE.source, 'g');
+  const pushPlain = str => ccfmTokenize(str).forEach(t => words.push({ text: t, mark: null }));
+  while ((m = re.exec(sentence)) !== null) {
+    pushPlain(sentence.slice(last, m.index));
+    const idx = marks.length;
+    marks.push({ tag: m[0], span: m[1], code: m[2], unit: m[3] || '', isGap: m[1] === '^' });
+    if (m[1] === '^') gaps.push({ mark: idx, after: words.length - 1 });
+    else ccfmTokenize(m[1]).forEach(t => words.push({ text: t, mark: idx }));
+    last = m.index + m[0].length;
+  }
+  pushPlain(sentence.slice(last));
+  return { words, gaps, marks };
+}
 
-このブログ記事で使われている文法ユニット番号の意味は下の「ユニット一覧」に
-書いてあります。修正や説明をするときは、必ずその文についている印のユニット番号を
-確認し、「ユニット一覧」でそのユニットが何を扱っているかを見てから答えてください。
-たとえ他にも直せる部分があるように見えても、印がついた箇所に集中し、説明は
-そのユニットが扱っている文法ポイントについて書いてください。修正した文を作る
-ときは、そのユニットが教えている文法の形を実際に使ってください。説明の中で
-ユニットの内容に触れるだけでなく、直した文自体がそのユニットの正しい形に
-なっている必要があります。
+function ccfmLev(a, b) {
+  a = a.toLowerCase(); b = b.toLowerCase();
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+    d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+// Irregular forms students often fix, which share too few letters to be
+// recognised by spelling similarity alone.
+const CCFM_IRREGULAR = [['person','people'],['persons','people'],['child','children'],['man','men'],['woman','women'],
+  ['foot','feet'],['tooth','teeth'],['mouse','mice'],['fishs','fish'],['is','are'],['am','is'],['are','is'],['is','was'],['am','was'],
+  ['are','were'],['was','were'],['go','went'],['see','saw'],['buy','bought'],['eat','ate'],['take','took'],['come','came'],
+  ['get','got'],['make','made'],['teach','taught'],['teached','taught'],['think','thought'],['bring','brought']];
+function ccfmSim(a, b) {
+  const x = a.toLowerCase(), y = b.toLowerCase();
+  if (CCFM_IRREGULAR.some(([p, q]) => (x === p && y === q) || (x === q && y === p))) return 0.9;
+  const stemY = w => w.replace(/(ied|ies)$/, 'y');
+  if (stemY(x) === stemY(y) && x !== y) return 0.8; // tried/try, studies/study
+  const L = Math.max(x.length, y.length); return L ? 1 - ccfmLev(x, y) / L : 1;
+}
+function ccfmSameStem(a, b) {
+  a = a.toLowerCase(); b = b.toLowerCase();
+  if (a === b) return true;
+  let p = 0; while (p < a.length && p < b.length && a[p] === b[p]) p++;
+  return p >= Math.min(4, a.length) && p >= 3;
+}
+// Join tokens back into readable text (no space before punctuation).
+function ccfmJoin(tokens) {
+  return tokens.reduce((s, t, i) => s + (i && !/^[.,!?;:)\]}"']$/.test(t) && !/^[(\["]$/.test(tokens[i-1]) ? ' ' : '') + t, '');
+}
 
-このメッセージの最後に、私が授業中に自分で直した文を2つ書きます
-(「My Finished Attempt」)。それぞれについて、まず、ブログ記事全文の中から
-どの印つきの文を直したものか探してください(似ている文を探せば分かります)。
-見つけたら、その文についている印(いくつあるか)を確認し、私の直した文が
-その印を全部正しく直せているかチェックしてください。
+// Longest common subsequence → anchor pairs. Marked words must match
+// exactly (a capital-letter fix IS the fix); unmarked words match ignoring
+// capitals, so "We" → "we" doesn't break the whole alignment.
+function ccfmLcs(a, b, marked) {
+  const n = a.length, m = b.length;
+  const eq = (i, j) => a[i] === b[j] || (!marked[i] && a[i].toLowerCase() === b[j].toLowerCase());
+  const L = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
+    L[i][j] = eq(i, j) ? L[i+1][j+1] + 1 : Math.max(L[i+1][j], L[i][j+1]);
+  const pairs = []; let i = 0, j = 0;
+  while (i < n && j < m) {
+    if (eq(i, j)) { pairs.push([i, j]); i++; j++; }
+    else if (L[i+1][j] >= L[i][j+1]) i++; else j++;
+  }
+  return pairs;
+}
 
-チェックの結果:
-・印を全部正しく直せていれば、「合っています」と伝えて、なぜ合っているのか
-  簡単に説明してください。
-・直しきれていない印がある場合(直し忘れ、または直したけどまだ間違っている)は、
-  どの印がまだ問題か具体的に指摘し、正しい文を教えてください。
+// Inside one changed region: align old↔new tokens by spelling similarity
+// (substitute / delete / insert), keeping order.
+function ccfmAlignRegion(oldT, newT) {
+  const n = oldT.length, m = newT.length;
+  const C = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+  const B = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(''));
+  const GAP = 0.7; // cost of removing or adding one word
+  for (let i = 1; i <= n; i++) { C[i][0] = i * GAP; B[i][0] = 'D'; }
+  for (let j = 1; j <= m; j++) { C[0][j] = j * GAP; B[0][j] = 'I'; }
+  for (let i = 1; i <= n; i++) for (let j = 1; j <= m; j++) {
+    const s = ccfmSim(oldT[i-1], newT[j-1]);
+    const sub = C[i-1][j-1] + (s >= 0.45 ? 1 - s : 1.6);
+    const del = C[i-1][j] + GAP, ins = C[i][j-1] + GAP;
+    if (sub <= del && sub <= ins) { C[i][j] = sub; B[i][j] = 'S'; }
+    else if (del <= ins) { C[i][j] = del; B[i][j] = 'D'; }
+    else { C[i][j] = ins; B[i][j] = 'I'; }
+  }
+  const ops = []; let i = n, j = m;
+  while (i > 0 || j > 0) {
+    const b = B[i][j];
+    if (b === 'S') { ops.push({ op: 'S', o: i-1, n: j-1 }); i--; j--; }
+    else if (b === 'D') { ops.push({ op: 'D', o: i-1 }); i--; }
+    else { ops.push({ op: 'I', n: j-1, after: i-1 }); j--; }
+  }
+  return ops.reverse();
+}
 
-説明は、印ごとに分けて書いてください。正しく直せた印も、まだ間違っている印も、
-1つずつ、それぞれ1〜2文で説明してください。正しく直せた印について「合っています」
-だけで終わらせず、なぜそれが正しいのかも書いてください。
-(私は授業中に、それぞれの印を直した理由を自分で書きました。あなたの説明と
-自分の理由を比べて、自分の理解が正しかったか確かめるために使います。)
+function ccfmMatchAttempt(markedSentence, attempt) {
+  const P = ccfmParseMarked(markedSentence);
+  const oldT = P.words.map(w => w.text);
+  const newT = ccfmTokenize(attempt);
+  const anchors = ccfmLcs(oldT, newT, P.words.map(w => w.mark !== null));
 
-修正するときは、できるだけ元の文の形を残して、最小限の変更にしてください。
-もっと自然に聞こえる別の言い方があったとしても、大きく書き換えないでください。
+  // Mostly rewritten → don't pretend to pair anything.
+  // (marked words are expected to change, so only UNMARKED words count here)
+  const isPlainWord = i => P.words[i].mark === null && /[A-Za-z0-9]/.test(oldT[i]);
+  const plainTotal = oldT.filter((_, i) => isPlainWord(i)).length;
+  const plainKept = anchors.filter(([i]) => isPlainWord(i)).length;
+  if (plainTotal >= 2 && plainKept / plainTotal < 0.5) {
+    // Clause order reversed, sentence restructured …: the marked words may
+    // still be there, just somewhere else. Look for each one by spelling.
+    const AUX = ['will','would','can','could','should','must','might','may','have','has','had','was','were','is','am','are','do','does','did','to','be','been'];
+    const used = new Set();
+    const marks = P.marks.map((mk, mi) => {
+      if (mk.isGap) return { tag: mk.tag, value: 'なし — 文を書きかえた', status: 'rewritten' };
+      const mw = P.words.map((w, i) => i).filter(i => P.words[i].mark === mi).map(i => oldT[i])
+        .filter(w => /[A-Za-z]/.test(w) && AUX.indexOf(w.toLowerCase()) === -1);
+      let best = -1, bestS = 0;
+      mw.forEach(w => newT.forEach((nt, j) => {
+        if (used.has(j) || !/[A-Za-z]/.test(nt)) return;
+        const s = Math.max(ccfmSim(w, nt), ccfmSameStem(w, nt) ? 0.75 : 0);
+        if (s > bestS) { bestS = s; best = j; }
+      }));
+      if (best === -1 || bestS < 0.6) return { tag: mk.tag, value: 'なし — 文を書きかえた', status: 'rewritten' };
+      used.add(best);
+      let lo = best;
+      if (['VT', 'MOD', 'SVA', 'CL'].indexOf(mk.code) !== -1 && lo > 0 && AUX.indexOf(newT[lo-1].toLowerCase()) !== -1) lo--;
+      return { tag: mk.tag, value: ccfmJoin(newT.slice(lo, best + 1)) + '(書きかえた文の中で見つけた)', status: 'found-in-rewrite' };
+    });
+    return { rewritten: true, others: ['文全体を大きく書きかえた'], marks };
+  }
 
-下の「ブログ記事全文」を文脈として使って、私が本当は何を言いたかったのかを
-考えてください。文だけを見ても意味がわからない場合があります。
+  // Build edit operations over the whole sentence. Every op is positioned in
+  // the ORIGINAL: S/D at old index o; I after old index `after`.
+  const ops = [];
+  let pi = 0, pj = 0;
+  const anchorNew = {};   // old index → new index, for unchanged words
+  anchors.forEach(([i, j]) => { anchorNew[i] = j; });
+  let region = 0;
+  const flush = (ei, ej) => {
+    const ro = oldT.slice(pi, ei), rn = newT.slice(pj, ej);
+    if (!ro.length && !rn.length) return;
+    region++;
+    ccfmAlignRegion(ro, rn).forEach(x => {
+      if (x.op === 'S') ops.push({ op: 'S', o: pi + x.o, n: pj + x.n, r: region });
+      else if (x.op === 'D') ops.push({ op: 'D', o: pi + x.o, r: region });
+      else ops.push({ op: 'I', n: pj + x.n, after: pi + x.after, r: region });
+    });
+  };
+  anchors.forEach(([i, j]) => { flush(i, j); pi = i + 1; pj = j + 1; });
+  flush(oldT.length, newT.length);
 
-文脈を見てもよく分からない場合や、判断が難しい場合は、それでも構いません。
-一番近いと思う判断を教えてください。ただし、自信がない場合は「自信がない」と
-正直に言ってください。間違っているのに自信満々に答えるより、その方がいいです。
+  const res = P.marks.map(mk => ({ tag: mk.tag, newTok: [], touched: false, deletedAll: false, isGap: mk.isGap, words: [] }));
+  P.words.forEach((w, i) => { if (w.mark !== null) res[w.mark].words.push(i); });
+  const other = []; // {kind, o?, n?, after?}
 
-答えは下の形式で書いてください。そうすればワークシートにそのまま書き写せます:
+  // (a) A changed region touching exactly ONE marked word-group (no gap marks,
+  //     no other marks) belongs to that mark as a whole phrase — e.g.
+  //     "I'm" → "I was", "was confuse" → "have a probrem".
+  const deletedMarked = ops.filter(y => y.op === 'D' && P.words[y.o].mark !== null).map(y => y.o);
+  const isMovedMarkedWord = (n, ownMark) => deletedMarked.some(o => P.words[o].mark !== ownMark && ccfmSameStem(oldT[o], newT[n]));
+  const claimedRegion = {};
+  const regionIds = [...new Set(ops.map(x => x.r))];
+  regionIds.forEach(rid => {
+    const rops = ops.filter(x => x.r === rid);
+    const oldIdx = rops.filter(x => x.op !== 'I').map(x => x.o);
+    const insAfter = rops.filter(x => x.op === 'I').map(x => x.after);
+    const lo = Math.min(...oldIdx, ...insAfter.map(a => a + 1)), hi = Math.max(...oldIdx, ...insAfter);
+    const marksHere = new Set(oldIdx.map(o => P.words[o].mark).filter(m => m !== null));
+    const gapsHere = P.gaps.filter(g => g.after >= lo - 1 && g.after <= hi);
+    if (marksHere.size !== 1 || gapsHere.length) return;
+    if (oldIdx.filter(o => P.words[o].mark === null).length >= 2) return; // e.g. "am very happy" → "was so glad": pair word by word instead
+    const mk = [...marksHere][0];
+    if (['WO', 'SC', 'PU'].indexOf(P.marks[mk].code) !== -1) return; // word order handled below; spelling/punctuation marks claim only their own word
+    const newIdx = rops.filter(x => x.op !== 'D').map(x => x.n).filter(n => !isMovedMarkedWord(n, mk));
+    if (newIdx.length < rops.filter(x => x.op !== 'D').length) return; // region also holds another mark's moved words — pair word by word
+    res[mk].touched = true;
+    res[mk].newTok.push(...newIdx);
+    if (!newIdx.length) res[mk].regionDeleted = true;
+    claimedRegion[rid] = true;
+  });
 
-文1 (SENTENCE 1)
-Confirmed correct sentence: [正しい文。私の直した文が合っていればそのまま、
-間違っていれば正しく直したもの]
-Explanation (印ごと):
-・[印のついた語句(抜けている場合は ^)] (ユニット番号): [合っている / まだ間違っている] — [説明(日本語でOK)。そのユニットの文法ポイントに触れること]
-・(この文についている印の数だけ、同じ形で続ける)
+  const ordered = ops.filter(x => x.op !== 'I').concat(ops.filter(x => x.op === 'I'));
+  ordered.forEach(x => {
+    if (claimedRegion[x.r]) return;
+    if (x.op === 'S' || x.op === 'D') {
+      const mk = P.words[x.o].mark;
+      if (mk !== null) { res[mk].touched = true; if (x.op === 'S') res[mk].newTok.push(x.n); }
+      else other.push(x);
+    } else {
+      // Insertion: a gap mark at this spot claims it; otherwise, if it sits
+      // inside or right after a multi-word marked span, that mark claims it.
+      const gap = P.gaps.find(g => g.after === x.after);
+      const prevMark = x.after >= 0 ? P.words[x.after].mark : null;
+      const nextMark = x.after + 1 < P.words.length ? P.words[x.after + 1].mark : null;
+      const isPunct = /^[^A-Za-z0-9\u3000-\u9fff]$/.test(newT[x.n]);
+      if (gap && (!isPunct || P.marks[gap.mark].code === 'PU')) { res[gap.mark].touched = true; res[gap.mark].newTok.push(x.n); }
+      else if (prevMark !== null && prevMark === nextMark) { res[prevMark].touched = true; res[prevMark].newTok.push(x.n); }
+      else if (!isPunct && (() => {
+        // Added word(s) inside a changed region that also changed a marked
+        // word (not spelling/punctuation): give them to the nearest such mark
+        // — e.g. "thought I tried to" → "will try": "will" joins {tried}.
+        // Only verb-type marks pull in extra words (auxiliaries like
+        // "will", "was", "have"); nouns/articles don't, so an added
+        // adjective stays visible under 印以外.
+        if (['will','would','can','could','should','must','might','may','have','has','had','was','were','is','am','are','do','does','did','be','been','to'].indexOf(newT[x.n].toLowerCase()) === -1) return false;
+        const cands = ops.filter(y => y.r === x.r && y.op !== 'I' && P.words[y.o].mark !== null &&
+          ['VT', 'MOD', 'SVA', 'CL'].indexOf(P.marks[P.words[y.o].mark].code) !== -1);
+        if (!cands.length) return false;
+        cands.sort((a, b) => Math.abs(a.o - (x.after + 0.5)) - Math.abs(b.o - (x.after + 0.5)));
+        const mk = P.words[cands[0].o].mark;
+        res[mk].touched = true; res[mk].newTok.push(x.n);
+        return true;
+      })()) { /* attached */ }
+      else if (prevMark !== null && !isMovedMarkedWord(x.n, prevMark) && res[prevMark].words.some(o => ops.some(y => y.op === 'D' && y.o === o)) && !res[prevMark].newTok.length) {
+        res[prevMark].touched = true; res[prevMark].newTok.push(x.n);   // replacement right after a removed marked word
+      }
+      else if (!isPunct && prevMark !== null && !res[prevMark].touched && !res[prevMark].isGap &&
+               ['SC', 'PU'].indexOf(P.marks[prevMark].code) === -1) {
+        res[prevMark].touched = true; res[prevMark].newTok.push(x.n);   // word added right after an otherwise-unchanged marked word ("listen" → "listen to")
+        res[prevMark].keepOriginal = true;
+      }
+      else if (!isPunct && nextMark !== null && !isMovedMarkedWord(x.n, nextMark) && !res[nextMark].isGap && res[nextMark].words.every(o => ops.some(y => y.op === 'D' && y.o === o)) && !res[nextMark].newTok.length) {
+        res[nextMark].touched = true; res[nextMark].newTok.push(x.n);   // replacement right before a removed marked word ("by" → "on")
+      }
+      else other.push(x);
+    }
+  });
 
-文2 (SENTENCE 2)
-Confirmed correct sentence: [同上]
-Explanation (印ごと): [同上]
+  // A marked word removed, with new words added in exactly that spot (same
+  // changed region, directly beside it) → the new words replaced it.
+  res.forEach((r, mi) => {
+    if (r.isGap || !r.touched || r.newTok.length || P.marks[mi].code === 'ME') return;
+    const first = Math.min(...r.words), last = Math.max(...r.words);
+    const rid = (ops.find(y => y.op === 'D' && y.o === first) || {}).r;
+    const run = [];
+    for (let k = other.length - 1; k >= 0; k--) {
+      const x = other[k];
+      const onlyMarkInRegion = ops.filter(y => y.r === rid && y.op !== 'I' && P.words[y.o].mark !== null).every(y => P.words[y.o].mark === mi);
+      if (x.op === 'I' && x.r === rid && (onlyMarkInRegion || (x.after >= first - 1 && x.after <= last)) && !isMovedMarkedWord(x.n, mi) &&
+          /[A-Za-z]/.test(newT[x.n])) { run.push(x.n); other.splice(k, 1); }
+    }
+    if (run.length) r.newTok = run;
+  });
 
----ユニット一覧---
-${legend}
+  // Moved words: a marked word deleted here that reappears (same stem) in an
+  // unattached insertion or substitution elsewhere.
+  res.forEach((r, mi) => {
+    if (r.isGap || !r.touched || r.newTok.length) return;
+    const moved = [];
+    r.words.forEach(o => {
+      const k = other.findIndex(x => (x.op === 'I' || x.op === 'S') && (ccfmSameStem(oldT[o], newT[x.n]) || ccfmSim(oldT[o], newT[x.n]) >= 0.8));
+      if (k !== -1) {
+        const x = other[k];
+        moved.push(x.n);
+        if (x.op === 'S') other[k] = { op: 'D', o: x.o }; else other.splice(k, 1);
+      }
+    });
+    if (moved.length) { r.newTok = moved.sort((a, b) => a - b); r.moved = true; }
+  });
 
----ブログ記事全文(印つき)---
-${annotatedText}
+  // Word-order (WO) marks: the fix is the new ORDER, so report the student's
+  // stretch of text from the first to the last place the mark's words (or
+  // their replacements) ended up, and absorb other changes inside it.
+  res.forEach((r, mi) => {
+    if (P.marks[mi].code !== 'WO' || r.isGap || !r.touched) return;
+    const pos = [...r.newTok];
+    r.words.forEach(o => { if (anchorNew[o] !== undefined) pos.push(anchorNew[o]); });
+    for (let k = other.length - 1; k >= 0; k--) {
+      const x = other[k];
+      if ((x.op === 'I' || x.op === 'S') && r.words.some(o => ccfmSameStem(oldT[o], newT[x.n]))) { pos.push(x.n); }
+    }
+    if (!pos.length) return;
+    let lo = Math.min(...pos), hi = Math.max(...pos);
+    // pull in words the student added right at either edge of the phrase
+    const addedAt = n => other.some(x => x.op === 'I' && x.n === n);
+    while (lo > 0 && addedAt(lo - 1)) lo--;
+    while (hi < newT.length - 1 && addedAt(hi + 1) && /[A-Za-z0-9]/.test(newT[hi + 1])) hi++;
+    for (let k = other.length - 1; k >= 0; k--) {
+      const x = other[k];
+      if ((x.op === 'I' || x.op === 'S') && x.n >= lo && x.n <= hi) other.splice(k, 1);
+    }
+    r.newTok = []; for (let n = lo; n <= hi; n++) r.newTok.push(n);
+    // Only call it "moved" if the phrase no longer starts where the marked
+    // words used to be (e.g. "There is" → "It's" in place is a replacement).
+    const first = Math.min(...r.words);
+    let prevAnchor = -1;
+    for (let o = first - 1; o >= 0; o--) if (anchorNew[o] !== undefined) { prevAnchor = o; break; }
+    const expected = prevAnchor === -1 ? 0 : anchorNew[prevAnchor] + 1;
+    r.moved = lo !== expected;
+  });
 
----私が直した2つの文(My Finished Attempt)---
-文1: (ここに1つ目の直した文を貼り付けてください)
-文2: (ここに2つ目の直した文を貼り付けてください)`;
+  // Multi-word marks only partly changed ("us family" → "our family"):
+  // show the student's whole stretch, unchanged words included.
+  res.forEach((r, mi) => {
+    if (r.isGap || r.moved || r.words.length < 2 || !r.touched || !r.newTok.length) return;
+    const pos = [...r.newTok];
+    r.words.forEach(o => { if (anchorNew[o] !== undefined) pos.push(anchorNew[o]); });
+    const lo = Math.min(...pos), hi = Math.max(...pos);
+    r.newTok = []; for (let n = lo; n <= hi; n++) r.newTok.push(n);
+  });
+  const changedNear = new Set(); // old word positions right next to any change
+  ops.forEach(x => {
+    if (x.op === 'I') { changedNear.add(x.after); changedNear.add(x.after + 1); }
+    else { changedNear.add(x.o - 1); changedNear.add(x.o + 1); }
+  });
+  const marks = res.map((r, mi) => {
+    if (!r.touched) {
+      const near = r.isGap ? (changedNear.has(P.gaps.find(g => g.mark === mi).after) || changedNear.has(P.gaps.find(g => g.mark === mi).after + 1))
+                           : r.words.some(o => changedNear.has(o));
+      return near ? { tag: r.tag, value: '(変更なし — ただし、すぐ近くを変えた)', status: 'unchanged-near' }
+                  : { tag: r.tag, value: '(変更なし)', status: 'unchanged' };
+    }
+    if (!r.newTok.length) return { tag: r.tag, value: '(消した)', status: 'deleted' };
+    let toks = r.newTok.sort((a, b) => a - b).map(n => newT[n]);
+    if (r.keepOriginal) toks = r.words.map(o => oldT[o]).concat(toks);
+    if (P.marks[mi].code !== 'PU') {
+      while (toks.length > 1 && /^[^A-Za-z0-9\u3000-\u9fff]$/.test(toks[0])) toks.shift();
+      while (toks.length > 1 && /^[^A-Za-z0-9\u3000-\u9fff]$/.test(toks[toks.length - 1])) toks.pop();
+    }
+    const v = ccfmJoin(toks);
+    return { tag: r.tag, value: v, status: r.moved ? 'moved' : 'changed' };
+  });
+
+  // Describe unattached changes in plain Japanese, merging neighbours.
+  const others = [];
+  const lastIdx = oldT.length - 1;
+  other.sort((a, b) => (a.o ?? a.after + 0.5) - (b.o ?? b.after + 0.5));
+  let k = 0;
+  while (k < other.length) {
+    const x = other[k];
+    if (x.op === 'I') {
+      const run = [x.n];
+      while (k + 1 < other.length && other[k+1].op === 'I' && other[k+1].after === x.after) run.push(other[++k].n);
+      const txt = ccfmJoin(run.map(n => newT[n]));
+      if (x.after < 0) others.push('文の始めに「' + txt + '」を加えた');
+      else if (x.after === lastIdx) others.push('文の最後に「' + txt + '」を加えた');
+      else others.push('「' + oldT[x.after] + '」のあとに「' + txt + '」を加えた');
+    } else if (x.op === 'D') {
+      const run = [x.o];
+      while (k + 1 < other.length && other[k+1].op === 'D' && other[k+1].o === run[run.length - 1] + 1) run.push(other[++k].o);
+      const txt = ccfmJoin(run.map(o => oldT[o]));
+      others.push(run[run.length - 1] === lastIdx && /^[.!?]$/.test(txt) ? '文の最後の「' + txt + '」を消した' : '「' + txt + '」を消した');
+    } else {
+      others.push('「' + oldT[x.o] + '」→「' + newT[x.n] + '」');
+    }
+    k++;
+  }
+  anchors.forEach(([i, j]) => {
+    if (P.words[i].mark === null && oldT[i] !== newT[j]) others.push('「' + oldT[i] + '」→「' + newT[j] + '」');
+  });
+  return { rewritten: false, marks, others };
+}
+
+
+
+
+// Grey (untreatable) tags become plain words when the class hides them, so
+// the dropdown, preview and prompt never show the student a hidden mark.
+function ccfStripHiddenTags(text, showUntreatable){
+  if(showUntreatable !== false) return String(text || '');
+  return String(text || '').replace(/\{([^{}|]*)\|(COL|WC|IDM|AWK)\}/g, '$1');
+}
+
+// Splits annotated text into sentences, never inside a { } tag. Keeps only
+// sentences that carry at least one mark.
+function ccfSplitMarkedSentences(text){
+  const out = []; let cur = '', depth = 0;
+  const s = String(text || '');
+  for(let i = 0; i < s.length; i++){
+    const ch = s[i];
+    if(ch === '{') depth++;
+    if(ch === '}') depth = Math.max(0, depth - 1);
+    if(depth === 0 && ch === '\n'){ out.push(cur); cur = ''; continue; }
+    cur += ch;
+    if(depth === 0 && /[.!?]/.test(ch)){
+      while(i + 1 < s.length && /[.!?]/.test(s[i+1])){ cur += s[++i]; }
+      if(i + 1 >= s.length || /\s/.test(s[i+1])){ out.push(cur); cur = ''; }
+    }
+  }
+  if(cur) out.push(cur);
+  return out.map(x => x.trim()).filter(x => /\{(\^|[^{}|]*)\|[A-Z]+/.test(x));
+}
+
+// Dropdown label: plain sentence with marked words in 【 】.
+function ccfSentenceLabel(sentence){
+  const plain = sentence.replace(/\{(\^|[^{}|]*)\|[A-Z]+(?:\|[^}]*)?\}/g, (m, span) => '【' + span + '】');
+  return plain.length > 95 ? plain.slice(0, 92) + '…' : plain;
+}
+
+function ccfPrefixForTier(){ return currentTextbookTier === 'Intermediate' ? 'I' : 'B'; }
+function ccfNormalizeOwnUnit(u){
+  u = String(u || '').trim().toUpperCase();
+  if(/^\d+$/.test(u)) u = ccfPrefixForTier() + u;
+  return /^[BI]\d+$/.test(u) ? u : '';
+}
+
+// Legend of every unit used in the entry (both units of a dual tag), plus
+// any extra units (the unit of a student's own sentence).
+function ccfBuildUnitLegend(annotatedText, extraUnits){
+  const seen = {}, units = [];
+  const add = u => { if(u && !seen[u] && UNIT_TITLES[u]){ seen[u] = true; units.push(u); } };
+  const re = /\|([BI]\d+(?:\/[BI]\d+)?)\}/g; let m;
+  while((m = re.exec(annotatedText))){ m[1].split('/').forEach(add); }
+  (extraUnits || []).forEach(add);
+  units.sort((a, b) => a[0] !== b[0] ? (a[0] < b[0] ? -1 : 1) : parseInt(a.slice(1)) - parseInt(b.slice(1)));
+  return units.map(u => `${u} = ${UNIT_TITLES[u].jp}`).join('\n');
+}
+
+const CCF_AI_PROMPT_HEAD = "私は英語のライティングの授業を受けている学生です。下に、私が書いたブログ記事の全文があります。\n文中の { } の部分は、先生のシステムが文法の間違いを見つけて印をつけた場所です。\n例:{is|SVA|B1} は「is という語が、SVA(主語と動詞の一致)という種類の間違いで、B1という\n文法ユニットに関係している」という意味です。{^|ART|B63} のように { } の中が ^ だけの場合は、\n「そこに何かが抜けている」という意味です。SC はスペル・大文字小文字の間違い、PU は句読点\n(. , ? など)の間違いで、この2つにはユニット番号がありません。\n印がついているということは、もとの形は間違いだということです。もとの形を正しいと判定しないでください。\n\n私は授業中に、印のついた文を2つ自分で直しました。下の「チェックする文」には、それぞれの文について、\n・もとの文(印つき)\n・私が直した文\n・印ごとの対応(システムが自動で、それぞれの印の場所に私が何を書いたかを合わせたもの)\n・印以外で私が変えたところ(システムが自動で見つけたもの)\nが書いてあります。対応はシステムが作ったものなので、そのまま使ってください。\n\nあなたの仕事は、私の直しをチェックすることだけです。新しい文を作ることではありません。\n文1と文2それぞれについて、次のことをしてください。\n\n1. 印ごとの判定\n「印ごとの対応」の行を1つずつ、上から順番に、すべてチェックしてください。行を飛ばしたり、\n増やしたり、まとめたりしないでください。それぞれ、次の4つから1つだけ選んでください。\n・合っている … 私の直しで、その印の間違いが正しく直っている\n・まだ間違っている … 変えたが、まだ正しくない\n・直していない … 印の語を変えていない\n・書きかえた … 文を書きかえて、印の部分がなくなった\n次の2つは決まりです。考えずに、このとおりに判定してください。\n・「(変更なし)」→ 必ず「直していない」\n・「なし — 文を書きかえた」→ 必ず「書きかえた」\n「合っている」にしてよいのは、次の (1) か (2) の場合です。\n (1) 私の直しが、その印のユニット(下の「ユニット一覧」)が教えている形になっている。\n (2) ユニットとは別の方法でも、その印の場所の間違いがなくなり、その部分が文法的に正しく、ブログの文脈にも合っている。\n     (例: 形容詞のユニットの印でも、文を変えて動詞で正しく言えていれば「合っている」)\nどちらでもなければ「まだ間違っている」です。\n判定するのは、その印の場所の間違い(その印のコードの種類)だけです。文のほかの部分にもとからある問題は、\n印の判定にも「直すところ」にも入れないでください(先生が印をつけていない部分です)。文脈に合わない形は「合っている」にしないでください。\nたとえば、過去の出来事の話なのに現在形に直していれば、「まだ間違っている」です。\nまた、私の形が文法的に正しければ、もっとよく使われる言い方があっても「合っている」にしてください。\nその場合は、説明の中で「〜の方がよく使われます」と一言そえてください。\n「(消した)」は、私がその語を消したという意味です。余分な語の印なら、消すのが正しい直し方です。\n「(位置を移動した)」は、私がその語を文の別の場所に動かしたという意味です。\n「(変更なし — ただし、すぐ近くを変えた)」は、印の語そのものは変えていないが、そのすぐ前かうしろを\n変えたという意味です。「私が直した文」と「印以外で私が変えたところ」を見て、近くを変えたことで\nその印の文法が正しくなっていれば「合っている」、なっていなければ「直していない」と判定してください。\n「(書きかえた文の中で見つけた)」は、私が文を大きく書きかえたので、システムが私の文の中から\nその語を探したという意味です。ふつうどおり判定してください。\nそのあと、説明を1〜2文で書いてください。必ずそのユニットの文法ポイント(下の「ユニット一覧」)に\n触れてください。「合っている」でも、なぜ正しいのかを書いてください。それ以外の判定では、正しい形を\n示してください。\n\n2. 印以外の変更\n「印以外で私が変えたところ」の行を1つずつ見て、「問題なし」か「新しい間違い」かを判定してください。\n「新しい間違い」なら、正しい形を1文で示してください。行が「なし」なら「なし」と書いてください。\nもとの文にあった、印のない部分の問題は、指摘も修正もしないでください。\n\n3. 全体の判定\n・すべての印が「合っている」で、新しい間違いもない → はい\n・「合っている」印が1つ以上あるが、そうでない印か、新しい間違いがある → 一部\n・「合っている」印が1つもない → いいえ\n\n4. 直すところ と 正しい文\nまず「直すところ」に、「合っている」以外のすべての印と、すべての「新しい間違い」を、\n「[今の語句] → [正しい語句]」の形で1つずつ書いてください。\n次に、「私が直した文」を出発点にして、「直すところ」に書いたものを全部直し、それ以外は直さない文を\n書いてください。「直すところ」のどれかを直し忘れていないか、確かめてから書いてください。\nそれ以外は1語も変えないでください。もっと自然な言い方があっても、書きかえないでください。\n「書きかえた」の場合は、私の文のままにしてください(正しい形は説明に書いてください)。\nもし直すところが1つもなければ、「私が直した文」をそのまま書いてください。\n\n※「自分で作った文(印なし)」の場合\n新しいユニットの間違いがなかったので、私が自分でユニットの文法を使って文を作った場合です。\nこの文には印がありません。1〜4のかわりに、指定されたユニットの文法が正しく使えているかだけを\n判定してください(「合っている」か「まだ間違っている」)。説明を1〜2文で書き、まだ間違っていれば\nそのユニットの形を使った正しい文を書いてください。形式は下の「自分で作った文の形式」を使ってください。\n\n判断が難しい場合は、一番近いと思う判断を書き、その行に「(自信がない)」と書き添えてください。\n判定は、よく考えてから1回だけ書いてください。一度書いた判定を、あとで書き直さないでください。\n\n答えは、下の形式だけで書いてください。前置きやまとめは書かないでください。\n\n文1 (SENTENCE 1)\n①[「印ごとの対応」にある { } の印を、そのまま書き写す] → 「[私の直し]」 — 判定: [4つから1つ]\n  説明: [1〜2文]\n(印の数だけ、同じ形で続ける)\n印以外: [なし、または 行ごとに「…」→ 問題なし / 新しい間違い: 正しい形]\nAIの判定: [はい / 一部 / いいえ]\n直すところ: [なし、または「…」→「…」を1つずつ]\nConfirmed correct sentence: [正しい文]\n\n文2 (SENTENCE 2)\n(文1と同じ形)\n\n自分で作った文の形式(その文だけ、この形にする):\n文N (SENTENCE N) — 自分で作った文\nユニット: [ユニット番号] — 判定: [合っている / まだ間違っている]\n  説明: [1〜2文]\nAIの判定: [はい / いいえ]\nConfirmed correct sentence: [正しい文]";
+const CCF_CIRCLED = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮';
+
+function ccfBuildAICheckPrompt(annotatedText, attempts){
+  const ownUnits = attempts.filter(a => a.type === 'own').map(a => a.unit);
+  const parts = [CCF_AI_PROMPT_HEAD, '', '---ユニット一覧---', ccfBuildUnitLegend(annotatedText, ownUnits), '',
+    '---ブログ記事全文(印つき)---', annotatedText, '', '---チェックする文---'];
+  attempts.forEach((a, i) => {
+    const n = i + 1;
+    if(a.type === 'own'){
+      parts.push('', `文${n} — 自分で作った文(印なし)`,
+        `ユニット: ${a.unit}${UNIT_TITLES[a.unit] ? ' (' + UNIT_TITLES[a.unit].jp + ')' : ''}`,
+        `私の文: ${a.attempt}`);
+      return;
+    }
+    const r = ccfmMatchAttempt(a.original, a.attempt);
+    parts.push('', `文${n}`, `もとの文(印つき): ${a.original}`, `私が直した文: ${a.attempt}`, '印ごとの対応:');
+    r.marks.forEach((mk, k) => parts.push(`${CCF_CIRCLED[k] || '(' + (k + 1) + ')'} ${mk.tag} → 「${mk.value}」${mk.status === 'moved' ? '(位置を移動した)' : ''}`));
+    parts.push('印以外で私が変えたところ:', ...(r.others.length ? r.others.map(o => '・' + o) : ['なし']));
+  });
+  parts.push('', '---', 'ここまでが材料です。上の手順どおりに、文1と文2のチェックを今すぐ書いてください。');
+  return parts.join('\n') + '\n';
+}
+
+// ── "Sentences corrected in class" section ──────────────────────────────
+// State lives in window._ccfAttemptUI; what's actually saved on the server
+// lives in window._ccfSavedAttempts (the prompt only ever uses saved data).
+function ccfAttemptSectionHtml(hasAnnotation){
+  if(!hasAnnotation) return '';
+  const blocks = [1, 2].map(n => `
+    <div class="att-block">
+      <div class="att-title">${n === 1 ? 'Sentence 1 (New Unit) 文1' : 'Sentence 2 (Recurring) 文2'}</div>
+      <label class="att-label" for="attSel${n}">Which sentence did you correct? どの文を直しましたか？</label>
+      <select id="attSel${n}" class="att-select" onchange="ccfOnAttemptSelect(${n})"></select>
+      <div class="att-preview" id="attPrev${n}"></div>
+      <div class="att-own hidden" id="attOwn${n}">
+        <label class="att-label" for="attUnit${n}">Unit you used 使ったユニット</label>
+        <input type="text" id="attUnit${n}" class="att-unit" placeholder="e.g. 64" autocomplete="off">
+      </div>
+      <label class="att-label" for="attText${n}">Your finished attempt — copy it exactly from your worksheet　ワークシートの「My Finished Attempt」をそのまま入力</label>
+      <textarea id="attText${n}" class="att-text" rows="2" spellcheck="false" autocomplete="off"></textarea>
+    </div>`).join('');
+  return `
+    <div class="section-label">Sentences corrected in class 授業中に直した文</div>
+    <div class="card">
+      <div class="unit-sel-desc">Do this in class, after you finish correcting on your worksheet. Choose the two sentences you corrected and type your finished attempts exactly as you wrote them. These are put into the AI-check prompt automatically.<br>授業中、ワークシートで直し終わったら入力して「Save」を押してください。この2つの文は、AIチェックのプロンプトに自動で入ります。</div>
+      ${blocks}
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:6px;">
+        <button class="btn btn-primary" id="attSaveBtn" onclick="ccfSaveAttempts()">Save 保存</button>
+        <span class="att-status" id="attStatus"></span>
+      </div>
+    </div>`;
+}
+
+function ccfInitAttemptSection(annotatedText, saved, existingMain){
+  const sentences = ccfSplitMarkedSentences(annotatedText);
+  window._ccfAttemptUI = { sentences, existingMain };
+  window._ccfSavedAttempts = (saved && saved.length) ? saved : null;
+  [1, 2].forEach(n => {
+    const sel = document.getElementById('attSel' + n);
+    if(!sel) return;
+    const opts = ['<option value="">— Choose a sentence 文を選ぶ —</option>']
+      .concat(sentences.map((s, i) => `<option value="${i}">${ccfEscapeHtml(ccfSentenceLabel(s))}</option>`))
+      .concat(['<option value="own">My own sentence (no marks) 自分で作った文（印なし）</option>']);
+    sel.innerHTML = opts.join('');
+    const prev = saved && saved.find(a => Number(a.no) === n);
+    if(prev){
+      if(prev.type === 'own'){ sel.value = 'own'; document.getElementById('attUnit' + n).value = String(prev.unit || '').replace(/^[BI]/, ''); }
+      else { const idx = sentences.indexOf(prev.original); sel.value = idx >= 0 ? String(idx) : ''; }
+      document.getElementById('attText' + n).value = prev.attempt || '';
+    } else if(n === 1 && existingMain){
+      document.getElementById('attUnit1').value = String(existingMain);
+    }
+    ccfOnAttemptSelect(n, true);
+    document.getElementById('attText' + n).addEventListener('input', ccfMarkAttemptsDirty);
+    document.getElementById('attUnit' + n).addEventListener('input', ccfMarkAttemptsDirty);
+  });
+  ccfSetAttemptStatus(window._ccfSavedAttempts ? 'saved' : 'empty');
+}
+
+function ccfEscapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function ccfOnAttemptSelect(n, quiet){
+  const ui = window._ccfAttemptUI; if(!ui) return;
+  const sel = document.getElementById('attSel' + n);
+  const other = document.getElementById('attSel' + (n === 1 ? 2 : 1));
+  const prev = document.getElementById('attPrev' + n);
+  const own = document.getElementById('attOwn' + n);
+  // the same marked sentence can't be used twice
+  [1, 2].forEach(k => {
+    const s = document.getElementById('attSel' + k), o = document.getElementById('attSel' + (k === 1 ? 2 : 1));
+    Array.from(s.options).forEach(op => { op.disabled = op.value !== '' && op.value !== 'own' && op.value === o.value; });
+  });
+  own.classList.toggle('hidden', sel.value !== 'own');
+  if(sel.value === '' || sel.value === 'own'){
+    prev.innerHTML = sel.value === 'own' ? '<span class="att-hint">Write the sentence you made with your chosen unit. 選んだユニットを使って自分で作った文を入力してください。</span>' : '';
+  } else {
+    const d = window._ccfPdfData || {}; const ann = d.annotation || {};
+    prev.innerHTML = buildAnnotatedHtml(ui.sentences[Number(sel.value)], ann.colourMap || {}, ann.showUntreatable);
+  }
+  if(!quiet) ccfMarkAttemptsDirty();
+}
+
+function ccfMarkAttemptsDirty(){ ccfSetAttemptStatus('dirty'); }
+function ccfSetAttemptStatus(state, extra){
+  const el = document.getElementById('attStatus'); if(!el) return;
+  const map = {
+    empty: ['Not saved yet まだ保存されていません', 'var(--stamp-red)'],
+    dirty: ['Changes not saved — press Save 保存されていない変更があります', 'var(--stamp-red)'],
+    saving: ['Saving… 保存中…', 'var(--ink-soft)'],
+    saved: ['Saved ✓ 保存しました' + (extra ? ' (' + extra + ')' : ''), '#2E7D4F']
+  };
+  el.textContent = map[state][0]; el.style.color = map[state][1];
+  window._ccfAttemptsDirty = (state === 'dirty' || state === 'empty');
+}
+
+function ccfCollectAttempts(){
+  const ui = window._ccfAttemptUI; const list = [];
+  for(const n of [1, 2]){
+    const v = document.getElementById('attSel' + n).value;
+    const text = document.getElementById('attText' + n).value.replace(/\s+/g, ' ').trim();
+    if(v === '') return { error: `Choose a sentence for Sentence ${n}. 文${n}の文を選んでください。` };
+    if(!text) return { error: `Type your finished attempt for Sentence ${n}. 文${n}を入力してください。` };
+    if(text.length > 600) return { error: `Sentence ${n} is too long. 文${n}が長すぎます。` };
+    if(v === 'own'){
+      const unit = ccfNormalizeOwnUnit(document.getElementById('attUnit' + n).value);
+      if(!unit || !UNIT_TITLES[unit]) return { error: `Enter the unit number for Sentence ${n}. 文${n}のユニット番号を入力してください。` };
+      list.push({ no: n, type: 'own', original: '', unit, attempt: text });
+    } else {
+      list.push({ no: n, type: 'marked', original: ui.sentences[Number(v)], unit: '', attempt: text });
+    }
+  }
+  return { attempts: list };
+}
+
+async function ccfSaveAttempts(){
+  const c = ccfCollectAttempts();
+  if(c.error){ showToast(c.error); return; }
+  const d = window._ccfPdfData; if(!d){ showToast('Please reload the page.'); return; }
+  const btn = document.getElementById('attSaveBtn');
+  btn.disabled = true; ccfSetAttemptStatus('saving');
+  const res = await callApi('saveSentenceAttempts', { classId: currentClassId, studentNumber: currentStudent, week: d.week, attempts: JSON.stringify(c.attempts) });
+  btn.disabled = false;
+  if(res.success){
+    window._ccfSavedAttempts = c.attempts;
+    ccfSetAttemptStatus('saved', new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+  } else {
+    ccfSetAttemptStatus('dirty');
+    showToast(res.error || "Couldn't save — try again.");
+  }
 }
 
 async function copyAICheckPrompt(){
@@ -1864,12 +2373,21 @@ async function copyAICheckPrompt(){
     showToast('No entry available to build a prompt from.');
     return;
   }
-  const prompt = ccfBuildAICheckPrompt(stored.annotation.annotatedText);
+  if(!window._ccfSavedAttempts){
+    showToast('First save your two corrected sentences (授業中に直した文) above. 先に「授業中に直した文」を保存してください。');
+    return;
+  }
+  if(window._ccfAttemptsDirty){
+    showToast('You have unsaved changes — press Save first. 保存されていない変更があります。先に「Save」を押してください。');
+    return;
+  }
+  const text = ccfStripHiddenTags(stored.annotation.annotatedText, stored.annotation.showUntreatable);
+  const prompt = ccfBuildAICheckPrompt(text, window._ccfSavedAttempts);
   try{
     await navigator.clipboard.writeText(prompt);
-    showToast('Copied! Paste into Gemini, then add your two sentences at the bottom.');
+    showToast('Copied! Paste it into the AI (see the class page for which AI and settings). コピーしました。');
   }catch(err){
-    showToast("Couldn't copy — try again or copy manually.");
+    showToast("Couldn't copy — try again.");
   }
 }
 

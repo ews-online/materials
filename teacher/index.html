@@ -357,7 +357,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v4.22 — Worksheets: homework asks students to compare their own Why? with the AI</div>
+      <div class="version-tag">v4.24 — Worksheet homework steps refer to the class page</div>
     </div>
   </div>
 
@@ -2861,9 +2861,9 @@ function ccfJpLabel(doc, y, text, note) {
 // Numbered how-to steps at the top of the homework page.
 const CCF_HW_STEPS = [
   ['1.', '授業で直した2つの文を、下の「授業中に直した文」に書き写す。'],
-  ['2.', 'フォーラムの文法フィードバックのページで「Copy Prompt」を押してコピーし、Geminiに貼り付ける。'],
-  ['',   '最後に自分の2つの文を入れて送信する。※必ずこのプロンプトを使うこと。自分で質問を書かない。'],
-  ['3.', 'AIの答えを読んで、下の欄に記入する。'],
+  ['2.', 'フォーラムの文法フィードバックのページで「Copy Prompt」を押してコピーし、AIに貼り付けて送信する。'],
+  ['',   '※授業中に保存した2つの文は自動で入っています。必ずこのプロンプトを使い、自分で質問を書かない。'],
+  ['3.', 'AIの答えを読んで、下の欄に記入する。（使うAIと設定は、クラスのページの説明を見ること）'],
   ['',   '※AIもまちがえることがあります。おかしいと思ったら、正直に書くこと。'],
   ['4.', '次の授業に持ってくる。']
 ];
