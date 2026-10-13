@@ -168,7 +168,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--i
   <div class="already-card">
     <h2 id="sessionErrorText">Couldn't find your session — please go back and open this from your dashboard.</h2>
     <button class="btn" onclick="location.href='../student/'" style="margin-top:1rem">&#8592; Back to dashboard</button>
-    <div class="version-tag">v1.3</div>
+    <div class="version-tag">v1.4</div>
   </div>
 </div>
 
@@ -312,7 +312,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--i
 
 <script>
 const QUIZ_ENGINE_URL = 'https://script.google.com/macros/s/AKfycbwl3JTLm5TZPX6YixmU_ALo37IKGUlUpwhNS8XZnBHuCqoCakOdRn0pP1mJRyt6DLHMew/exec';
-const APP_VERSION = 'v1.3';
+const APP_VERSION = 'v1.4';
 
 let authToken = null, currentStudentNumber = null, currentClassId = null, currentClassLabel = null, currentName = null;
 let studentData = null;      // { week, questions, testDuration, reviewOnly }
@@ -366,16 +366,51 @@ async function init() {
     return checkResultsReveal(data.week);
   }
 
-  studentData = data;
-  answers = new Array(data.questions.length).fill('');
   document.getElementById('waiting-start-name').textContent = currentName + ' · Week ' + data.week;
   // Review-only week = no question in this quiz belongs to a new unit.
-  // Worked out from the questions themselves rather than the ReviewOnly
-  // flag, which isn't set for review-only quizzes that contain review units.
-  const hasNewUnit = (data.questions || []).some(function(q) { return q.isNew === true; });
+  // The server works this out from the questions (they aren't sent until
+  // Start) and returns it as hasNewUnit.
+  const hasNewUnit = data.waiting ? data.hasNewUnit === true : (data.questions || []).some(function(q) { return q.isNew === true; });
   document.getElementById('waiting-start-review-notice').style.display = hasNewUnit ? 'none' : 'block';
-  show('waiting-start');
-  startPollForStart();
+
+  if (data.waiting) {
+    // Quiz not started yet: the server sends no questions until it is.
+    studentData = { week: data.week, testDuration: data.testDuration, reviewOnly: data.reviewOnly, questions: null };
+    show('waiting-start');
+    startPollForStart();
+    return;
+  }
+  // Already started (arriving late, or reopening mid-quiz): straight in.
+  beginWithQuestions(data);
+}
+
+// Called once the server has sent the questions (only after Start).
+function beginWithQuestions(data) {
+  studentData = data;
+  answers = new Array(data.questions.length).fill('');
+  startQuiz();
+}
+
+// The quiz has just started: ask for the questions. With the whole class
+// asking within a few seconds, a request can fail — keep retrying quietly.
+let fetchQuestionsTries = 0;
+async function fetchQuestionsAndStart() {
+  document.querySelector('#waiting-start h2').textContent = 'Starting… 開始します';
+  try {
+    const data = await api({ action: 'getQuiz', week: studentData.week });
+    if (data.alreadySubmitted) return checkResultsReveal(data.week);
+    if (data.questions) return beginWithQuestions(data);
+    if (data.error && /session/i.test(data.error)) return showSessionExpired();
+    if (data.waiting) { document.querySelector('#waiting-start h2').textContent = 'Please wait for quiz to start.'; return startPollForStart(); } // quiz was reset
+  } catch (e) { /* retry below */ }
+  fetchQuestionsTries++;
+  setTimeout(fetchQuestionsAndStart, Math.min(2000 + fetchQuestionsTries * 1000, 6000) + Math.floor(Math.random() * 1500));
+}
+
+function showSessionExpired() {
+  if (pollInterval) { clearTimeout(pollInterval); pollInterval = null; }
+  document.getElementById('sessionErrorText').textContent = 'Your login has expired. Please go back to the dashboard, log in again, and open the quiz. ログインの有効期限が切れました。ダッシュボードに戻って、もう一度ログインしてください。';
+  show('session-error');
 }
 
 // ── POLL FOR START ───────────────────────────────────────────────────────
@@ -384,7 +419,8 @@ function startPollForStart() {
     pollInterval = setTimeout(async function() {
       try {
         const data = await api({ action: 'pollStart', week: studentData.week });
-        if (data.started) { pollInterval = null; startQuiz(); }
+        if (data.started) { pollInterval = null; fetchQuestionsAndStart(); }
+        else if (data.error && /session/i.test(data.error)) showSessionExpired(); // used to keep waiting forever
         else schedule();
       } catch (e) { schedule(); }
     }, pollDelay());
