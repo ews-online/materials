@@ -357,7 +357,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v4.25 — Grammar Quiz tabs open on the latest week</div>
+      <div class="version-tag">v4.26 — Blog word-count auto-grade follows the rubric tier text</div>
     </div>
   </div>
 
@@ -1511,6 +1511,36 @@ function revisionCheckHighlight(title, text) {
   return { titleHtml: titleHtml, bodyHtml: bodyHtml };
 }
 
+// Word range for one WordCount tier, read from its label (or description
+// if the label has no number). Understands "90–119", "90-119", "90〜119",
+// "90 to 119", "120+", "120 or more", "at least 120", "120以上",
+// "over/more than 119", "under/less than 30", "30未満", "1–29 words".
+// Returns {min, max|null}, or null for a tier with no numbers (e.g.
+// "No submission"), which then falls back to the hidden AutoMin/AutoMax.
+function parseWordRange(text) {
+  const t = String(text || '').replace(/,(?=\d{3})/g, '').toLowerCase();
+  let m = t.match(/(\d+)\s*(?:-|–|—|~|〜|～|to)\s*(\d+)/);
+  if (m) return { min: Number(m[1]), max: Number(m[2]) };
+  m = t.match(/(\d+)\s*(?:words?|語|字)?\s*(?:\+|or more|or over|and up|and above|以上)/) || t.match(/(?:at least|minimum|min\.?)\s*(\d+)/);
+  if (m) return { min: Number(m[1]), max: null };
+  m = t.match(/(?:over|more than|above)\s*(\d+)/) || t.match(/(\d+)\s*(?:words?|語|字)?\s*(?:超|より多い)/);
+  if (m) return { min: Number(m[1]) + 1, max: null };
+  m = t.match(/(?:under|less than|fewer than|below|<)\s*(\d+)/) || t.match(/(\d+)\s*(?:words?|語|字)?\s*未満/);
+  if (m) return { min: 1, max: Number(m[1]) - 1 };
+  m = t.match(/(?:up to|at most|maximum|max\.?)\s*(\d+)/) || t.match(/(\d+)\s*(?:words?|語|字)?\s*以下/);
+  if (m) return { min: 1, max: Number(m[1]) };
+  m = t.match(/(\d+)/);
+  if (m) return { min: Number(m[1]), max: null };
+  return null;
+}
+function wordCountTierRange(tier) {
+  const r = parseWordRange(tier.label) || parseWordRange(tier.desc);
+  if (r) return r;
+  const has = function(v) { return v !== '' && v !== undefined && v !== null && !isNaN(Number(v)); };
+  if (has(tier.autoMin) || has(tier.autoMax)) return { min: has(tier.autoMin) ? Number(tier.autoMin) : 0, max: has(tier.autoMax) ? Number(tier.autoMax) : null };
+  return null;
+}
+
 function autoSelectTier(crit, sub, sn, week, schedule) {
   if (crit.autoType === 'RevisionCheck') {
     if (!sub.title) return 0;
@@ -1521,11 +1551,20 @@ function autoSelectTier(crit, sub, sn, week, schedule) {
   if (crit.autoType === 'WordCount') {
     const wc = wordCount(sub.text);
     if (wc === 0) return 0;
-    for (let i = crit.tiers.length - 1; i >= 0; i--) {
-      const min = (crit.tiers[i].autoMin !== '' && crit.tiers[i].autoMin !== undefined) ? Number(crit.tiers[i].autoMin) : 0;
-      if (wc >= min) return i;
+    // Each tier's word range comes from what the tier SAYS ("90–119 words",
+    // "120+ words", "Under 30 words") so editing the rubric text is enough.
+    // The hidden AutoMin/AutoMax columns (set only by CSV import) are used
+    // only for a tier whose label and description contain no numbers.
+    const ranges = crit.tiers.map(function(t) { return wordCountTierRange(t); });
+    let best = -1, bestMin = -1;
+    ranges.forEach(function(r, i) {
+      if (!r) return;
+      if (wc >= r.min && (r.max === null || wc <= r.max) && r.min > bestMin) { best = i; bestMin = r.min; }
+    });
+    if (best === -1) { // gap between tiers: highest tier whose minimum is reached
+      ranges.forEach(function(r, i) { if (r && wc >= r.min && r.min > bestMin) { best = i; bestMin = r.min; } });
     }
-    return 0;
+    return best === -1 ? 0 : best;
   }
   if (crit.autoType === 'PictureTimeliness') return sub.image ? 1 : 0;
   if (crit.autoType === 'CommentCompletion') {
