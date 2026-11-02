@@ -125,6 +125,11 @@
   .tile:hover .tile-arrow { color: var(--accent); transform: translateX(3px); }
   .tile.disabled { cursor: default; opacity: 0.55; }
   .tile.disabled:hover { border-color: var(--rule); transform: none; }
+  /* In-Class Notepad tile status (v1.2) */
+  .tile-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
+  .tile-badge.open { background: var(--green-lt); color: var(--green); }
+  .tile-badge.later { background: var(--paper-2); color: var(--ink-soft); }
+  .tile.open-now { border-color: var(--green); }
 
   .spinner {
     display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3);
@@ -174,7 +179,7 @@
 
       <button class="login-btn" id="login-btn" onclick="doLogin()">Continue →</button>
       <div class="msg" id="login-msg"></div>
-      <div style="text-align:center; margin-top:20px; font-size:11px; color:var(--ink-mute); letter-spacing:0.06em;">v1.1 — textbook tier passed through SSO</div>
+      <div style="text-align:center; margin-top:20px; font-size:11px; color:var(--ink-mute); letter-spacing:0.06em;">v1.2 — In-Class Notepad tile</div>
     </div>
   </div>
 
@@ -201,15 +206,20 @@
 // §8), and the resulting token is what every tool below uses.
 const FORUM_ENGINE_URL = 'https://script.google.com/macros/s/AKfycbw5J9WRH-wsUVkFLaTI18MBMnjv3K8WHdF3l7_GwtXTADyHPheHDxHt8E4sqbGxXz8M/exec';
 
+// In-Class Notepad engine (v1.2) — only used to show "Open now" on its tile.
+// Paste its /exec URL here after deploying NotepadEngine.gs.
+const NOTEPAD_ENGINE_URL = 'https://script.google.com/macros/s/AKfycbzi2QzGBPfpGq8f-C6iy3n8vbdQ0ceM1VpZpvLhcOiuQ1I4B7ZlTD0aAgT5Xqo3FcKWpA/exec';
+
 // Destination pages — relative paths, since every tool lives as a sibling
 // folder in the same repo (…/student/ is this file's own folder).
 // No per-class routing table needed anymore: one URL per tool, always —
 // each destination page reads the student's current class itself from the
 // token, server-side, via the shared Sessions lookup.
 const TOOL_URLS = {
-  typing: '../typing/',
-  forum:  '../forum/',
-  quiz:   '../quiz/'
+  typing:  '../typing/',
+  forum:   '../forum/',
+  quiz:    '../quiz/',
+  notepad: '../notepad/'
 };
 
 // ════════════════════════════════════════════════════════
@@ -370,6 +380,18 @@ function showTiles() {
     tiles.push({ icon: 'search', iconColor: '#534ab7', title: 'Grammar Analysis / Unit Submission', desc: 'Not available yet.', url: null });
   }
 
+  // In-Class Notepad (v1.2). The description and "Open now" badge are filled
+  // in by refreshNotepadTile() below once the Notepad Engine answers.
+  if (isToolEnabled('notepad')) {
+    tiles.push({
+      id: 'notepad-tile', icon: 'notebook', iconColor: '#3d5a73', title: 'In-Class Notepad',
+      desc: 'Writing assignments done in class.',
+      url: tileUrl(TOOL_URLS.notepad)
+    });
+  } else {
+    tiles.push({ icon: 'notebook', iconColor: '#3d5a73', title: 'In-Class Notepad', desc: 'Not available yet.', url: null });
+  }
+
   const container = document.getElementById('tiles-container');
   container.innerHTML = tiles.map(function(t) {
     const iconHtml = '<div class="tile-icon" style="background:' + t.iconColor + '">' +
@@ -379,16 +401,44 @@ function showTiles() {
         '<div class="tile-text"><div class="tile-title">' + escHtml(t.title) + '</div>' +
         '<div class="tile-desc">' + escHtml(t.desc) + '</div></div></div>';
     }
-    return '<a class="tile" href="' + t.url + '">' + iconHtml +
+    return '<a class="tile"' + (t.id ? ' id="' + t.id + '"' : '') + ' href="' + t.url + '">' + iconHtml +
       '<div class="tile-text"><div class="tile-title">' + escHtml(t.title) + '</div>' +
       '<div class="tile-desc">' + escHtml(t.desc) + '</div></div>' +
+      (t.id ? '<span class="tile-badge" hidden></span>' : '') +
       '<div class="tile-arrow">→</div></a>';
   }).join('');
 
   document.getElementById('login-panel').style.display = 'none';
   document.getElementById('tiles-panel').style.display = 'block';
   document.getElementById('logout-btn').style.display = 'inline-block';
+  refreshNotepadTile();
 }
+
+// Shows the current notepad assignment on its tile, with "Open now" while a
+// writing session is running for this student's class. Best-effort: if the
+// engine can't be reached the tile still works as a plain link.
+async function refreshNotepadTile() {
+  const tile = document.getElementById('notepad-tile');
+  if (!tile || !session || !session.token || /^PASTE_/.test(NOTEPAD_ENGINE_URL)) return;
+  try {
+    const res = await fetch(NOTEPAD_ENGINE_URL + '?' + new URLSearchParams({ action: 'npHubStatus', token: session.token }).toString());
+    const st = await res.json();
+    if (!st.ok) return;
+    const desc = tile.querySelector('.tile-desc'), badge = tile.querySelector('.tile-badge');
+    if (!st.hasAssignment) { desc.textContent = 'No notepad assignment right now.'; return; }
+    desc.textContent = st.name;
+    badge.hidden = false;
+    if (st.open) {
+      badge.textContent = 'Open now'; badge.className = 'tile-badge open'; tile.classList.add('open-now');
+    } else if (st.nextOpenAt) {
+      const d = new Date(st.nextOpenAt);
+      badge.textContent = 'Opens ' + d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+      badge.className = 'tile-badge later';
+    } else { badge.hidden = true; }
+  } catch (e) { /* leave the tile as a plain link */ }
+}
+// While the hub is open in class, notice a session starting.
+setInterval(function() { if (session && !document.hidden) refreshNotepadTile(); }, 60000);
 
 // ── RESTORE AN EXISTING SESSION, OR AUTO-LOGIN FROM AN EXTERNAL WIDGET ──────
 // Runs once on every page load, including navigating "back to hub" from a

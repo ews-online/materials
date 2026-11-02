@@ -306,6 +306,87 @@
   .search-result-row .st { font-size: 12px; color: var(--ink-mute); margin-top: 1px; }
   .search-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--rule); background: #fff; cursor: pointer; font-size: 15px; }
   .search-btn:hover { background: var(--paper-2); }
+
+  /* ════════════ IN-CLASS NOTEPAD PANEL (v4.27) ════════════ */
+  :root { --note: #3D5A73; --note-lt: #e1e8ee; }
+  .subpanel-nav button.tab-notepad { background: var(--note-lt); color: var(--note); border-color: var(--note-lt); }
+  .subpanel-nav button.tab-notepad.active { background: var(--note); color: #fff; border-color: var(--note); }
+  .np-sub { font-size: 12px; color: var(--ink-mute); margin: -6px 0 14px; max-width: 70ch; }
+  .np-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 20px; white-space: nowrap; }
+  .np-p-green { background: var(--green-lt); color: var(--green); }
+  .np-p-blue { background: var(--accent-lt); color: var(--accent); }
+  .np-p-gold { background: var(--gold-lt); color: #8a6d0c; }
+  .np-p-red { background: var(--red-lt); color: var(--red); }
+  .np-p-grey { background: var(--paper-2); color: var(--ink-mute); }
+  .np-p-note { background: var(--note-lt); color: var(--note); }
+  .np-btns { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .np-row { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
+  .np-row > .field { flex: 1; min-width: 160px; }
+  .np-switch { display: flex; align-items: flex-start; gap: 12px; cursor: pointer; margin-top: 6px; }
+  .np-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .np-switch .track { flex-shrink: 0; width: 40px; height: 22px; border-radius: 20px; background: var(--paper-3); position: relative; transition: background .15s; margin-top: 2px; }
+  .np-switch .track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.2); transition: left .15s; }
+  .np-switch input:checked + .track { background: var(--green); }
+  .np-switch input:checked + .track::after { left: 21px; }
+  .np-switch input:focus-visible + .track { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .np-switch .st { font-weight: 600; font-size: 14px; }
+  .np-switch .sd { font-size: 12px; color: var(--ink-mute); }
+  .np-live-banner { display: flex; align-items: center; gap: 14px 24px; flex-wrap: wrap; background: var(--note); color: #fff; border-radius: 14px; padding: 16px 20px; margin-bottom: 16px; }
+  .np-live-banner.off { background: #fff; color: var(--ink); border: 1.5px dashed var(--paper-3); }
+  .np-dot { width: 10px; height: 10px; border-radius: 50%; background: #7fe0a5; box-shadow: 0 0 0 4px rgba(127,224,165,0.25); flex-shrink: 0; }
+  .np-live-banner.off .np-dot { background: var(--paper-3); box-shadow: none; }
+  .np-k { font-size: 10px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.75; }
+  .np-v { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .np-live-banner .btn-ghost { border-color: rgba(255,255,255,0.35); color: #fff; }
+  .np-live-banner .btn-ghost:hover:not(:disabled) { border-color: #fff; color: #fff; }
+  .np-live-banner.off .btn-ghost { border-color: var(--paper-3); color: var(--ink-soft); }
+  .np-live-banner .spacer { flex: 1; }
+  .np-live-banner select { width: auto; min-height: 36px; padding: 4px 10px; }
+  .np-table-wrap { overflow-x: auto; }
+  .np-table td.num, .np-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .np-table td:first-child { white-space: nowrap; }
+  .np-table tr.np-attn td { background: #fff8f6; }
+  .np-table tr.np-current td { background: #f4f8fc; }
+  .np-table .dim { color: var(--ink-mute); }
+  .np-flag { color: var(--red); font-weight: 700; }
+  .np-table input[type=date], .np-table input[type=time] { min-height: 34px; padding: 4px 8px; font-size: 13px; width: auto; }
+  .np-summary { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .np-sum { flex: 1; min-width: 130px; background: #fff; border: 1px solid var(--rule); border-radius: 12px; padding: 10px 14px; }
+  .np-sum .n { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .np-sum .t { font-size: 11.5px; color: var(--ink-soft); }
+  .np-sum.attn { border-color: #f1c6c0; background: #fff8f6; }
+  .np-drafts { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 16px; align-items: start; }
+  @media (max-width: 760px) { .np-drafts { grid-template-columns: 1fr; } }
+  .np-stu-list { padding: 8px; max-height: 70vh; overflow-y: auto; }
+  .np-stu { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: none; border-radius: 9px; padding: 8px 10px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); }
+  .np-stu:hover { background: var(--paper-2); }
+  .np-stu.active { background: var(--note-lt); color: var(--note); font-weight: 600; }
+  .np-stu .w { font-size: 11px; color: var(--ink-mute); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .np-stu .fbdot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-left: 6px; vertical-align: middle; }
+  .np-stu-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .np-stu-head h3 { font-size: 19px; margin-bottom: 2px; }
+  .np-seg { display: inline-flex; background: var(--paper-2); border-radius: 10px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+  .np-seg button { border: none; background: none; border-radius: 8px; padding: 6px 12px; font-family: 'DM Sans', sans-serif; font-size: 12.5px; font-weight: 600; color: var(--ink-soft); cursor: pointer; }
+  .np-seg button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 4px rgba(26,26,46,0.12); }
+  .np-seg button:disabled { opacity: 0.4; cursor: default; }
+  .np-doc { background: #fff; border: 1px solid var(--rule); border-radius: 6px; padding: 26px clamp(16px, 4vw, 44px); font-size: 15px; line-height: 1.75; white-space: pre-wrap; overflow-wrap: anywhere; min-height: 160px; }
+  .np-doc div { margin: 0; }
+  .np-doc.absent { color: var(--ink-mute); font-style: italic; display: flex; align-items: center; justify-content: center; text-align: center; }
+  .np-doc-meta { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--ink-mute); margin-bottom: 8px; }
+  .np-doc ins { background: #d9f2e3; color: #14532d; text-decoration: none; border-radius: 3px; padding: 0 2px; }
+  .np-doc del { background: #fbdcdc; color: #7f1d1d; border-radius: 3px; padding: 0 2px; }
+  .np-legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--ink-soft); margin-bottom: 10px; }
+  .np-legend ins { background: #d9f2e3; color: #14532d; text-decoration: none; border-radius: 3px; padding: 0 4px; }
+  .np-legend del { background: #fbdcdc; color: #7f1d1d; border-radius: 3px; padding: 0 4px; }
+  .np-pick { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; font-size: 13px; }
+  .np-pick select { width: auto; min-height: 34px; padding: 4px 10px; font-size: 13px; }
+  .np-replay { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+  .np-replay input[type=range] { flex: 1; min-width: 180px; accent-color: var(--note); }
+  .np-replay .t { font-size: 12.5px; min-width: 170px; font-variant-numeric: tabular-nums; }
+  .np-chart { overflow-x: auto; }
+  .np-chart svg { display: block; width: 100%; min-width: 520px; height: auto; }
+  .np-later { font-size: 12px; color: var(--ink-mute); border: 1px dashed var(--paper-3); border-radius: 9px; padding: 9px 12px; margin-top: 12px; }
+  .np-error { background: var(--red-lt); color: var(--red); border-radius: 9px; padding: 10px 14px; font-size: 13px; margin-bottom: 12px; }
 </style>
 </head>
 <body>
@@ -357,7 +438,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v4.26 — Blog word-count auto-grade follows the rubric tier text</div>
+      <div class="version-tag">v4.27 — In-Class Notepad panel</div>
     </div>
   </div>
 
@@ -383,6 +464,7 @@
       <div class="hub-tile" onclick="openPanel('typing')"><div class="tile-icon"><i class="ti ti-keyboard"></i></div><div class="tile-title">Typing Skills</div></div>
       <div class="hub-tile" onclick="openPanel('forum')"><div class="tile-icon"><i class="ti ti-message-2"></i></div><div class="tile-title">Forum / CCF</div></div>
       <div class="hub-tile" onclick="openPanel('quiz')"><div class="tile-icon"><i class="ti ti-clipboard-text"></i></div><div class="tile-title">Grammar Quiz</div></div>
+      <div class="hub-tile" onclick="openPanel('notepad')"><div class="tile-icon"><i class="ti ti-notebook"></i></div><div class="tile-title">In-Class Notepad</div></div>
     </div>
   </div>
 
@@ -645,6 +727,28 @@
     </div>
   </div>
 
+  <!-- IN-CLASS NOTEPAD PANEL (v4.27) — talks to the Notepad Engine -->
+  <div class="screen" id="screen-panel-notepad">
+    <div class="panel-header"><button class="back-btn" onclick="goHub()">← Hub</button><h2>In-Class Notepad</h2></div>
+    <div class="subpanel-nav">
+      <button class="tab-notepad" onclick="npShowTab('assignment')" id="np-nav-assignment">Assignment</button>
+      <button class="tab-notepad" onclick="npShowTab('sessions')" id="np-nav-sessions">Sessions</button>
+      <button class="tab-notepad" onclick="npShowTab('live')" id="np-nav-live">Live</button>
+      <button class="tab-notepad" onclick="npShowTab('drafts')" id="np-nav-drafts">Drafts &amp; Feedback</button>
+    </div>
+    <div id="np-content"><div class="empty-note">Loading…</div></div>
+  </div>
+  <div class="modal-overlay" id="npConfirmModal">
+    <div class="modal-box" style="text-align:center">
+      <h3 id="npConfirmTitle" style="font-family:'Fraunces',serif;font-size:17px;margin-bottom:8px"></h3>
+      <p id="npConfirmText" style="font-size:14px;color:var(--ink-mute);line-height:1.5;margin:0 0 18px"></p>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" style="flex:1" onclick="npCloseConfirm()">Cancel</button>
+        <button class="btn" style="flex:1" id="npConfirmOk">OK</button>
+      </div>
+    </div>
+  </div>
+
 </main>
 
 <script>
@@ -653,6 +757,8 @@
 // ════════════════════════════════════════════════════════
 const FORUM_ENGINE_URL = 'https://script.google.com/macros/s/AKfycbw5J9WRH-wsUVkFLaTI18MBMnjv3K8WHdF3l7_GwtXTADyHPheHDxHt8E4sqbGxXz8M/exec';
 const QUIZ_ENGINE_URL  = 'https://script.google.com/macros/s/AKfycbwl3JTLm5TZPX6YixmU_ALo37IKGUlUpwhNS8XZnBHuCqoCakOdRn0pP1mJRyt6DLHMew/exec';
+// In-Class Notepad engine (v4.27) — paste its /exec URL here after deploying NotepadEngine.gs.
+const NOTEPAD_ENGINE_URL = 'https://script.google.com/macros/s/AKfycbzi2QzGBPfpGq8f-C6iy3n8vbdQ0ceM1VpZpvLhcOiuQ1I4B7ZlTD0aAgT5Xqo3FcKWpA/exec';
 
 // ════════════════════════════════════════════════════════
 //  STATE
@@ -700,7 +806,7 @@ function xhrPost(url, bodyObj) {
   });
 }
 async function api(engine, params, opts) {
-  const base = engine === 'quiz' ? QUIZ_ENGINE_URL : FORUM_ENGINE_URL;
+  const base = engine === 'quiz' ? QUIZ_ENGINE_URL : (engine === 'notepad' ? NOTEPAD_ENGINE_URL : FORUM_ENGINE_URL);
   // _ts guarantees a unique URL on every single call, so no caching layer —
   // browser, extension, proxy, or Google's own edge — can ever serve a
   // stale response for an identical (action, classId, token) combination,
@@ -752,6 +858,7 @@ function showScreen(id) {
   // Control auto-refresh below — otherwise it keeps polling in the
   // background forever, one interval per visit to that tab.
   if (id !== 'screen-panel-quiz' && typeof stopTestControlPolling === 'function') stopTestControlPolling();
+  if (id !== 'screen-panel-notepad' && typeof npStopTimers === 'function') npStopTimers(); // notepad live view refresh
   document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
   document.getElementById(id).classList.add('active');
 }
@@ -944,6 +1051,7 @@ function openPanel(name) {
   if (name === 'typing') loadTypingPanel();
   if (name === 'forum') loadForumPanel();
   if (name === 'quiz') loadQuizPanel();
+  if (name === 'notepad') loadNotepadPanel();
 }
 
 // ════════════════════════════════════════════════════════
@@ -4698,6 +4806,658 @@ async function deleteQBQuestion(section, questionOrder) {
     }
   }
 })();
+
+// ════════════════════════════════════════════════════════
+//  IN-CLASS NOTEPAD PANEL (v4.27)
+//  Assignment · Sessions · Live · Drafts & Feedback. All data lives in the
+//  Notepad Engine (its own Web App + spreadsheet). Student text is only ever
+//  shown here, never edited.
+// ════════════════════════════════════════════════════════
+let npOverview = null;          // npGetOverview for the current class
+let npTab = 'sessions';
+let npSkew = 0;                 // server clock minus this computer's
+let npLiveTimer = null, npClockTimer = null;
+let npLiveData = null;
+let npEditSessionId = null;
+let npDrafts = { assignmentId: null, classWork: null, studentId: null, work: null, view: 'snap', snapIdx: null, cmpA: null, cmpB: null, replaySession: null, versions: null, replayIdx: 0 };
+
+function npNow() { return Date.now() + npSkew; }
+function npNoteSkew(r) { if (r && r.serverNow) { const t = new Date(r.serverNow).getTime(); if (!isNaN(t)) npSkew = t - Date.now(); } }
+function npTime(iso) { return iso ? new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false }) : ''; }
+function npDate(iso) { return iso ? new Date(iso).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }) : ''; }
+function npLeft(sec) { sec = Math.max(0, Math.floor(sec)); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(s).padStart(2, '0'); }
+function npAgo(iso) { if (!iso) return '—'; const s = Math.max(0, Math.round((npNow() - new Date(iso).getTime()) / 1000)); return s < 60 ? s + 's ago' : Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') + ' ago'; }
+function npLocalDate(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function npLocalTime(d) { return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+function npWords(t) { t = String(t || '').trim(); return t ? t.split(/\s+/).length : 0; }
+
+async function npApi(params, post) {
+  try { return await api('notepad', params, post ? { method: 'POST' } : undefined); }
+  catch (e) { showToast(e.message || 'Something went wrong.'); throw e; }
+}
+function npConfirm(title, text, okLabel, danger, onOk) {
+  document.getElementById('npConfirmTitle').textContent = title;
+  document.getElementById('npConfirmText').textContent = text;
+  const b = document.getElementById('npConfirmOk');
+  b.textContent = okLabel; b.className = 'btn' + (danger ? ' btn-danger' : '');
+  b.onclick = function() { npCloseConfirm(); onOk(); };
+  document.getElementById('npConfirmModal').classList.add('show');
+}
+function npCloseConfirm() { document.getElementById('npConfirmModal').classList.remove('show'); }
+
+// Only bold, italic, underline, breaks and alignment are ever shown.
+const NP_KEEP = { B: 'b', STRONG: 'b', I: 'i', EM: 'i', U: 'u', DIV: 'div', P: 'div', BR: 'br' };
+function npSanitize(html) {
+  const src = new DOMParser().parseFromString('<div>' + (html || '') + '</div>', 'text/html').body.firstChild;
+  const out = document.createElement('div');
+  (function walk(from, to) {
+    from.childNodes.forEach(function(n) {
+      if (n.nodeType === 3) { to.appendChild(document.createTextNode(n.nodeValue)); return; }
+      if (n.nodeType !== 1) return;
+      const tag = NP_KEEP[n.tagName];
+      if (!tag) { walk(n, to); return; }
+      const el = document.createElement(tag);
+      if (tag === 'div' && /^(left|center|right)$/.test(n.style && n.style.textAlign)) el.style.textAlign = n.style.textAlign;
+      to.appendChild(el);
+      if (tag !== 'br') walk(n, el);
+    });
+  })(src, out);
+  return out.innerHTML;
+}
+
+// ── panel entry + tabs ────────────────────────────────────
+async function loadNotepadPanel() {
+  npStopTimers();
+  npDrafts = { assignmentId: null, classWork: null, studentId: null, work: null, view: 'snap', snapIdx: null, cmpA: null, cmpB: null, replaySession: null, versions: null, replayIdx: 0 };
+  document.getElementById('np-content').innerHTML = '<div class="empty-note">Loading…</div>';
+  try { await npLoadOverview(); }
+  catch (e) { document.getElementById('np-content').innerHTML = '<div class="np-error">Couldn’t reach the Notepad Engine: ' + esc(e.message) + '</div>'; return; }
+  npShowTab(npOverview.openSession ? 'live' : (npOverview.active ? 'sessions' : 'assignment'), false);
+}
+async function npLoadOverview(silent) {
+  const r = await api('notepad', { action: 'npGetOverview', classId: currentClassId }, silent ? { silent: true } : undefined);
+  npNoteSkew(r);
+  npOverview = r;
+  return r;
+}
+function npStopTimers() {
+  if (npLiveTimer) { clearInterval(npLiveTimer); npLiveTimer = null; }
+  if (npClockTimer) { clearInterval(npClockTimer); npClockTimer = null; }
+}
+// fresh: false when the caller has just loaded the overview itself.
+async function npShowTab(tab, fresh) {
+  npTab = tab;
+  npStopTimers();
+  ['assignment', 'sessions', 'live', 'drafts'].forEach(function(t) { document.getElementById('np-nav-' + t).classList.toggle('active', t === tab); });
+  if (fresh !== false) { try { await npLoadOverview(); } catch (e) { /* keep the last data */ } }
+  if (npTab !== tab) return;
+  if (tab === 'assignment') npRenderAssignment();
+  if (tab === 'sessions') npRenderSessions();
+  if (tab === 'live') npOpenLive();
+  if (tab === 'drafts') npOpenDrafts();
+}
+
+// ── banner: open session controls / Start now ─────────────
+function npBannerHtml(showWriting) {
+  const o = npOverview;
+  if (!o.active) return '';
+  if (o.openSession) {
+    const s = o.openSession;
+    const extended = s.plannedCloseAt && s.closeAt !== s.plannedCloseAt;
+    return '<div class="np-live-banner" id="np-banner"><span class="np-dot" aria-hidden="true"></span>' +
+      '<div><div class="np-k">Session ' + s.no + ' · open now</div><div style="font-size:14px;font-weight:600">Started ' + npTime(s.openAt) + ' · closes ' + npTime(s.closeAt) + (extended ? ' (extended)' : '') + '</div></div>' +
+      '<div><div class="np-k">Time left</div><div class="np-v" id="np-time-left">' + npLeft((new Date(s.closeAt).getTime() - npNow()) / 1000) + '</div></div>' +
+      (showWriting && npLiveData ? '<div><div class="np-k">Writing</div><div class="np-v">' + npLiveData.rows.filter(function(r) { return r.status === 'writing'; }).length + ' / ' + npLiveData.rows.length + '</div></div>' : '') +
+      '<span class="spacer"></span><div class="np-btns">' +
+      '<button class="btn btn-ghost btn-sm" onclick="npExtend(5)">+5 min</button>' +
+      '<button class="btn btn-ghost btn-sm" onclick="npExtend(10)">+10 min</button>' +
+      '<button class="btn btn-danger btn-sm" onclick="npEndNow()">■ End now</button></div></div>';
+  }
+  const n = o.nextSession;
+  return '<div class="np-live-banner off"><span class="np-dot" aria-hidden="true"></span>' +
+    '<div><div class="np-k">No session open</div><div style="font-size:14px;font-weight:600">' +
+    (n ? 'Next scheduled: Session ' + n.no + ' · ' + npDate(n.openAt) + ' · ' + npTime(n.openAt) + '–' + npTime(n.closeAt) : 'Nothing scheduled — add a session below, or start one now.') + '</div></div>' +
+    '<span class="spacer"></span><div class="np-btns"><label class="field-label" for="np-start-len" style="margin:0">Length</label>' +
+    '<select id="np-start-len">' + [20, 30, 40, 45, 60, 90].map(function(m) { return '<option value="' + m + '"' + (m === 40 ? ' selected' : '') + '>' + m + ' min</option>'; }).join('') + '</select>' +
+    '<button class="btn btn-sm" style="background:var(--green)" onclick="npStartNow()">▶ Start now</button></div></div>';
+}
+function npStartClock() {
+  if (npClockTimer) clearInterval(npClockTimer);
+  npClockTimer = setInterval(function() {
+    const el = document.getElementById('np-time-left');
+    if (!el || !npOverview || !npOverview.openSession) return;
+    const left = (new Date(npOverview.openSession.closeAt).getTime() - npNow()) / 1000;
+    el.textContent = npLeft(left);
+    if (left <= -3) { clearInterval(npClockTimer); npClockTimer = null; npRefreshAfterChange(); }
+  }, 1000);
+}
+async function npRefreshAfterChange() {
+  try { await npLoadOverview(true); } catch (e) { return; }
+  if (npTab === 'sessions') npRenderSessions();
+  if (npTab === 'live') npOpenLive();
+}
+async function npStartNow() {
+  const len = Number(document.getElementById('np-start-len').value);
+  try {
+    const r = await npApi({ action: 'npStartNow', classId: currentClassId, minutes: len });
+    showToast(r.movedScheduled ? 'Today’s scheduled session started now (' + len + ' min).' : 'Session started for ' + len + ' minutes.');
+  } catch (e) { return; }
+  await npLoadOverview();
+  npShowTab('live', false);
+}
+async function npExtend(min) {
+  try { await npApi({ action: 'npExtend', sessionId: npOverview.openSession.id, minutes: min }); } catch (e) { return; }
+  showToast('Extended by ' + min + ' minutes — students’ timers update within 30 seconds.');
+  await npLoadOverview();
+  npShowTab(npTab, false);
+}
+function npEndNow() {
+  npConfirm('End this session now?', 'Every open notepad is saved and locked within 30 seconds. Students can’t open it again until the next session.', 'End now', true, async function() {
+    try { await npApi({ action: 'npEndNow', sessionId: npOverview.openSession.id }); } catch (e) { return; }
+    showToast('Session ended — open notepads are saving and locking.');
+    await npLoadOverview();
+    npShowTab(npTab, false);
+  });
+}
+
+// ── Assignment tab ────────────────────────────────────────
+function npRenderAssignment() {
+  const o = npOverview, a = o.active;
+  let html = '';
+  if (a) {
+    html += '<div class="card"><div class="np-stu-head"><div><h3>Active assignment</h3><p class="np-sub" style="margin:0">What students see at the top of their notepad.</p></div>' +
+      '<span class="np-pill np-p-green">● Active · ' + a.sessionCount + ' session' + (a.sessionCount === 1 ? '' : 's') + '</span></div>' +
+      npAssignmentFields(a) +
+      '<div class="np-btns" style="margin-top:18px;justify-content:space-between"><button class="btn" onclick="npSaveAssignment(\'' + a.id + '\')">Save changes</button>' +
+      '<button class="btn btn-ghost" onclick="npFinishAssignment()">Finish assignment…</button></div></div>';
+  } else {
+    html += '<div class="card"><h3>New assignment</h3><p class="np-sub">One assignment per class at a time. Students see the name and instructions at the top of their notepad.</p>' +
+      npAssignmentFields(null) +
+      '<div class="np-btns" style="margin-top:18px"><button class="btn" onclick="npSaveAssignment(null)">Create assignment</button></div></div>';
+  }
+  const past = o.assignments.filter(function(x) { return x.status !== 'active'; });
+  html += '<div class="card"><h3>Past assignments · ' + esc(currentClassLabel) + '</h3>';
+  if (!past.length) html += '<div class="empty-note">None yet.</div>';
+  else {
+    html += '<div class="np-table-wrap"><table class="data-table np-table"><thead><tr><th>Assignment</th><th class="num">Sessions</th><th>Dates</th><th>Status</th><th></th></tr></thead><tbody>' +
+      past.map(function(x) {
+        const dates = x.firstOpenAt ? npDate(x.firstOpenAt) + ' – ' + (x.status === 'active' ? 'now' : npDate(x.lastCloseAt)) : '—';
+        return '<tr><td>' + esc(x.name) + '</td><td class="num">' + x.sessionCount + '</td><td>' + dates + '</td><td>' +
+          (x.status === 'active' ? '<span class="np-pill np-p-green">Active</span>' : '<span class="np-pill np-p-grey">Finished</span>') + '</td>' +
+          '<td><button class="btn btn-ghost btn-sm" onclick="npOpenDraftsFor(\'' + x.id + '\')">Drafts</button></td></tr>';
+      }).join('') + '</tbody></table></div>';
+  }
+  html += '</div>';
+  document.getElementById('np-content').innerHTML = html;
+}
+function npAssignmentFields(a) {
+  return '<div class="field"><label class="field-label" for="np-a-name">Assignment name</label><input class="text-input" id="np-a-name" maxlength="200" value="' + esc(a ? a.name : '') + '" placeholder="e.g. Tourism Proposal: A Day in Nagasaki"></div>' +
+    '<div class="field"><label class="field-label" for="np-a-ins">Instructions (optional)</label><textarea id="np-a-ins" rows="5" style="font-family:\'DM Sans\',sans-serif;font-size:14px">' + esc(a ? a.instructions : '') + '</textarea></div>' +
+    '<div class="np-row"><div class="field"><label class="field-label" for="np-a-target">Target words (optional)</label><input class="text-input" id="np-a-target" inputmode="numeric" value="' + (a && a.targetWords ? a.targetWords : '') + '"></div></div>' +
+    '<label class="np-switch" for="np-a-view"><input type="checkbox" id="np-a-view"' + (a && a.allowView ? ' checked' : '') + '><span class="track"></span>' +
+    '<span><span class="st">Students can view drafts between sessions</span><br><span class="sd">Off: the notepad stays "with the teacher" until the next session. On: students can read it (read only, no copying) while it is closed.</span></span></label>';
+}
+async function npSaveAssignment(id) {
+  const p = {
+    action: 'npSaveAssignment', classId: currentClassId, assignmentId: id || '',
+    name: document.getElementById('np-a-name').value, instructions: document.getElementById('np-a-ins').value,
+    targetWords: document.getElementById('np-a-target').value.trim(), allowView: document.getElementById('np-a-view').checked
+  };
+  try { await npApi(p, true); } catch (e) { return; }
+  showToast(id ? 'Saved.' : 'Assignment created — now add its sessions.');
+  await npLoadOverview();
+  npShowTab(id ? 'assignment' : 'sessions', false);
+}
+function npFinishAssignment() {
+  npConfirm('Finish this assignment?', 'No more sessions can be held, scheduled sessions that haven’t happened are removed, and every student’s final draft is fixed. You can then start a new assignment.', 'Finish assignment', false, async function() {
+    try { await npApi({ action: 'npFinishAssignment', assignmentId: npOverview.active.id }); } catch (e) { return; }
+    showToast('Assignment finished.');
+    await npLoadOverview();
+    npShowTab('assignment', false);
+  });
+}
+
+// ── Sessions tab ──────────────────────────────────────────
+function npRenderSessions() {
+  const o = npOverview, a = o.active;
+  if (!a) {
+    document.getElementById('np-content').innerHTML = '<div class="card"><div class="empty-note">No active assignment for ' + esc(currentClassLabel) + '.<br><button class="btn btn-sm" style="margin-top:12px" onclick="npShowTab(\'assignment\')">Create an assignment</button></div></div>';
+    return;
+  }
+  const rows = o.sessions.map(function(s) {
+    if (s.id === npEditSessionId) {
+      const od = new Date(s.openAt), cd = new Date(s.closeAt);
+      return '<tr><td><b>Session ' + s.no + '</b></td><td><input type="date" id="np-e-date" value="' + npLocalDate(od) + '"></td>' +
+        '<td><input type="time" id="np-e-open" value="' + npLocalTime(od) + '"> – <input type="time" id="np-e-close" value="' + npLocalTime(cd) + '"></td><td></td><td></td>' +
+        '<td class="np-btns"><button class="btn btn-sm" onclick="npSaveEdit(\'' + s.id + '\')">Save</button><button class="btn btn-ghost btn-sm" onclick="npEditSession(null)">Cancel</button></td></tr>';
+    }
+    const extended = s.plannedCloseAt && s.closeAt !== s.plannedCloseAt && !s.endedEarly;
+    const status = s.state === 'open' ? '<span class="np-pill np-p-green">● Open now</span>' : (s.state === 'scheduled' ? '<span class="np-pill np-p-blue">Scheduled</span>' : '<span class="np-pill np-p-grey">Closed</span>');
+    const notes = (extended ? ' <span class="np-pill np-p-gold">extended</span>' : '') + (s.endedEarly ? ' <span class="np-pill np-p-gold">ended early</span>' : '') + (s.startedManually ? ' <span class="np-pill np-p-note">started in class</span>' : '');
+    const handed = s.state === 'scheduled' ? '<span class="dim">—</span>' : s.handedIn + ' / ' + o.rosterCount;
+    const actions = s.state === 'scheduled'
+      ? '<button class="btn btn-ghost btn-sm" onclick="npEditSession(\'' + s.id + '\')">Edit</button><button class="btn btn-ghost btn-sm" onclick="npDeleteSession(\'' + s.id + '\',' + s.no + ')">Remove</button>'
+      : (s.state === 'open' ? '<button class="btn btn-ghost btn-sm" onclick="npShowTab(\'live\')">Live</button>' : '<button class="btn btn-ghost btn-sm" onclick="npOpenDraftsFor(\'' + a.id + '\')">Drafts</button>');
+    return '<tr class="' + (s.state === 'open' ? 'np-current' : '') + '"><td>' + (s.state === 'open' ? '<b>Session ' + s.no + '</b>' : 'Session ' + s.no) + '</td><td>' + npDate(s.openAt) + '</td><td>' + npTime(s.openAt) + '–' + npTime(s.closeAt) + notes + '</td><td>' + status + '</td><td class="num">' + handed + '</td><td class="np-btns">' + actions + '</td></tr>';
+  }).join('');
+  // Suggest the next slot: a week after the latest session, same times.
+  const last = o.sessions[o.sessions.length - 1];
+  let sd, so, sc;
+  if (last) {
+    const lo = new Date(last.openAt), lc = new Date(last.closeAt);
+    const next = new Date(lo.getTime()); next.setDate(next.getDate() + 7);
+    while (next.getTime() < Date.now()) next.setDate(next.getDate() + 7);
+    sd = npLocalDate(next); so = npLocalTime(lo); sc = npLocalTime(lc);
+  } else { const d = new Date(); sd = npLocalDate(d); so = ''; sc = ''; }
+  document.getElementById('np-content').innerHTML = npBannerHtml(false) +
+    '<div class="card"><h3>Sessions · ' + esc(a.name) + '</h3><p class="np-sub">The notepad opens and closes itself at these times. Students who miss a session just continue at the next one.</p>' +
+    (o.sessions.length ? '<div class="np-table-wrap"><table class="data-table np-table"><thead><tr><th>Session</th><th>Date</th><th>Time</th><th>Status</th><th class="num">Handed in</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      : '<div class="empty-note">No sessions yet.</div>') + '</div>' +
+    '<div class="card"><h3>Add a session</h3><div class="np-row">' +
+    '<div class="field"><label class="field-label" for="np-n-date">Date</label><input class="text-input" id="np-n-date" type="date" value="' + sd + '"></div>' +
+    '<div class="field"><label class="field-label" for="np-n-open">Opens</label><input class="text-input" id="np-n-open" type="time" value="' + so + '"></div>' +
+    '<div class="field"><label class="field-label" for="np-n-close">Closes</label><input class="text-input" id="np-n-close" type="time" value="' + sc + '"></div>' +
+    '<div class="field" style="flex:0 0 auto;min-width:0"><button class="btn" onclick="npAddSession()">+ Add session</button></div></div></div>';
+  if (o.openSession) npStartClock();
+}
+function npReadTimes(dId, oId, cId) {
+  const d = document.getElementById(dId).value, op = document.getElementById(oId).value, cl = document.getElementById(cId).value;
+  if (!d || !op || !cl) { showToast('Enter a date, an open time and a close time.'); return null; }
+  return { openAt: new Date(d + 'T' + op).toISOString(), closeAt: new Date(d + 'T' + cl).toISOString() };
+}
+async function npAddSession() {
+  const t = npReadTimes('np-n-date', 'np-n-open', 'np-n-close'); if (!t) return;
+  try { await npApi(Object.assign({ action: 'npAddSession', assignmentId: npOverview.active.id }, t)); } catch (e) { return; }
+  showToast('Session added.');
+  await npLoadOverview(); npRenderSessions();
+}
+function npEditSession(id) { npEditSessionId = id; npRenderSessions(); }
+async function npSaveEdit(id) {
+  const t = npReadTimes('np-e-date', 'np-e-open', 'np-e-close'); if (!t) return;
+  try { await npApi(Object.assign({ action: 'npUpdateSession', sessionId: id }, t)); } catch (e) { return; }
+  npEditSessionId = null; showToast('Session updated.');
+  await npLoadOverview(); npRenderSessions();
+}
+function npDeleteSession(id, no) {
+  npConfirm('Remove Session ' + no + '?', 'This scheduled session hasn’t started yet. Removing it can’t be undone.', 'Remove', true, async function() {
+    try { await npApi({ action: 'npDeleteSession', sessionId: id }); } catch (e) { return; }
+    showToast('Session removed.');
+    await npLoadOverview(); npRenderSessions();
+  });
+}
+
+// ── Live tab ──────────────────────────────────────────────
+async function npOpenLive() {
+  await npRefreshLive(false);
+  if (npTab !== 'live') return;
+  npLiveTimer = setInterval(function() { npRefreshLive(true); }, 30000);
+}
+async function npRefreshLive(silent) {
+  let r;
+  try {
+    r = await api('notepad', { action: 'npGetLive', classId: currentClassId }, silent ? { silent: true } : undefined);
+    if (silent) await npLoadOverview(true);
+  } catch (e) { if (!silent) document.getElementById('np-content').innerHTML = '<div class="np-error">' + esc(e.message) + '</div>'; return; }
+  if (npTab !== 'live') return;
+  npNoteSkew(r);
+  npLiveData = r;
+  npRenderLive();
+}
+function npStatusPill(r) {
+  if (r.status === 'writing') return '<span class="np-pill np-p-green">● Writing</span>';
+  if (r.status === 'handed') return '<span class="np-pill np-p-grey">✓ Handed in ' + npTime(r.handedInAt) + (r.how === 'late' ? ' (late)' : '') + '</span>';
+  if (r.status === 'away') return '<span class="np-pill np-p-gold">No contact ' + npAgo(r.lastSeenAt).replace(' ago', '') + '</span>';
+  return npOverview.openSession ? '<span class="np-pill np-p-red">Not opened</span>' : '<span class="np-pill np-p-grey">Absent</span>';
+}
+function npRenderLive() {
+  const d = npLiveData;
+  if (!npOverview.active) { npRenderSessions(); return; }
+  if (!d.session) {
+    document.getElementById('np-content').innerHTML = npBannerHtml(false) + '<div class="card"><div class="empty-note">No session today yet. The live view fills in as soon as one starts.</div></div>';
+    return;
+  }
+  const isOpen = d.session.state === 'open';
+  const needs = function(r) { return r.tabAways > 0 || r.blockedPastes > 0 || r.status === 'away' || (isOpen && r.status === 'none'); };
+  const rank = function(r) { return needs(r) ? 0 : ({ writing: 1, handed: 2, none: 3, away: 0 })[r.status]; };
+  const rows = d.rows.slice().sort(function(x, y) { return rank(x) - rank(y) || x.studentNumber.localeCompare(y.studentNumber); });
+  const added = d.rows.filter(function(r) { return r.status !== 'none'; }).map(function(r) { return Math.max(0, r.words - r.wordsAtStart); }).sort(function(x, y) { return x - y; });
+  const median = added.length ? added[Math.floor((added.length - 1) / 2)] : 0;
+  const tbody = rows.map(function(r) {
+    return '<tr class="' + (needs(r) ? 'np-attn' : '') + '"><td title="' + esc(r.studentNumber) + '">' + esc(r.name) + '</td><td>' + npStatusPill(r) + '</td>' +
+      '<td class="num">' + r.words + '</td><td class="num">' + (r.status === 'none' ? '<span class="dim">—</span>' : '+' + Math.max(0, r.words - r.wordsAtStart)) + '</td>' +
+      '<td class="num ' + (r.tabAways ? 'np-flag' : 'dim') + '">' + r.tabAways + '</td><td class="num ' + (r.blockedPastes ? 'np-flag' : 'dim') + '">' + r.blockedPastes + '</td>' +
+      '<td class="num dim">' + (r.lastSaveAt ? npAgo(r.lastSaveAt) : '—') + '</td></tr>';
+  }).join('');
+  document.getElementById('np-content').innerHTML = npBannerHtml(true) +
+    '<div class="np-summary">' +
+    '<div class="np-sum"><div class="n">' + d.rows.filter(function(r) { return r.status === 'writing'; }).length + '</div><div class="t">writing now</div></div>' +
+    '<div class="np-sum"><div class="n">' + d.rows.filter(function(r) { return r.status === 'handed'; }).length + '</div><div class="t">handed in</div></div>' +
+    '<div class="np-sum attn"><div class="n">' + d.rows.filter(needs).length + '</div><div class="t">need a look</div></div>' +
+    '<div class="np-sum"><div class="n">+' + median + '</div><div class="t">median words this session</div></div></div>' +
+    '<div class="card"><div class="np-stu-head" style="margin-bottom:6px"><h3 style="margin:0">Session ' + d.session.no + (isOpen ? ' · live' : ' · closed ' + npTime(d.session.closeAt)) + '</h3>' +
+    '<span class="np-pill np-p-note">Updated ' + new Date().toLocaleTimeString('en-GB', { hour12: false }) + (isOpen ? ' · every 30 s' : '') + '</span></div>' +
+    '<p class="np-sub" style="margin:6px 0 10px">Rows that need a look come first: left the page, tried to paste, lost contact, or hasn’t opened the notepad.</p>' +
+    '<div class="np-table-wrap"><table class="data-table np-table"><thead><tr><th>Student</th><th>Status</th><th class="num">Words</th><th class="num">This session</th><th class="num">Tab-aways</th><th class="num">Blocked pastes</th><th class="num">Last save</th></tr></thead><tbody>' + tbody + '</tbody></table></div></div>';
+  if (npOverview.openSession) npStartClock();
+}
+
+// ── Drafts & Feedback tab ─────────────────────────────────
+function npOpenDraftsFor(assignmentId) { npDrafts.assignmentId = assignmentId; npDrafts.studentId = null; npShowTab('drafts'); }
+async function npOpenDrafts() {
+  const o = npOverview;
+  if (!o.assignments.length) { document.getElementById('np-content').innerHTML = '<div class="card"><div class="empty-note">No assignments yet.</div></div>'; return; }
+  if (!npDrafts.assignmentId || !o.assignments.some(function(a) { return a.id === npDrafts.assignmentId; })) npDrafts.assignmentId = (o.active || o.assignments[0]).id;
+  try { npDrafts.classWork = await api('notepad', { action: 'npGetClassWork', assignmentId: npDrafts.assignmentId }); }
+  catch (e) { document.getElementById('np-content').innerHTML = '<div class="np-error">' + esc(e.message) + '</div>'; return; }
+  const list = npDrafts.classWork.students;
+  if (!npDrafts.studentId || !list.some(function(s) { return s.studentId === npDrafts.studentId; })) npDrafts.studentId = list.length ? list[0].studentId : null;
+  await npLoadStudent();
+}
+async function npLoadStudent() {
+  npDrafts.work = null; npDrafts.versions = null; npDrafts.replaySession = null;
+  if (npDrafts.studentId) {
+    try { npDrafts.work = await api('notepad', { action: 'npGetStudentWork', assignmentId: npDrafts.assignmentId, studentId: npDrafts.studentId }); }
+    catch (e) { showToast(e.message); }
+  }
+  const w = npDrafts.work;
+  const sessions = w ? w.sessions.filter(function(s) { return s.state !== 'scheduled'; }) : [];
+  npDrafts.snapIdx = sessions.length ? sessions.length - 1 : null;
+  npDrafts.cmpA = sessions.length > 1 ? sessions.length - 2 : 0;
+  npDrafts.cmpB = sessions.length ? sessions.length - 1 : 0;
+  npRenderDrafts();
+}
+function npSelectStudent(id) { npDrafts.studentId = id; npLoadStudent(); }
+function npDraftsHeader() {
+  const o = npOverview;
+  return '<div class="card" style="padding:14px 16px"><div class="np-btns" style="justify-content:space-between">' +
+    '<div class="np-btns"><label class="field-label" for="np-d-asg" style="margin:0">Assignment</label><select id="np-d-asg" style="width:auto;min-height:36px;padding:4px 10px" onchange="npDrafts.assignmentId=this.value;npDrafts.studentId=null;npOpenDrafts()">' +
+    o.assignments.map(function(a) { return '<option value="' + a.id + '"' + (a.id === npDrafts.assignmentId ? ' selected' : '') + '>' + esc(a.name) + (a.status === 'active' ? '' : ' (finished)') + '</option>'; }).join('') + '</select></div>' +
+    '<div class="np-btns"><button class="btn btn-ghost btn-sm" onclick="npExportVersions()">⬇ All versions (CSV)</button><button class="btn btn-ghost btn-sm" onclick="npExportStats()">⬇ Writing counts (CSV)</button><button class="btn btn-ghost btn-sm" onclick="npExportPdf()">⬇ Final drafts (PDF)</button></div></div></div>';
+}
+function npRenderDrafts() {
+  const cw = npDrafts.classWork, w = npDrafts.work;
+  const listHtml = cw.students.length ? cw.students.map(function(s) {
+    const dot = s.feedback === 'released' ? '<span class="fbdot" style="background:var(--green)" title="Feedback released"></span>' : (s.feedback === 'draft' ? '<span class="fbdot" style="background:var(--gold)" title="Feedback not released yet"></span>' : '');
+    return '<button class="np-stu' + (s.studentId === npDrafts.studentId ? ' active' : '') + '" onclick="npSelectStudent(\'' + s.studentId + '\')"><span>' + esc(s.name) + dot + (s.inClass ? '' : ' <span class="dim">(moved)</span>') + '</span><span class="w">' + s.words + '</span></button>';
+  }).join('') : '<div class="empty-note">No students.</div>';
+  let main = '<div class="card"><div class="empty-note">Choose a student.</div></div>';
+  if (w) {
+    const closedOrOpen = w.sessions.filter(function(s) { return s.state !== 'scheduled'; });
+    const attended = closedOrOpen.filter(function(s) { return npSessionDoc(s); }).length;
+    const views = [['snap', 'Snapshots'], ['cmp', 'Compare'], ['replay', 'Replay'], ['growth', 'Growth']];
+    main = '<div class="card"><div class="np-stu-head"><div><h3>' + esc(w.student.name) + '</h3><p class="np-sub" style="margin:0">' + esc(w.student.studentNumber) + ' · ' + (w.draft ? w.draft.words : 0) + ' words now · wrote in ' + attended + ' of ' + closedOrOpen.length + ' session' + (closedOrOpen.length === 1 ? '' : 's') + '</p></div>' +
+      '<div class="np-seg" role="tablist" aria-label="Draft views">' + views.map(function(v) { return '<button class="' + (npDrafts.view === v[0] ? 'on' : '') + '" onclick="npDrafts.view=\'' + v[0] + '\';npRenderDrafts()">' + v[1] + '</button>'; }).join('') + '</div></div>' +
+      '<div id="np-view">' + npViewHtml() + '</div></div>' + npFeedbackCard();
+  }
+  document.getElementById('np-content').innerHTML = npDraftsHeader() + '<div class="np-drafts"><div class="card np-stu-list"><div class="field-label" style="padding:6px 10px">Students · words</div>' + listHtml + '</div><div style="min-width:0">' + main + '</div></div>';
+  if (w && npDrafts.view === 'replay') npInitReplay();
+}
+function npHowLabel(how) {
+  return ({ leave: 'handed in (Save & leave)', auto: 'saved at the close', late: 'sent late (offline at the close)', server: 'closed without handing in — last autosave' })[how] || how;
+}
+// What a session looked like for this student: its snapshot, the live draft
+// for the open session, or nothing (absent).
+function npSessionDoc(s) {
+  const w = npDrafts.work;
+  const snap = w.snapshots.find(function(x) { return x.sessionId === s.id; });
+  if (snap) return { html: snap.html, text: snap.text, words: snap.words, start: snap.wordsAtStart, meta: npHowLabel(snap.how) + ' · ' + npTime(snap.handedInAt), how: snap.how };
+  if (s.state === 'open' && w.draft && w.draft.lastSessionId === s.id) {
+    return { html: w.draft.html, text: null, words: w.draft.words, start: null, meta: 'session open — current draft, last saved ' + npTime(w.draft.updatedAt), live: true };
+  }
+  return null;
+}
+function npTextOf(doc) {
+  if (!doc) return '';
+  if (doc.text != null) return doc.text;
+  const d = document.createElement('div'); d.innerHTML = String(doc.html).replace(/<br\s*\/?>/gi, '\n').replace(/<\/div>/gi, '\n');
+  return d.textContent.trim();
+}
+function npViewHtml() {
+  const w = npDrafts.work;
+  const sessions = w.sessions.filter(function(s) { return s.state !== 'scheduled'; });
+  if (!sessions.length) return '<div class="empty-note">No sessions have taken place yet.</div>';
+  if (npDrafts.view === 'snap') {
+    const s = sessions[npDrafts.snapIdx];
+    const doc = npSessionDoc(s);
+    const tabs = '<div class="np-seg" style="margin-bottom:12px">' + sessions.map(function(x, i) { return '<button class="' + (i === npDrafts.snapIdx ? 'on' : '') + '" onclick="npDrafts.snapIdx=' + i + ';npRefreshView()">Session ' + x.no + '</button>'; }).join('') + '</div>';
+    if (!doc) return tabs + '<div class="np-doc-meta"><span>' + npDate(s.openAt) + '</span></div><div class="np-doc absent">Didn’t write in Session ' + s.no + ' (absent, or opened without typing). The draft carried over unchanged.</div>';
+    const added = doc.start != null ? ' · +' + Math.max(0, doc.words - doc.start) + ' that session' : '';
+    return tabs + '<div class="np-doc-meta"><span>' + npDate(s.openAt) + ' · ' + esc(doc.meta) + '</span><span>' + doc.words + ' words' + added + '</span></div><div class="np-doc">' + (npSanitize(doc.html) || '<span class="dim">(empty)</span>') + '</div>';
+  }
+  if (npDrafts.view === 'cmp') {
+    const opts = function(sel) { return sessions.map(function(x, i) { return '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>Session ' + x.no + '</option>'; }).join(''); };
+    const a = npSessionDoc(sessions[npDrafts.cmpA]) || npCarried(sessions, npDrafts.cmpA), b = npSessionDoc(sessions[npDrafts.cmpB]) || npCarried(sessions, npDrafts.cmpB);
+    return '<div class="np-pick"><span>From the end of</span><select aria-label="From session" onchange="npDrafts.cmpA=+this.value;npRefreshView()">' + opts(npDrafts.cmpA) + '</select><span>to the end of</span><select aria-label="To session" onchange="npDrafts.cmpB=+this.value;npRefreshView()">' + opts(npDrafts.cmpB) + '</select></div>' +
+      '<div class="np-legend"><span><ins>added</ins></span><span><del>removed</del></span><span>Formatting is ignored here; Snapshots show it.</span></div>' +
+      '<div class="np-doc">' + npDiff(npTextOf(a), npTextOf(b)) + '</div>';
+  }
+  if (npDrafts.view === 'replay') {
+    const written = sessions.filter(function(s) { return w.timeline.some(function(t) { return t.sessionId === s.id; }); });
+    if (!written.length) return '<div class="empty-note">No saves yet.</div>';
+    if (!npDrafts.replaySession || !written.some(function(s) { return s.id === npDrafts.replaySession; })) npDrafts.replaySession = written[written.length - 1].id;
+    return '<div class="np-pick"><label for="np-r-ses">Session</label><select id="np-r-ses" onchange="npDrafts.replaySession=this.value;npDrafts.versions=null;npRefreshView()">' +
+      written.map(function(s) { return '<option value="' + s.id + '"' + (s.id === npDrafts.replaySession ? ' selected' : '') + '>Session ' + s.no + ' · ' + npDate(s.openAt) + '</option>'; }).join('') + '</select></div>' +
+      '<div id="np-replay-body"><div class="empty-note">Loading saves…</div></div>';
+  }
+  return '<div class="np-chart">' + npGrowthSvg(sessions) + '</div>' + npStatsTable(sessions);
+}
+// For an absent session, the text it carried over is the latest earlier snapshot.
+function npCarried(sessions, idx) {
+  for (let i = idx; i >= 0; i--) { const d = npSessionDoc(sessions[i]); if (d) return d; }
+  return { html: '', text: '', words: 0 };
+}
+function npRefreshView() { document.getElementById('np-view').innerHTML = npViewHtml(); if (npDrafts.view === 'replay') npInitReplay(); }
+
+async function npInitReplay() {
+  const body = document.getElementById('np-replay-body'); if (!body) return;
+  if (!npDrafts.versions || npDrafts.versions._session !== npDrafts.replaySession) {
+    let r;
+    try { r = await api('notepad', { action: 'npGetVersions', assignmentId: npDrafts.assignmentId, studentId: npDrafts.studentId, sessionId: npDrafts.replaySession }, { silent: true }); }
+    catch (e) { body.innerHTML = '<div class="np-error">' + esc(e.message) + '</div>'; return; }
+    npDrafts.versions = r.versions; npDrafts.versions._session = npDrafts.replaySession;
+    npDrafts.replayIdx = r.versions.length - 1;
+  }
+  const v = npDrafts.versions;
+  if (!v.length) { body.innerHTML = '<div class="empty-note">No saves in this session.</div>'; return; }
+  body.innerHTML = '<div class="np-replay"><input type="range" id="np-rp" min="0" max="' + (v.length - 1) + '" value="' + npDrafts.replayIdx + '" aria-label="Save" oninput="npDrafts.replayIdx=+this.value;npDrawReplay()">' +
+    '<span class="t" id="np-rp-t"></span></div><div class="np-doc-meta"><span>' + v.length + ' save' + (v.length === 1 ? '' : 's') + ' this session (only when the text changed) · each compared with the save before</span></div>' +
+    '<div class="np-doc" id="np-rp-doc"></div>';
+  npDrawReplay();
+}
+function npDrawReplay() {
+  const v = npDrafts.versions, i = npDrafts.replayIdx, x = v[i];
+  const kinds = { auto: 'autosave', manual: 'Save button', leave: 'Save & leave', close: 'at the close', late: 'sent late' };
+  document.getElementById('np-rp-t').textContent = npTime(x.at) + ' · save ' + (i + 1) + ' of ' + v.length + ' · ' + x.words + ' words · ' + (kinds[x.kind] || x.kind);
+  document.getElementById('np-rp-doc').innerHTML = i === 0 ? esc(x.text) : npDiff(v[i - 1].text, x.text);
+}
+
+// Word-level comparison (longest common subsequence).
+function npDiff(a, b) {
+  const A = String(a || '').split(/(\s+)/), B = String(b || '').split(/(\s+)/);
+  const n = A.length, m = B.length;
+  if (n * m > 6e6) return '<p class="dim">Too long to compare word by word.</p>' + esc(b);
+  const L = Array.from({ length: n + 1 }, function() { return new Uint16Array(m + 1); });
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  let i = 0, j = 0, out = '';
+  const push = function(tag, t) { out += tag ? '<' + tag + '>' + esc(t) + '</' + tag + '>' : esc(t); };
+  while (i < n && j < m) {
+    if (A[i] === B[j]) { push('', A[i]); i++; j++; }
+    else if (L[i + 1][j] >= L[i][j + 1]) { push(/\S/.test(A[i]) ? 'del' : '', A[i]); i++; }
+    else { push(/\S/.test(B[j]) ? 'ins' : '', B[j]); j++; }
+  }
+  while (i < n) { if (/\S/.test(A[i])) push('del', A[i]); i++; }
+  while (j < m) { push(/\S/.test(B[j]) ? 'ins' : '', B[j]); j++; }
+  return out.replace(/<\/ins>(\s+)<ins>/g, '$1').replace(/<\/del>(\s+)<del>/g, '$1');
+}
+
+// Words over time: each session drawn as its own segment (minutes since it opened).
+function npGrowthSvg(sessions) {
+  const w = npDrafts.work;
+  const W = 640, H = 210, pl = 42, pr = 14, pt = 18, pb = 36, gap = 22;
+  const segs = sessions.map(function(s) {
+    const o = new Date(s.openAt).getTime(), c = new Date(s.closeAt).getTime();
+    const pts = w.timeline.filter(function(t) { return t.sessionId === s.id; }).map(function(t) { return [(new Date(t.at).getTime() - o) / 60000, t.words]; });
+    return { s: s, dur: Math.max(1, (c - o) / 60000), pts: pts };
+  });
+  const maxW = Math.max(10, Math.max.apply(null, w.timeline.map(function(t) { return t.words; }).concat([0])));
+  const step = Math.pow(10, Math.floor(Math.log10(maxW))) * (maxW / Math.pow(10, Math.floor(Math.log10(maxW))) > 5 ? 2 : 1);
+  const top = Math.ceil(maxW / step) * step;
+  const y = function(v) { return pt + (H - pt - pb) * (1 - v / top); };
+  const segW = (W - pl - pr - gap * (segs.length - 1)) / segs.length;
+  let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Words over time across sessions">';
+  for (let v = 0; v <= top; v += step) svg += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + y(v) + '" y2="' + y(v) + '" stroke="var(--paper-3)" stroke-width="1"/><text x="' + (pl - 8) + '" y="' + (y(v) + 4) + '" text-anchor="end" font-size="10" fill="var(--ink-mute)">' + v + '</text>';
+  let carry = 0;
+  segs.forEach(function(g, k) {
+    const x0 = pl + k * (segW + gap);
+    const x = function(m) { return x0 + segW * Math.max(0, Math.min(1, m / g.dur)); };
+    svg += '<text x="' + (x0 + segW / 2) + '" y="' + (H - 12) + '" text-anchor="middle" font-size="11" fill="var(--ink-soft)">Session ' + g.s.no + ' · ' + npDate(g.s.openAt) + '</text>';
+    if (!g.pts.length) {
+      svg += '<line x1="' + x0 + '" x2="' + (x0 + segW) + '" y1="' + y(carry) + '" y2="' + y(carry) + '" stroke="var(--ink-mute)" stroke-dasharray="4 4"/><text x="' + (x0 + segW / 2) + '" y="' + (y(carry) - 8) + '" text-anchor="middle" font-size="10.5" fill="var(--ink-mute)">absent</text>';
+      return;
+    }
+    const pts = [[0, carry]].concat(g.pts);
+    const d = pts.map(function(p, i) { return (i ? 'L' : 'M') + x(p[0]).toFixed(1) + ' ' + y(p[1]).toFixed(1); }).join(' ');
+    const last = pts[pts.length - 1];
+    svg += '<path d="' + d + ' L' + x(last[0]).toFixed(1) + ' ' + y(0) + ' L' + x(0).toFixed(1) + ' ' + y(0) + ' Z" fill="var(--note-lt)" opacity="0.75"/>' +
+      '<path d="' + d + '" fill="none" stroke="var(--note)" stroke-width="2"/>' +
+      '<circle cx="' + x(last[0]) + '" cy="' + y(last[1]) + '" r="3.5" fill="var(--note)"/>' +
+      '<text x="' + (x(last[0]) - 4) + '" y="' + (y(last[1]) - 8) + '" text-anchor="end" font-size="10.5" font-weight="600" fill="var(--ink)">' + last[1] + '</text>';
+    carry = last[1];
+  });
+  return svg + '</svg>';
+}
+function npStatsTable(sessions) {
+  const w = npDrafts.work;
+  const rows = sessions.map(function(s) {
+    const st = w.stats.find(function(x) { return x.sessionId === s.id; });
+    const doc = npSessionDoc(s);
+    if (!st && !doc) return '<tr><td>Session ' + s.no + '</td><td colspan="8" class="dim">absent / no writing</td></tr>';
+    const added = doc && doc.start != null ? Math.max(0, doc.words - doc.start) : '—';
+    const c = st || {};
+    const cell = function(v, flag) { return '<td class="num' + (flag && v > 0 ? ' np-flag' : '') + '">' + (v == null ? 0 : v) + '</td>'; };
+    return '<tr><td>Session ' + s.no + '</td>' + cell(Math.round((c.activeSec || 0) / 60)) + cell(added) + cell(c.charsTyped) + cell(c.revisions) + cell(c.deletions) + cell(c.moves) + cell(c.tabAways, true) + cell(c.blockedPastes, true) + '</tr>';
+  }).join('');
+  return '<div class="np-table-wrap" style="margin-top:12px"><table class="data-table np-table"><thead><tr><th>Session</th><th class="num" title="Minutes spent typing (pauses over a minute not counted)">Min</th><th class="num" title="Words added this session">Added</th><th class="num" title="Keys typed">Keys</th><th class="num" title="Times they went back into text already written">Revised</th><th class="num" title="Deletions">Deleted</th><th class="num" title="Own text cut/copied and pasted inside the notepad">Moves</th><th class="num" title="Times they left the page">Away</th><th class="num" title="Pastes from outside that were blocked">Blocked</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+}
+
+function npFeedbackCard() {
+  const f = npDrafts.work.feedback;
+  return '<div class="card"><h3>Feedback</h3><p class="np-sub">One comment per student for this assignment. It never changes their text.</p>' +
+    '<div class="field"><label class="field-label" for="np-fb">Your feedback</label><textarea id="np-fb" rows="4" style="font-family:\'DM Sans\',sans-serif;font-size:14px">' + esc(f.text) + '</textarea></div>' +
+    '<label class="np-switch" for="np-fb-show"><input type="checkbox" id="np-fb-show"' + (f.released ? ' checked' : '') + '><span class="track"></span>' +
+    '<span><span class="st">Show feedback to this student</span><br><span class="sd">They see it at the top of their notepad and on the closed screen.</span></span></label>' +
+    '<div class="np-btns" style="margin-top:14px"><button class="btn" onclick="npSaveFeedback()">Save feedback</button><button class="btn btn-ghost" onclick="npReleaseAll()">Release all feedback</button></div>' +
+    '<div class="np-later">Later version: highlight a word or sentence and attach a comment to it, like comments in Word.</div></div>';
+}
+async function npSaveFeedback() {
+  try {
+    await npApi({ action: 'npSaveFeedback', assignmentId: npDrafts.assignmentId, studentId: npDrafts.studentId, text: document.getElementById('np-fb').value, released: document.getElementById('np-fb-show').checked }, true);
+  } catch (e) { return; }
+  showToast(document.getElementById('np-fb-show').checked ? 'Feedback saved — the student can see it.' : 'Feedback saved (not shown to the student yet).');
+  const s = npDrafts.classWork.students.find(function(x) { return x.studentId === npDrafts.studentId; });
+  if (s) s.feedback = document.getElementById('np-fb').value.trim() ? (document.getElementById('np-fb-show').checked ? 'released' : 'draft') : '';
+  npDrafts.work.feedback = { text: document.getElementById('np-fb').value, released: document.getElementById('np-fb-show').checked };
+  npRenderDrafts();
+}
+function npReleaseAll() {
+  npConfirm('Release all feedback?', 'Every student who has feedback written for this assignment will see it.', 'Release all', false, async function() {
+    let r; try { r = await npApi({ action: 'npReleaseAllFeedback', assignmentId: npDrafts.assignmentId }); } catch (e) { return; }
+    showToast(r.changed ? 'Released feedback for ' + r.changed + ' student' + (r.changed === 1 ? '' : 's') + '.' : 'All written feedback was already released.');
+    npOpenDrafts();
+  });
+}
+
+// ── exports ───────────────────────────────────────────────
+function npDownload(name, text, type) {
+  const blob = new Blob([type === 'csv' ? '﻿' + text : text], { type: type === 'csv' ? 'text/csv;charset=utf-8' : 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function() { URL.revokeObjectURL(url); }, 2000);
+}
+function npFileBase() { const a = npOverview.assignments.find(function(x) { return x.id === npDrafts.assignmentId; }); return (currentClassLabel + '_' + (a ? a.name : 'notepad')).replace(/[^\w\-]+/g, '_').slice(0, 80); }
+async function npExportVersions() {
+  let r; try { r = await npApi({ action: 'npExport', assignmentId: npDrafts.assignmentId, kind: 'versions' }); } catch (e) { return; }
+  const lines = [csvRow(['Student number', 'Name', 'Session', 'Saved at', 'Kind', 'Words', 'Text'])].concat(r.rows.map(function(x) {
+    return csvRow([x.studentNumber, x.name, x.sessionNo, new Date(x.savedAt).toLocaleString('sv-SE'), x.kind, x.words, x.text]);
+  }));
+  npDownload(npFileBase() + '_all-versions.csv', lines.join('\r\n'), 'csv');
+}
+async function npExportStats() {
+  let r; try { r = await npApi({ action: 'npExport', assignmentId: npDrafts.assignmentId, kind: 'versions' }); } catch (e) { return; }
+  const lines = [csvRow(['Student number', 'Name', 'Session', 'Typing seconds', 'Keys typed', 'Revisions', 'Deletions', 'Moves', 'Blocked pastes', 'Tab-aways', 'Seconds away'])].concat(r.stats.map(function(x) {
+    return csvRow([x.studentNumber, x.name, x.sessionNo, x.activeSec, x.charsTyped, x.revisions, x.deletions, x.moves, x.blockedPastes, x.tabAways, x.tabAwaySec]);
+  }));
+  npDownload(npFileBase() + '_writing-counts.csv', lines.join('\r\n'), 'csv');
+}
+// One student per page, with their bold / italic / underline and alignment.
+// (The PDF font has no Japanese characters — names are printed in English.)
+async function npExportPdf() {
+  if (!window.jspdf) { showToast('PDF tool still loading — try again in a moment.'); return; }
+  let r; try { r = await npApi({ action: 'npExport', assignmentId: npDrafts.assignmentId, kind: 'final' }); } catch (e) { return; }
+  if (!r.rows.length) { showToast('No drafts yet.'); return; }
+  const doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+  const M = 20, Wd = 210 - 2 * M, FS = 11, LH = FS * 0.3528 * 1.6;
+  r.rows.forEach(function(row, idx) {
+    if (idx) doc.addPage();
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(32, 38, 31);
+    doc.text(row.name + '   ' + row.studentNumber, M, 14);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(110, 110, 130);
+    doc.text(doc.splitTextToSize(r.assignment.name + '  ·  ' + currentClassLabel + '  ·  ' + row.words + ' words' + (row.sessionNo ? '  ·  last written in Session ' + row.sessionNo : ''), Wd)[0], M, 19);
+    doc.setDrawColor(61, 90, 115); doc.setLineWidth(0.5); doc.line(M, 22, 210 - M, 22);
+    let yy = 32;
+    npPdfBlocks(row.html).forEach(function(block) {
+      const lines = npPdfLayout(doc, block.runs, FS, Wd);
+      lines.forEach(function(line) {
+        if (yy > 297 - M) { doc.addPage(); yy = 24; }
+        const lw = line.reduce(function(s, t) { return s + t.w; }, 0);
+        let x = block.align === 'center' ? M + (Wd - lw) / 2 : (block.align === 'right' ? M + Wd - lw : M);
+        line.forEach(function(t) {
+          doc.setFont('helvetica', t.b && t.i ? 'bolditalic' : (t.b ? 'bold' : (t.i ? 'italic' : 'normal'))); doc.setFontSize(FS); doc.setTextColor(32, 38, 31);
+          doc.text(t.text, x, yy);
+          if (t.u) { doc.setDrawColor(32, 38, 31); doc.setLineWidth(0.25); doc.line(x, yy + 0.8, x + t.tw, yy + 0.8); }
+          x += t.w;
+        });
+        yy += LH;
+      });
+      if (!lines.length) yy += LH;
+    });
+  });
+  doc.save(npFileBase() + '_final-drafts.pdf');
+}
+function npPdfBlocks(html) {
+  const root = document.createElement('div'); root.innerHTML = npSanitize(html);
+  const blocks = []; let cur = null;
+  const newBlock = function(align) { cur = { align: align || 'left', runs: [] }; blocks.push(cur); };
+  (function walk(node, st, align) {
+    node.childNodes.forEach(function(n) {
+      if (n.nodeType === 3) { if (!cur) newBlock(align); cur.runs.push({ text: n.nodeValue, b: st.b, i: st.i, u: st.u }); return; }
+      if (n.nodeType !== 1) return;
+      if (n.tagName === 'BR') { newBlock(align); return; }
+      if (n.tagName === 'DIV') { const a = n.style.textAlign || align; newBlock(a); walk(n, st, a); cur = null; return; }
+      walk(n, { b: st.b || n.tagName === 'B', i: st.i || n.tagName === 'I', u: st.u || n.tagName === 'U' }, align);
+    });
+  })(root, { b: false, i: false, u: false }, 'left');
+  return blocks.filter(function(b, i) { return !(i === blocks.length - 1 && !b.runs.length); });
+}
+function npPdfLayout(doc, runs, fs, maxW) {
+  const toks = [];
+  runs.forEach(function(r) { r.text.split(/(\s+)/).forEach(function(p) { if (p) toks.push({ text: p.replace(/\s+/g, ' '), b: r.b, i: r.i, u: r.u, space: /^\s+$/.test(p) }); }); });
+  const lines = []; let line = [], lw = 0;
+  toks.forEach(function(t) {
+    doc.setFont('helvetica', t.b && t.i ? 'bolditalic' : (t.b ? 'bold' : (t.i ? 'italic' : 'normal'))); doc.setFontSize(fs);
+    t.w = doc.getTextWidth(t.text); t.tw = t.w;
+    if (t.space && !line.length) return;
+    if (!t.space && lw + t.w > maxW && line.length) {
+      while (line.length && line[line.length - 1].space) line.pop();
+      lines.push(line); line = []; lw = 0;
+    }
+    line.push(t); lw += t.w;
+  });
+  while (line.length && line[line.length - 1].space) line.pop();
+  if (line.length) lines.push(line);
+  return lines;
+}
+
 </script>
 </body>
 </html>
