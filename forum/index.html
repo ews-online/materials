@@ -979,7 +979,7 @@ async function renderGrammarFeedback(week){
         <div class="ttl">Download Blog Entry Grammar Reflection Sheet</div>
         <div class="sub">Download the reflection worksheet for this week's entry.</div>
       </div>
-      <button class="btn-pdf" ${!hasAnnotation?'disabled title="No entry was submitted this week."':''} onclick="downloadCCFReflectionSheet()">📄 Download Reflection Sheet</button>
+      <button class="btn-pdf" onclick="downloadCCFReflectionSheet()">📄 Download Reflection Sheet</button>
     </div>
     ${ccfAttemptSectionHtml(hasAnnotation)}
     <div class="section-label">AI check (homework) AIチェック（宿題）</div>
@@ -1761,6 +1761,75 @@ function ccfPageHeader(doc, title, meta, studentId, qrPayload) {
   doc.line(CCF_M, CCF_HDR_LINE_Y, 210 - CCF_M, CCF_HDR_LINE_Y);
 }
 
+// ── No-entry notice (forum v3.10) ─────────────────────────────────────────────
+// Printed in the empty blog area when a student has no entry that week.
+// English sentences in Helvetica, each followed by its Japanese version
+// (drawn as images via ccfJpText, wrapped by measuring on a canvas).
+const CCF_NO_ENTRY_NOTICE = [
+  { en: 'No blog entry this week.', jp: '今週はブログ記事がありません。', head: true },
+  { en: 'Choose two sentences from a previous blog entry that you have not corrected yet.',
+    jp: '前のブログ記事から、まだ直していない文を2つ選んでください。' },
+  { en: 'The sentence with a new green-coded unit is Sentence 1. Submit that unit online (choose "Other reason") for your self-study this week: do practice questions, make flash cards, and take the quiz next week.',
+    jp: '緑色の新しいユニットがついている文が「文1」です。そのユニットをオンラインで提出してください（「Other reason」を選ぶ）。今週の自習ユニットになります。練習問題をして、フラッシュカードを作り、来週クイズを受けてください。' }
+];
+function ccfJpWrap(text, sizePt, bold, maxWidthMM) {
+  const fontPx = sizePt * 0.352778 * CCF_JP_PX_PER_MM;
+  const ctx = document.createElement('canvas').getContext('2d');
+  ctx.font = (bold ? '700' : '400') + ' ' + fontPx + 'px ' + CCF_JP_FONT;
+  const maxPx = maxWidthMM * CCF_JP_PX_PER_MM;
+  const noStart = '、。，．）」』！？・ー';           // never begin a line with these
+  const lines = []; let cur = '';
+  // Pieces: a run of Latin letters/digits stays whole ("Other", "reason");
+  // anything else (each Japanese character, space, bracket) is its own piece.
+  const pieces = text.match(/[A-Za-z0-9]+|[\s\S]/g) || [];
+  pieces.forEach(function(pc) {
+    if (cur && ctx.measureText(cur + pc).width > maxPx && noStart.indexOf(pc) === -1) {
+      // never end a line with an opening bracket: carry it to the next line
+      let carry = '';
+      while (cur && '（「『'.indexOf(cur[cur.length - 1]) !== -1) { carry = cur[cur.length - 1] + carry; cur = cur.slice(0, -1); }
+      lines.push(cur.replace(/\s+$/, '')); cur = carry + pc.replace(/^\s+/, '');
+    } else cur += pc;
+  });
+  if (cur) lines.push(cur);
+  return lines;
+}
+function ccfDrawNoEntryNotice(doc, top, height) {
+  const innerX = CCF_M + 10, innerW = CCF_W - 20;
+  const EN = 11, EN_HEAD = 13, JP = 9.5, JP_HEAD = 10.5;
+  const mm = function(pt) { return pt * 0.352778; };
+  // Measure first, so the block can be centred in the space.
+  const blocks = CCF_NO_ENTRY_NOTICE.map(function(p) {
+    doc.setFont('helvetica', 'bold'); doc.setFontSize(p.head ? EN_HEAD : EN);
+    const en = doc.splitTextToSize(p.en, innerW);
+    const jpSize = p.head ? JP_HEAD : JP;
+    const jp = ccfJpWrap(p.jp, jpSize, !!p.head, innerW);
+    const enLH = mm(p.head ? EN_HEAD : EN) * 1.35, jpLH = mm(jpSize) * 1.55;
+    return { p: p, en: en, jp: jp, jpSize: jpSize, enLH: enLH, jpLH: jpLH, h: en.length * enLH + 1.2 + jp.length * jpLH };
+  });
+  const GAP = 6;
+  const total = blocks.reduce(function(s, b) { return s + b.h; }, 0) + GAP * (blocks.length - 1);
+  const boxPad = 7;
+  const boxH = Math.min(height, total + boxPad * 2);
+  const boxTop = top + Math.max(0, (height - boxH) / 2);
+  doc.setFillColor(250, 251, 248); doc.setDrawColor(150, 155, 145); doc.setLineWidth(0.4);
+  doc.setLineDashPattern([1.5, 1.2], 0);
+  doc.roundedRect(CCF_M + 4, boxTop, CCF_W - 8, boxH, 2.5, 2.5, 'FD');
+  doc.setLineDashPattern([], 0);
+  let y = boxTop + boxPad + mm(EN_HEAD) * 0.8;
+  blocks.forEach(function(b, i) {
+    doc.setFont('helvetica', b.p.head ? 'bold' : 'normal'); doc.setFontSize(b.p.head ? EN_HEAD : EN);
+    doc.setTextColor(32, 38, 31);
+    b.en.forEach(function(l) { doc.text(l, innerX, y); y += b.enLH; });
+    y += 1.2 - b.enLH + b.jpLH * 0.85;
+    b.jp.forEach(function(l) { ccfJpText(doc, l, innerX, y, { size: b.jpSize, bold: !!b.p.head, color: [91, 99, 88] }); y += b.jpLH; });
+    y += GAP - b.jpLH + mm(EN) * 1.0;
+    if (i === 0) { // thin rule under the heading
+      doc.setDrawColor(215, 218, 206); doc.setLineWidth(0.25);
+      doc.line(innerX, y - mm(EN) - GAP / 2, innerX + innerW, y - mm(EN) - GAP / 2);
+    }
+  });
+}
+
 function ccfDrawReflectionSheet(doc, studentName, classId, week, annotation, colourMap, showUntreatable, isFirst, newUnitValue, newUnitSubmittedAt, studentId){
   const qrPayload = studentId ? ccfQrPayload(classId, week, studentId) : '';
   const MAX_Y = 285;
@@ -1794,17 +1863,8 @@ function ccfDrawReflectionSheet(doc, studentName, classId, week, annotation, col
       if(testLines.length*lineH <= BLOG_AVAILABLE){ chosenFont=fs; chosenLines=testLines; break; }
       chosenLines=testLines;
     }
-  } else {
-    const plainText = 'No entry was submitted this week.';
-    for(let fs=FONT_MAX; fs>=FONT_MIN; fs-=0.25){
-      doc.setFontSize(fs);
-      const testLines = doc.splitTextToSize(plainText, CCF_W-8);
-      const lineH = fs*0.352778*1.35;
-      if(testLines.length*lineH <= BLOG_AVAILABLE){ chosenFont=fs; chosenLines=testLines; break; }
-      chosenLines=testLines;
-    }
   }
-  if(chosenFont === FONT_MIN){
+  if(hasAnnotation && chosenFont === FONT_MIN){
     const lineH = FONT_MIN*0.352778*1.35;
     if(chosenLines.length*lineH > BLOG_AVAILABLE){
       console.warn('CCF reflection sheet: entry is too long to fit even at ' + FONT_MIN + 'pt — genuinely needs more room than one page allows.');
@@ -1814,8 +1874,7 @@ function ccfDrawReflectionSheet(doc, studentName, classId, week, annotation, col
   if(hasAnnotation){
     ccfDrawAnnotated(doc, tokens, CCF_M+4, y, chosenFont, lineH, CCF_W-8);
   } else {
-    doc.setFontSize(chosenFont); doc.setFont('helvetica','italic'); doc.setTextColor(150,155,145);
-    chosenLines.forEach(l => { doc.text(l, CCF_M+4, y); y += lineH; });
+    ccfDrawNoEntryNotice(doc, blogStartY, BLOG_AVAILABLE);
   }
 
   y = blogStartY + BLOG_AVAILABLE + 2;
