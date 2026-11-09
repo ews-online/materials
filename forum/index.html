@@ -411,7 +411,7 @@
       <button class="btn btn-primary btn-block" style="margin-top:14px;" onclick="login()">Enter</button>
       <div class="error-msg" id="loginError">Student number not found. Check and try again.</div>
     </div>
-    <div class="version-tag">v3.9 — 2026-10-20</div>
+    <div class="version-tag">v3.10 — 2026-11-09</div>
   </div>
 
   <!-- ===================== MAIN APP ===================== -->
@@ -1174,7 +1174,14 @@ const UNIT_TITLES = {B1:{jp:"am/is/are (be 動詞の肯定文、否定文)",en:n
 const CCF_CODE_LABELS={VT:'Verb Tense',SVA:'Subject-Verb Agreement',ART:'Articles',PREP:'Prepositions',WF:'Word Form',SP:'Singular / Plural',WO:'Word Order',MOD:'Modal Verbs',CL:'Clause-level Error',ME:'Missing / Extra Words',SC:'Spelling & Capitalisation',PU:'Punctuation',COL:'Collocation',WC:'Word Choice',IDM:'Idiom',AWK:'Awkward Phrasing'};
 function buildAnnotatedHtml(text, colourMap, showUntreatable){
   function esc(s){ return s ? String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''; }
-  const tokens = ccfTokenize(text, colourMap, showUntreatable);
+  // All words of one multi-word mark become ONE token here (one highlight,
+  // one tooltip) instead of one highlight per word (v3.10).
+  const tokens = [];
+  ccfTokenize(text, colourMap, showUntreatable).forEach(t=>{
+    const prev = tokens[tokens.length-1];
+    if(t.style && prev && prev.style && prev.grp === t.grp){ prev.text += ' ' + t.text; }
+    else tokens.push(Object.assign({}, t));
+  });
   // The indent span renders the student's OWN literal leading whitespace
   // (t.ws) as real text, not a fixed-width placeholder box — the browser
   // has genuine Unicode support, so a full-width space (U+3000, the normal
@@ -1252,7 +1259,9 @@ const CCF_COLORS = {
 function ccfUnitState(code, unit, colourMap){
   if(!code) return null;
   if(code==='SC'||code==='PU') return 'purple';
-  if(code==='COL'||code==='WC'||code==='IDM'||code==='AWK') return 'grey';
+  // ME (missing/extra word) carries no unit, so it gives a student nothing
+  // to study: treated as untreatable (grey), same as the Teacher Portal (v3.10).
+  if(code==='COL'||code==='WC'||code==='IDM'||code==='AWK'||code==='ME') return 'grey';
   if(unit && colourMap && colourMap[unit]) return colourMap[unit].colour;
   return 'green';
 }
@@ -1271,7 +1280,7 @@ function ccfTagFor(style){
 // slash-separated), {^|CODE|UNIT} (omission, caret only — never the
 // missing word), {span|CODE} (no unit — SC/PU/COL/WC/IDM/AWK).
 // colourMap: this week's frozen {unit: {colour, border}} snapshot.
-// showUntreatable: class Settings toggle — when false, COL/WC/IDM/AWK tokens
+// showUntreatable: class Settings toggle — when false, COL/WC/IDM/AWK/ME tokens
 // are treated as plain text (no style at all) so BOTH the on-screen view and
 // the PDF automatically stay consistent without each needing their own check.
 // The underlying tag stays in annotatedText regardless — this only affects
@@ -1282,6 +1291,7 @@ function ccfTagFor(style){
 // this can't rely on per-call whitespace detection alone, since a tag
 // match can split a paragraph's leading whitespace away from its first
 // word. ──
+let _ccfGrpSeq = 0;
 function ccfTokenize(text, colourMap, showUntreatable){
   const re=/\{(\^|[^{}|]*)\|([A-Z]+)(?:\|([BI]\d+(?:\/[BI]\d+)?))?\}/g;
   const tokens=[]; let last=0, m;
@@ -1335,10 +1345,17 @@ function ccfTokenize(text, colourMap, showUntreatable){
     const border = (!state || noUnit) ? false : ccfUnitBorder(primaryUnit, colourMap);
     const style = state ? {code, primaryUnit: noUnit?null:primaryUnit, secondaryUnit: noUnit?null:secondaryUnit, state, border} : null;
     if(needIndentMarker){ tokens.push({indent:true, ws:needIndentMarker}); needIndentMarker=null; }
+    // Every word of one mark shares a group id (grp). Only the LAST word
+    // carries the [CODE·UNIT] label (tagEnd), so a multi-word mark like
+    // {It's going to be|VT|B17} prints as one highlighted phrase with one
+    // label at the end, not a label after every word (v3.10).
+    const grp = ++_ccfGrpSeq;
     if(span==='^'){
-      tokens.push({text:'^', style});
+      // A hidden missing-word mark prints nothing (not a bare "^").
+      if(style) tokens.push({text:'^', style, grp, tagEnd:true});
     } else {
-      span.trim().split(/\s+/).filter(Boolean).forEach(w=> tokens.push({text:w, style}));
+      const ws = span.trim().split(/\s+/).filter(Boolean);
+      ws.forEach((w, wi)=> tokens.push({text:w, style, grp, tagEnd: wi === ws.length-1}));
     }
     last = m.index+m[0].length;
   }
@@ -1354,7 +1371,7 @@ function ccfLayoutAnnotated(doc, tokens, fontSize, maxWidth){
     if(t.break || t.indent) return 0;
     doc.setFont('helvetica', t.style?'bold':'normal'); doc.setFontSize(fontSize);
     let w = doc.getTextWidth(t.text);
-    if(t.style){
+    if(t.style && t.tagEnd){
       doc.setFont('helvetica','normal'); doc.setFontSize(tagFontSize);
       w += doc.getTextWidth(' ['+ccfTagFor(t.style)+']');
     }
@@ -1413,22 +1430,34 @@ function ccfDrawAnnotated(doc, tokens, x0, y0, fontSize, lineHeight, maxWidth){
   let y=y0;
   lines.forEach(line=>{
     let x=x0 + ccfIndentWidthMM(line.indentWs, spaceW, fontSize);
-    line.forEach(t=>{
+    let borderStartX = x;
+    line.forEach((t, ti)=>{
       doc.setFont('helvetica', t.style?'bold':'normal'); doc.setFontSize(fontSize);
       let w = doc.getTextWidth(t.text);
       let tagStr = null, tagW=0;
-      if(t.style){
+      if(t.style && t.tagEnd){
         tagStr = ' ['+ccfTagFor(t.style)+']';
         doc.setFont('helvetica','normal'); doc.setFontSize(tagFontSize);
         tagW = doc.getTextWidth(tagStr);
       }
       if(t.style){
         const c = CCF_COLORS[t.style.state];
+        // A word in the middle of a multi-word mark: stretch its highlight
+        // across the following space, so the whole phrase reads as one box.
+        const next = line[ti+1];
+        const joinNext = !t.tagEnd && next && next.style && next.grp === t.grp;
+        const boxX = (ti > 0 && line[ti-1].style && line[ti-1].grp === t.grp) ? x : x-0.6;
+        const boxEnd = joinNext ? x + w + spaceW : x + w + tagW + 0.6;
+        const boxWAdj = boxEnd - boxX;
         doc.setFillColor(...c.fill);
-        doc.roundedRect(x-0.6, y-fontSize*0.34, w+tagW+1.2, fontSize*0.48, 0.5, 0.5, 'F');
+        doc.roundedRect(boxX, y-fontSize*0.34, boxWAdj, fontSize*0.48, 0.5, 0.5, 'F');
         if(t.style.border){
-          doc.setDrawColor(42,122,78); doc.setLineWidth(0.35);
-          doc.roundedRect(x-0.6, y-fontSize*0.34, w+tagW+1.2, fontSize*0.48, 0.5, 0.5, 'S');
+          // One outline around the whole phrase (per line), not one per word.
+          if(boxX !== x) borderStartX = boxX; // first piece of this phrase on this line
+          if(!joinNext){
+            doc.setDrawColor(42,122,78); doc.setLineWidth(0.35);
+            doc.roundedRect(borderStartX, y-fontSize*0.34, (boxX + boxWAdj) - borderStartX, fontSize*0.48, 0.5, 0.5, 'S');
+          }
         }
         doc.setTextColor(...c.text);
       } else {
@@ -2212,7 +2241,7 @@ function ccfmMatchAttempt(markedSentence, attempt) {
 // the dropdown, preview and prompt never show the student a hidden mark.
 function ccfStripHiddenTags(text, showUntreatable){
   if(showUntreatable !== false) return String(text || '');
-  return String(text || '').replace(/\{([^{}|]*)\|(COL|WC|IDM|AWK)\}/g, '$1');
+  return String(text || '').replace(/\{(\^|[^{}|]*)\|(COL|WC|IDM|AWK|ME)\}/g, function(m, span){ return span === '^' ? '' : span; });
 }
 
 // Splits annotated text into sentences, never inside a { } tag. Keeps only

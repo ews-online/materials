@@ -438,7 +438,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v4.27 — In-Class Notepad panel</div>
+      <div class="version-tag">v4.28 — one label per multi-word mark on reflection sheets</div>
     </div>
   </div>
 
@@ -2709,6 +2709,7 @@ function ccfTagFor(style) {
   return noUnit ? style.code : style.code + (style.primaryUnit ? '\u00b7' + style.primaryUnit : '');
 }
 
+let _ccfGrpSeq = 0;
 function ccfTokenize(text, colourMap, showUntreatable) {
   const re = /\{(\^|[^{}|]*)\|([A-Z]+)(?:\|([BI]\d+(?:\/[BI]\d+)?))?\}/g;
   const tokens = []; let last = 0, m;
@@ -2754,10 +2755,17 @@ function ccfTokenize(text, colourMap, showUntreatable) {
     const border = (!state || noUnit) ? false : ccfUnitBorder(primaryUnit, colourMap);
     const style = state ? { code: code, primaryUnit: noUnit ? null : primaryUnit, secondaryUnit: noUnit ? null : secondaryUnit, state: state, border: border } : null;
     if (needIndentMarker) { tokens.push({ indent: true, ws: needIndentMarker }); needIndentMarker = null; }
+    // Every word of one mark shares a group id (grp). Only the LAST word
+    // carries the [CODE·UNIT] label (tagEnd), so a multi-word mark like
+    // {It's going to be|VT|B17} prints as one highlighted phrase with one
+    // label at the end, not a label after every word (v4.28).
+    const grp = ++_ccfGrpSeq;
     if (span === '^') {
-      tokens.push({ text: '^', style: style });
+      // A hidden missing-word mark prints nothing (not a bare "^").
+      if (style) tokens.push({ text: '^', style: style, grp: grp, tagEnd: true });
     } else {
-      span.trim().split(/\s+/).filter(Boolean).forEach(function(w) { tokens.push({ text: w, style: style }); });
+      const ws = span.trim().split(/\s+/).filter(Boolean);
+      ws.forEach(function(w, wi) { tokens.push({ text: w, style: style, grp: grp, tagEnd: wi === ws.length - 1 }); });
     }
     last = m.index + m[0].length;
   }
@@ -2773,7 +2781,7 @@ function ccfLayoutAnnotated(doc, tokens, fontSize, maxWidth) {
     if (t.brk || t.indent) return 0;
     doc.setFont('helvetica', t.style ? 'bold' : 'normal'); doc.setFontSize(fontSize);
     let w = doc.getTextWidth(t.text);
-    if (t.style) {
+    if (t.style && t.tagEnd) {
       doc.setFont('helvetica', 'normal'); doc.setFontSize(tagFontSize);
       w += doc.getTextWidth(' [' + ccfTagFor(t.style) + ']');
     }
@@ -2832,22 +2840,33 @@ function ccfDrawAnnotated(doc, tokens, x0, y0, fontSize, lineHeight, maxWidth) {
   let y = y0;
   lines.forEach(function(line) {
     let x = x0 + ccfIndentWidthMM(line.indentWs, spaceW, fontSize);
-    line.forEach(function(t) {
+    let borderStartX = x;
+    line.forEach(function(t, ti) {
       doc.setFont('helvetica', t.style ? 'bold' : 'normal'); doc.setFontSize(fontSize);
       let w = doc.getTextWidth(t.text);
       let tagStr = null, tagW = 0;
-      if (t.style) {
+      if (t.style && t.tagEnd) {
         tagStr = ' [' + ccfTagFor(t.style) + ']';
         doc.setFont('helvetica', 'normal'); doc.setFontSize(tagFontSize);
         tagW = doc.getTextWidth(tagStr);
       }
       if (t.style) {
         const c = CCF_COLORS[t.style.state];
+        // A word in the middle of a multi-word mark: stretch its highlight
+        // across the following space, so the whole phrase reads as one box.
+        const next = line[ti + 1];
+        const joinNext = !t.tagEnd && next && next.style && next.grp === t.grp;
+        const boxX = (ti > 0 && line[ti - 1].style && line[ti - 1].grp === t.grp) ? x : x - 0.6;
+        const boxEnd = joinNext ? x + w + spaceW : x + w + tagW + 0.6;
         doc.setFillColor(c.fill[0], c.fill[1], c.fill[2]);
-        doc.roundedRect(x - 0.6, y - fontSize * 0.34, w + tagW + 1.2, fontSize * 0.48, 0.5, 0.5, 'F');
+        doc.roundedRect(boxX, y - fontSize * 0.34, boxEnd - boxX, fontSize * 0.48, 0.5, 0.5, 'F');
         if (t.style.border) {
-          doc.setDrawColor(42, 122, 78); doc.setLineWidth(0.35);
-          doc.roundedRect(x - 0.6, y - fontSize * 0.34, w + tagW + 1.2, fontSize * 0.48, 0.5, 0.5, 'S');
+          // One outline around the whole phrase (per line), not one per word.
+          if (boxX !== x) borderStartX = boxX; // first piece of this phrase on this line
+          if (!joinNext) {
+            doc.setDrawColor(42, 122, 78); doc.setLineWidth(0.35);
+            doc.roundedRect(borderStartX, y - fontSize * 0.34, boxEnd - borderStartX, fontSize * 0.48, 0.5, 0.5, 'S');
+          }
         }
         doc.setTextColor(c.text[0], c.text[1], c.text[2]);
       } else {
