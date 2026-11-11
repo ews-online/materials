@@ -438,7 +438,7 @@
       <div class="field"><label class="field-label">Password</label><input class="text-input" id="login-pass" type="password"></div>
       <button class="btn" style="width:100%" onclick="doLogin()" id="login-btn">Sign in →</button>
       <div class="msg" id="login-msg"></div>
-      <div class="version-tag">v4.29 — no-entry notice on reflection sheets</div>
+      <div class="version-tag">v4.30 — Moodle Report includes comments saved this session</div>
     </div>
   </div>
 
@@ -1780,7 +1780,10 @@ function moodleReportRows() {
     // missing for anyone the teacher hasn't clicked into yet. Newlines become
     // <br> rather than staying as real line breaks, same reason as the rest of
     // this cell: a literal \n here would split the row across Excel cells.
-    const feedbackText = (sub.savedFeedback || '').trim();
+    // v4.30: a comment saved THIS session wins over the copy loaded when the
+    // week was opened (saveGrade also updates that copy now) — before, a
+    // report made straight after grading had no comments until a reload.
+    const feedbackText = String(gradingFeedbackDraft[sn] !== undefined ? gradingFeedbackDraft[sn] : (sub.savedFeedback || '')).trim();
     const feedbackHtml = feedbackText ? '<p>' + esc(feedbackText).replace(/\n/g, '<br>') + '</p>' : '';
     const html = '<p><strong>' + esc(r.name) + '</strong></p><p style="color:' + totalColor + '"><strong>Total: ' + total + ' / ' + max + '</strong></p><ul>' + criterionItems + '</ul>' + feedbackHtml;
     return total + '\t' + html;
@@ -1999,6 +2002,13 @@ async function saveGrade(andNext) {
   });
   if (result.ok) {
     gradingSavedSet[sn] = true;
+    // Keep the loaded copy in step with what was just saved, so the Moodle
+    // Report (and anything else reading the cache) sees it without a reload.
+    if (!subResult.submissions[sn]) subResult.submissions[sn] = {};
+    const cached = subResult.submissions[sn];
+    cached.savedFeedback = gradingFeedbackDraft[sn] || '';
+    cached.savedGrades = Object.assign({}, cached.savedGrades || {});
+    grades.forEach(function(g) { cached.savedGrades[g.criterionId] = g.tierOrder; });
     if (andNext) navStudent(1); else renderGrading();
   } else {
     alert(result.error || "Couldn't save grade.");
